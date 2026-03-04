@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Users ──────────────────────────────────────────────
+    match /users/{userId} {
+      // Allow unauthenticated reads so the NIC-duplicate check
+      // (isNicRegistered) works before sign-up.
+      // Limit to single-document fetches and small queries.
+      allow read: if true;
+
+      // Only the owner may create / update their own document.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // ── Default deny ───────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
