@@ -1,0 +1,28 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "village-connect-26949",
+          "appId": "1:344728487984:android:98650dda1c6739524b45f5",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "village-connect-26949",
+          "configurations": {
+            "android": "1:344728487984:android:98650dda1c6739524b45f5",
+            "ios": "1:344728487984:ios:837e3ebeab5b212a4b45f5",
+            "macos": "1:344728487984:ios:837e3ebeab5b212a4b45f5",
+            "web": "1:344728487984:web:9d62b71bde53cb7b4b45f5",
+            "windows": "1:344728487984:web:080f0581de1591f64b45f5"
+          }
+        }
+      }
+    }
+  }
+}
