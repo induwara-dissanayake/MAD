@@ -295,7 +295,7 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
                         value: _useCurrentLocation,
                         onChanged: (v) =>
                             setState(() => _useCurrentLocation = v),
-                        activeColor: AppColors.primary,
+                        activeThumbColor: AppColors.primary,
                       ),
                     ],
                   ),
