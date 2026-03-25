@@ -27,16 +27,36 @@ class UserService {
     });
   }
 
-  /// Update the googleEmail field after linking.
-  Future<void> updateGoogleEmail(String uid, String googleEmail) async {
-    await _usersCollection.doc(uid).update({'googleEmail': googleEmail});
+  /// Fetch a single user profile once.
+  Future<UserModel?> getUserProfileOnce(String uid) async {
+    final doc = await _usersCollection.doc(uid).get();
+    if (!doc.exists || doc.data() == null) return null;
+    return UserModel.fromMap(doc.data()!, doc.id);
+  }
+
+  /// Check if logged-in user has admin permission (can create new residents).
+  Future<bool> isAdmin(String uid) async {
+    try {
+      final doc = await _usersCollection.doc(uid).get();
+      if (!doc.exists) return false;
+      final role = doc.data()?['role'] as String? ?? 'citizen';
+      return role == 'admin' || role == 'gn_officer';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Stream all family members / rental users created by [creatorUid].
+  Stream<List<UserModel>> streamHouseholdMembers(String creatorUid) {
+    return _usersCollection
+        .where('createdByUid', isEqualTo: creatorUid)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => UserModel.fromMap(d.data(), d.id))
+            .toList());
   }
 
   /// Check if a NIC is already registered.
-  ///
-  /// Returns `false` when Firestore rules deny the read so that
-  /// registration can proceed (Firebase Auth will still enforce
-  /// uniqueness via the email-already-in-use error).
   Future<bool> isNicRegistered(String nic) async {
     try {
       final query = await _usersCollection
@@ -45,9 +65,22 @@ class UserService {
           .get();
       return query.docs.isNotEmpty;
     } catch (e) {
-      // If Firestore rules deny the read, allow registration to continue.
-      // Duplicate NIC will still be caught by Firebase Auth (email-already-in-use).
       return false;
     }
+  }
+
+  /// Update the user's role (admin only action).
+  Future<void> updateRole(String uid, String newRole) async {
+    await _usersCollection.doc(uid).update({'role': newRole});
+  }
+
+  /// Stream all residents (for admin user management).
+  Stream<List<UserModel>> streamAllUsers() {
+    return _usersCollection
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => UserModel.fromMap(d.data(), d.id))
+            .toList());
   }
 }

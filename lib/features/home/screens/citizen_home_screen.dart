@@ -1,106 +1,124 @@
 import 'dart:ui';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/request_model.dart';
+import '../../../core/models/user_model.dart';
+import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
-class CitizenHomeScreen extends StatefulWidget {
+class CitizenHomeScreen extends ConsumerStatefulWidget {
   const CitizenHomeScreen({super.key});
 
   @override
-  State<CitizenHomeScreen> createState() => _CitizenHomeScreenState();
+  ConsumerState<CitizenHomeScreen> createState() => _CitizenHomeScreenState();
 }
 
-class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
-  // Mock offline mode state
-  final bool _isOffline = true;
+class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
+  bool _isOffline(List<ConnectivityResult>? results) {
+    if (results == null || results.isEmpty) return false;
+    return results.every((r) => r == ConnectivityResult.none);
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final userService = ref.read(userServiceProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          if (_isOffline)
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 4,
-                bottom: 8,
-                left: 16,
-                right: 16,
-              ),
-              color: AppColors.warning, // Orange/Amber color
-              child: SafeArea(
-                bottom: false,
-                top: false,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.wifi_off_rounded,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'You are currently in Offline Mode',
-                      style: AppTextStyles.small.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+    return FutureBuilder<UserModel?>(
+      future: user == null
+          ? Future.value(null)
+          : userService.getUserProfileOnce(user.uid),
+      builder: (context, profileSnap) {
+        final profile = profileSnap.data;
+        return StreamBuilder<List<ConnectivityResult>>(
+          stream: Connectivity().onConnectivityChanged,
+          builder: (context, connectivitySnap) {
+            final isOffline = _isOffline(connectivitySnap.data);
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              body: Column(
+                children: [
+                  if (isOffline)
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top + 4,
+                        bottom: 8,
+                        left: 16,
+                        right: 16,
+                      ),
+                      color: AppColors.warning,
+                      child: SafeArea(
+                        bottom: false,
+                        top: false,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.wifi_off_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'You are currently in Offline Mode',
+                              style: AppTextStyles.small.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.zero, // Remove implicit padding if any
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeroGreeting(context, user),
-                  const SizedBox(height: 24),
-                  _buildQuickStats(const AsyncData([])),
-                  const SizedBox(height: 24),
-                  _buildEmergencyButton(context),
-                  const SizedBox(height: 24),
-                  _buildPrimaryActions(context),
-                  const SizedBox(height: 32),
-                  _buildSecondaryActions(context),
-                  const SizedBox(height: 32),
-                  _buildRecentActivity(context, const AsyncData([])),
-                  const SizedBox(height: 48),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.zero,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeroGreeting(context, user, profile, isOffline),
+                          const SizedBox(height: 24),
+                          _buildQuickStats(const AsyncData([])),
+                          const SizedBox(height: 24),
+                          _buildEmergencyButton(context),
+                          const SizedBox(height: 24),
+                          _buildPrimaryActions(context),
+                          const SizedBox(height: 32),
+                          _buildHouseholdSection(context, user),
+                          const SizedBox(height: 32),
+                          _buildSecondaryActions(context),
+                          const SizedBox(height: 32),
+                          _buildRecentActivity(context, const AsyncData([])),
+                          const SizedBox(height: 48),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
   // ── Hero Greeting ─────────────────────────────────────────────────────
-  Widget _buildHeroGreeting(BuildContext context, User? user) {
-    // Top padding is handled by the offline banner if visible, but if not, we need it.
-    // Or we can just let the Hero container handle its own internal padding as before.
-    // However, since the offline banner is outside the ScrollView, the Hero container
-    // is now just below it.
-
-    // If _isOffline is true, the top status bar area is covered/pushed by the banner.
-    // If we want the hero image to still look immersive, we might need adjustments.
-    // For now, let's keep the padding logic but adjust top padding to 0 if banner is present?
-    // Actually, simply removing 'topPadding' usage might be enough if the banner consumes the status bar area.
-    // But usually status bar is translucent.
-
-    final topPadding = _isOffline ? 0.0 : MediaQuery.of(context).padding.top;
+  Widget _buildHeroGreeting(
+    BuildContext context,
+    User? user,
+    UserModel? profile,
+    bool isOffline,
+  ) {
+    final topPadding = isOffline ? 0.0 : MediaQuery.of(context).padding.top;
+    final displayName = profile?.fullName ?? user?.displayName ?? 'Citizen';
+    final village = profile?.village ?? 'Welivita South';
 
     return Container(
       width: double.infinity,
@@ -140,7 +158,7 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      user?.displayName ?? 'Citizen',
+                      displayName,
                       style: AppTextStyles.displayLarge.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -184,7 +202,9 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
                       image: DecorationImage(
                         image: user?.photoURL != null
                             ? NetworkImage(user!.photoURL!) as ImageProvider
-                            : const AssetImage('assets/images/default_avatar.jpg'),
+                            : const AssetImage(
+                                'assets/images/default_avatar.jpg',
+                              ),
                         fit: BoxFit.cover,
                       ),
                       boxShadow: [
@@ -228,7 +248,7 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Welivita South • GN 521',
+                      '$village • GN 521',
                       style: AppTextStyles.small.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w500,
@@ -250,8 +270,12 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: requestsValue.when(
         data: (requests) {
-          final pendingCount = requests.where((r) => r.status == 'Pending').length;
-          final approvedCount = requests.where((r) => r.status == 'Approved').length;
+          final pendingCount = requests
+              .where((r) => r.status == 'Pending')
+              .length;
+          final approvedCount = requests
+              .where((r) => r.status == 'Approved')
+              .length;
           final totalCount = requests.length;
 
           return Row(
@@ -636,6 +660,74 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
     );
   }
 
+  // ── Household / Member Management ─────────────────────────────────────
+  Widget _buildHouseholdSection(BuildContext context, User? user) {
+    if (user == null) return const SizedBox.shrink();
+    final userService = ref.read(userServiceProvider);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Household Management',
+            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border.withOpacity(0.5)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadowLight.withOpacity(0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: FutureBuilder<bool>(
+              future: userService.isAdmin(user.uid),
+              builder: (ctx, snap) {
+                final isAdmin = snap.data == true;
+                return Column(
+                  children: [
+                    _buildSecondaryItem(
+                      icon: Icons.group_add_rounded,
+                      title: 'Add Family Member / Rental',
+                      subtitle: 'Register a family member or rental occupant',
+                      color: AppColors.primary,
+                      onTap: () => context.push('/auth/add-member'),
+                      isFirst: true,
+                      isLast: !isAdmin,
+                    ),
+                    if (isAdmin) ...[
+                      const Divider(
+                        height: 1,
+                        indent: 72,
+                        color: AppColors.divider,
+                      ),
+                      _buildSecondaryItem(
+                        icon: Icons.person_add_alt_1_rounded,
+                        title: 'Register New Resident',
+                        subtitle: 'Create account for a new village resident',
+                        color: AppColors.error,
+                        onTap: () => context.push('/auth/create-resident'),
+                        isLast: true,
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSecondaryItem({
     required IconData icon,
     required String title,
@@ -700,7 +792,10 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
   }
 
   // ── Recent Activity ───────────────────────────────────────────────────
-  Widget _buildRecentActivity(BuildContext context, AsyncValue<List<RequestModel>> requestsValue) {
+  Widget _buildRecentActivity(
+    BuildContext context,
+    AsyncValue<List<RequestModel>> requestsValue,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -747,7 +842,9 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
                     child: Center(
                       child: Text(
                         'No recent activity',
-                        style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   );
@@ -761,14 +858,22 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
                           _buildActivityItem(
                             title: recentRequests[i].documentType,
                             status: recentRequests[i].status,
-                            statusColor: _getStatusColor(recentRequests[i].status),
-                            date: DateFormat.yMMMd().format(recentRequests[i].submittedAt),
+                            statusColor: _getStatusColor(
+                              recentRequests[i].status,
+                            ),
+                            date: DateFormat.yMMMd().format(
+                              recentRequests[i].submittedAt,
+                            ),
                             icon: _getStatusIcon(recentRequests[i].status),
                             isFirst: i == 0,
                             isLast: i == recentRequests.length - 1,
                           ),
                           if (i < recentRequests.length - 1)
-                            const Divider(height: 1, indent: 64, color: AppColors.divider),
+                            const Divider(
+                              height: 1,
+                              indent: 64,
+                              color: AppColors.divider,
+                            ),
                         ],
                       ),
                   ],

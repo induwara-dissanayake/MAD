@@ -63,40 +63,45 @@ class AppShell extends StatelessWidget {
 
   Widget _buildBottomBar() {
     return BottomAppBar(
-      height: 68,
+      height: 84,
       color: AppColors.card,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       notchMargin: 8,
       shape: const CircularNotchedRectangle(),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-            _buildNavItem(
-              1,
-              Icons.notifications_none_rounded,
-              Icons.notifications_rounded,
-              'Alerts',
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: AppColors.border, width: 0.5),
             ),
-            const SizedBox(width: 48), // Space for FAB
-            _buildNavItem(
-              3,
-              Icons.article_outlined,
-              Icons.article_rounded,
-              'Notices',
-            ),
-            _buildNavItem(
-              4,
-              Icons.help_outline_rounded,
-              Icons.help_rounded,
-              'Help',
-            ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
+              _buildNavItem(
+                1,
+                Icons.notifications_none_rounded,
+                Icons.notifications_rounded,
+                'Alerts',
+              ),
+              const SizedBox(width: 48), // Space for FAB
+              _buildNavItem(
+                3,
+                Icons.article_outlined,
+                Icons.article_rounded,
+                'Notices',
+              ),
+              _buildNavItem(
+                4,
+                Icons.help_outline_rounded,
+                Icons.help_rounded,
+                'Help',
+              ),
+            ],
+          ),
         ),
       ),
     );

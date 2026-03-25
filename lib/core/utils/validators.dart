@@ -57,8 +57,19 @@ class Validators {
     return null;
   }
 
+  static String? validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Email is required';
+    }
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(value.trim())) {
+      return 'Enter a valid email address';
+    }
+    return null;
+  }
+
   /// Convert NIC to a synthetic email for Firebase Auth.
   static String nicToEmail(String nic) {
     return '${nic.trim().toLowerCase()}@villageconnect.local';
   }
 }
+

@@ -2,7 +2,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -35,28 +37,49 @@ class ProfileScreen extends ConsumerWidget {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const Divider(height: 1, color: AppColors.divider),
-            _buildProfileHeader(user),
-            const SizedBox(height: 24),
-            _buildPersonalInfo(user),
-            const SizedBox(height: 20),
-            _buildVillageInfo(),
-            const SizedBox(height: 20),
-            _buildSettingsSection(context),
-            const SizedBox(height: 24),
-            _buildLogoutButton(context, ref),
-            const SizedBox(height: 32),
-          ],
+        child: StreamBuilder<UserModel?>(
+          stream: ref.read(userServiceProvider).getUserProfile(user.uid),
+          builder: (context, snapshot) {
+            final profile = snapshot.data;
+            return Column(
+              children: [
+                const Divider(height: 1, color: AppColors.divider),
+                _buildProfileHeader(user, profile),
+                const SizedBox(height: 24),
+                _buildPersonalInfo(user, profile),
+                const SizedBox(height: 20),
+                _buildVillageInfo(profile),
+                const SizedBox(height: 20),
+                _buildSettingsSection(context),
+                const SizedBox(height: 24),
+                _buildLogoutButton(context, ref),
+                const SizedBox(height: 32),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
   // ── Profile Header ────────────────────────────────────────────────────
-  Widget _buildProfileHeader(User user) {
-    final initials = (user.displayName ?? 'C').substring(0, 1).toUpperCase();
+  String _roleLabel(String role) {
+    switch (role) {
+      case 'gn_officer':
+        return 'GN Officer';
+      case 'admin':
+        return 'Admin';
+      case 'committee':
+        return 'Committee';
+      default:
+        return 'Citizen';
+    }
+  }
+
+  Widget _buildProfileHeader(User user, UserModel? profile) {
+    final displayName = profile?.fullName ?? user.displayName ?? 'Citizen';
+    final role = _roleLabel(profile?.role ?? 'citizen');
+    final initials = displayName.substring(0, 1).toUpperCase();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -102,12 +125,14 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            user.displayName ?? 'Citizen',
+            displayName,
             style: AppTextStyles.h2.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 4),
           Text(
-            user.email ?? 'No Email',
+            profile?.email.isNotEmpty == true
+                ? profile!.email
+                : (user.email ?? 'No Email'),
             style: AppTextStyles.caption.copyWith(
               color: Colors.white.withOpacity(0.7),
             ),
@@ -120,7 +145,7 @@ class ProfileScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'Citizen • Welivita South',
+              '$role • ${profile?.village.isNotEmpty == true ? profile!.village : 'Welivita South'}',
               style: AppTextStyles.small.copyWith(
                 color: Colors.white.withOpacity(0.8),
                 fontWeight: FontWeight.w500,
@@ -133,27 +158,42 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Personal Information ──────────────────────────────────────────────
-  Widget _buildPersonalInfo(User user) {
+  Widget _buildPersonalInfo(User user, UserModel? profile) {
+    final fullName = profile?.fullName ?? user.displayName ?? 'N/A';
+    final email = profile?.email ?? user.email ?? 'N/A';
+    final phone = profile?.phone ?? user.phoneNumber ?? 'N/A';
     return _buildInfoSection(
       title: 'Personal Information',
       items: [
-        _InfoRow(Icons.person_outline_rounded, 'Full Name', user.displayName ?? 'N/A'),
-        _InfoRow(Icons.email_outlined, 'Email', user.email ?? 'N/A'),
-        _InfoRow(Icons.phone_outlined, 'Phone', user.phoneNumber ?? 'N/A'),
-        _InfoRow(Icons.verified_user_outlined, 'User ID', user.uid.substring(0, 8)),
+        _InfoRow(Icons.person_outline_rounded, 'Full Name', fullName),
+        _InfoRow(Icons.email_outlined, 'Email', email),
+        _InfoRow(Icons.phone_outlined, 'Phone', phone),
+        _InfoRow(
+          Icons.verified_user_outlined,
+          'User ID',
+          user.uid.substring(0, 8),
+        ),
       ],
     );
   }
 
   // ── Village Information ───────────────────────────────────────────────
-  Widget _buildVillageInfo() {
+  Widget _buildVillageInfo(UserModel? profile) {
     return _buildInfoSection(
       title: 'Village Details',
       items: [
-        _InfoRow(Icons.holiday_village_outlined, 'Village', 'Welivita South'),
-        _InfoRow(Icons.location_on_outlined, 'GN Division', 'GN 521'),
-        _InfoRow(Icons.map_outlined, 'District', 'Colombo'),
-        _InfoRow(Icons.home_outlined, 'Address', '42/A, Temple Road, Kaduwela'),
+        _InfoRow(
+          Icons.holiday_village_outlined,
+          'Village',
+          profile?.village ?? 'N/A',
+        ),
+        _InfoRow(
+          Icons.location_on_outlined,
+          'GN Division',
+          profile?.village ?? 'N/A',
+        ),
+        _InfoRow(Icons.map_outlined, 'District', profile?.district ?? 'N/A'),
+        _InfoRow(Icons.home_outlined, 'Address', profile?.address ?? 'N/A'),
       ],
     );
   }
