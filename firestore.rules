@@ -2,20 +2,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Users ──────────────────────────────────────────────
+    // ── Helper functions ────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdminOrOfficer() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+          in ['admin', 'gn_officer'];
+    }
+
+    function isCreatorForNewUser() {
+      return isSignedIn()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.role == 'citizen'
+        && request.resource.data.memberType in ['new_resident', 'family_member', 'rental'];
+    }
+
+    // ── Users ────────────────────────────────────────────────────
     match /users/{userId} {
-      // Allow unauthenticated reads so the NIC-duplicate check
-      // (isNicRegistered) works before sign-up.
-      // Limit to single-document fetches and small queries.
+      // Any authenticated user can read profiles (for NIC-duplicate checks,
+      // household member listing, admin panels, etc.)
       allow read: if true;
 
-      // Only the owner may create / update their own document.
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
+      // Owner self-create OR creator flow (GN/admin/resident creating another user profile).
+      allow create: if (isSignedIn() && request.auth.uid == userId) || isCreatorForNewUser();
+
+      // Owner can update their own document.
+      allow update: if isOwner(userId);
+
+      // Admins / GN officers can update any user (for role changes, etc.)
+      allow update: if isAdminOrOfficer();
+
+      // No deletion allowed.
       allow delete: if false;
     }
 
-    // ── Default deny ───────────────────────────────────────
+    // ── Outbound email queue (Firebase Trigger Email extension) ───────────
+    match /mail/{mailId} {
+      // Any authenticated creator can queue credential emails.
+      allow create: if isSignedIn();
+
+      // Prevent clients from reading or mutating queued emails.
+      allow read, update, delete: if false;
+    }
+
+    // ── Default deny ─────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }

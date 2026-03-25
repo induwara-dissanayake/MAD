@@ -1,9 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'dart:math';
 
 final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService(FirebaseAuth.instance, GoogleSignIn());
+  return AuthService(FirebaseAuth.instance);
 });
 
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -12,68 +13,72 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 class AuthService {
   final FirebaseAuth _auth;
-  final GoogleSignIn _googleSignIn;
 
-  AuthService(this._auth, this._googleSignIn);
+  AuthService(this._auth);
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   User? get currentUser => _auth.currentUser;
 
-  Future<UserCredential?> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      return await _auth.signInWithCredential(credential);
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Create a new Firebase Auth account with NIC-derived email and password.
-  Future<UserCredential> createAccountWithEmail(
-    String email,
-    String password,
-  ) async {
-    return await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-  }
-
   /// Sign in with NIC-derived email and password.
-  Future<UserCredential> signInWithEmail(
-    String email,
-    String password,
-  ) async {
+  Future<UserCredential> signInWithEmail(String email, String password) async {
     return await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
   }
 
-  /// Link a Google account to the currently signed-in user.
-  /// Returns the Google email on success, null if user cancelled.
-  Future<String?> linkGoogleAccount() async {
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return null;
-
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-    final AuthCredential credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
+  /// Create a new Firebase Auth account using a secondary isolated instance
+  /// so that the currently logged-in admin/resident is NOT signed out.
+  ///
+  /// Returns the UID of the newly created user.
+  Future<String> createUserAccount({
+    required String email,
+    required String password,
+  }) async {
+    final secondaryAppName =
+        'vc-account-creator-${DateTime.now().microsecondsSinceEpoch}';
+    final secondaryApp = await Firebase.initializeApp(
+      name: secondaryAppName,
+      options: Firebase.app().options,
     );
 
-    await _auth.currentUser!.linkWithCredential(credential);
-    return googleUser.email;
+    try {
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+      final credential = await secondaryAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final newUid = credential.user!.uid;
+      await secondaryAuth.signOut();
+      return newUid;
+    } finally {
+      await secondaryApp.delete();
+    }
+  }
+
+  /// Generate a secure random password for new residents.
+  /// Format: 3 uppercase + 3 digits + 3 lowercase + special char = strong & readable
+  static String generatePassword() {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const special = '@#\$!';
+
+    final rand = Random.secure();
+    final chars = [
+      upper[rand.nextInt(upper.length)],
+      upper[rand.nextInt(upper.length)],
+      upper[rand.nextInt(upper.length)],
+      digits[rand.nextInt(digits.length)],
+      digits[rand.nextInt(digits.length)],
+      digits[rand.nextInt(digits.length)],
+      lower[rand.nextInt(lower.length)],
+      lower[rand.nextInt(lower.length)],
+      lower[rand.nextInt(lower.length)],
+      special[rand.nextInt(special.length)],
+    ]..shuffle(rand);
+    return chars.join();
   }
 
   /// Set the display name on the Firebase Auth user profile.
@@ -82,7 +87,6 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
     await _auth.signOut();
   }
 }

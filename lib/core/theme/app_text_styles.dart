@@ -10,10 +10,15 @@ class AppTextStyles {
   AppTextStyles._();
 
   static String? get _fontFamily => GoogleFonts.inter().fontFamily;
+  static const List<String> _fontFallback = [
+    'NotoSansSinhala',
+    'NotoSansTamil',
+  ];
 
   // ── Display ─────────────────────────────────────────────────────────────
   static TextStyle displayLarge = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
@@ -24,6 +29,7 @@ class AppTextStyles {
   // ── Headings ────────────────────────────────────────────────────────────
   static TextStyle h1 = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 24,
     fontWeight: FontWeight.w700,
     color: AppColors.textPrimary,
@@ -33,6 +39,7 @@ class AppTextStyles {
 
   static TextStyle h2 = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -42,6 +49,7 @@ class AppTextStyles {
 
   static TextStyle h3 = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 18,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -52,6 +60,7 @@ class AppTextStyles {
   // ── Body ────────────────────────────────────────────────────────────────
   static TextStyle bodyLarge = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 18,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
@@ -60,6 +69,7 @@ class AppTextStyles {
 
   static TextStyle body = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 16,
     fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
@@ -68,6 +78,7 @@ class AppTextStyles {
 
   static TextStyle bodyMedium = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 16,
     fontWeight: FontWeight.w500,
     color: AppColors.textPrimary,
@@ -76,6 +87,7 @@ class AppTextStyles {
 
   static TextStyle bodySemiBold = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -85,6 +97,7 @@ class AppTextStyles {
   // ── Caption / Label ─────────────────────────────────────────────────────
   static TextStyle caption = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textSecondary,
@@ -93,6 +106,7 @@ class AppTextStyles {
 
   static TextStyle captionMedium = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.textSecondary,
@@ -101,6 +115,7 @@ class AppTextStyles {
 
   static TextStyle label = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 14,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -110,6 +125,7 @@ class AppTextStyles {
   // ── Small / Overline ────────────────────────────────────────────────────
   static TextStyle small = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     color: AppColors.textMuted,
@@ -118,6 +134,7 @@ class AppTextStyles {
 
   static TextStyle overline = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 11,
     fontWeight: FontWeight.w600,
     color: AppColors.textMuted,
@@ -128,6 +145,7 @@ class AppTextStyles {
   // ── Buttons ─────────────────────────────────────────────────────────────
   static TextStyle button = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.textOnPrimary,
@@ -137,6 +155,7 @@ class AppTextStyles {
 
   static TextStyle buttonSmall = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 14,
     fontWeight: FontWeight.w600,
     color: AppColors.textOnPrimary,
@@ -147,6 +166,7 @@ class AppTextStyles {
   // ── Tab ─────────────────────────────────────────────────────────────────
   static TextStyle tab = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 14,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
@@ -155,6 +175,7 @@ class AppTextStyles {
 
   static TextStyle tabInactive = TextStyle(
     fontFamily: _fontFamily,
+    fontFamilyFallback: _fontFallback,
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.textMuted,

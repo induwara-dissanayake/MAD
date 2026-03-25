@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/language_selector_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
-import '../../features/auth/screens/registration_screen.dart';
+import '../../features/auth/screens/create_resident_screen.dart';
+import '../../features/auth/screens/add_member_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chatbot/screens/chatbot_screen.dart';
 import '../../features/community/screens/add_community_post_screen.dart';
@@ -42,12 +43,14 @@ final appRouter = GoRouter(
     final isLoggedIn = FirebaseAuth.instance.currentUser != null;
     final path = state.uri.path;
 
-    // Allow splash, login, register, language
+    // Allow splash, login, language, and member-creation screens
     if (path == '/splash' || path.startsWith('/auth')) {
-      if (isLoggedIn && path != '/auth/register') {
-         // If logged in and trying to access auth pages (except register maybe?), go home
-         // Actually, if we are in splash, we should go home if logged in.
-         return '/home';
+      // Allow member creation screens even when logged in
+      if (path == '/auth/create-resident' || path == '/auth/add-member') {
+        return null;
+      }
+      if (isLoggedIn) {
+        return '/home';
       }
       return null;
     }
@@ -72,8 +75,12 @@ final appRouter = GoRouter(
       builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
-      path: '/auth/register',
-      builder: (context, state) => const RegistrationScreen(),
+      path: '/auth/create-resident',
+      builder: (context, state) => const CreateResidentScreen(),
+    ),
+    GoRoute(
+      path: '/auth/add-member',
+      builder: (context, state) => const AddMemberScreen(),
     ),
 
     // Shell Route for Bottom Navigation
