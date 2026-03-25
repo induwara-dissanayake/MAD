@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0 (2026-03-25)
+
+
+### Features
+
+* Add authentication screens for login, registration, and splash ([f49f65f](https://github.com/induwara-dissanayake/MAD/commit/f49f65fceb24d8d4b7e13debed58c2fd68062588))
+* Add Firebase configuration, Firestore rules, localization, and verification scripts ([dc1bf39](https://github.com/induwara-dissanayake/MAD/commit/dc1bf390f810f0c9bf9c82516caca033a5b3d874))
+* Add Firebase configuration, Firestore rules, localization, and verification scripts ([ab0a452](https://github.com/induwara-dissanayake/MAD/commit/ab0a452aa5dc8656a2ce573d77efc7c5476351bb))
+* Add GitHub Actions workflow for release-please automation ([e980b51](https://github.com/induwara-dissanayake/MAD/commit/e980b516a65d9eee28a6f119a83eedab60893170))
+
+
+### Bug Fixes
+
+* change folder structure for release-please config ([9081dfd](https://github.com/induwara-dissanayake/MAD/commit/9081dfd1dd4ffc4df8a69a4d4956155b0bd042a7))
+* change folder structure for release-please config ([b88fb0d](https://github.com/induwara-dissanayake/MAD/commit/b88fb0dfcae737141f57e21c5dafbbf4a1c4feff))
+
 ## [1.4.1](https://github.com/Isuruzenith/village_connect/compare/v1.4.0...v1.4.1) (2026-02-26)
 
 
