@@ -50,6 +50,8 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 _buildVillageInfo(profile),
                 const SizedBox(height: 20),
+                _buildShortcutsSection(context),
+                const SizedBox(height: 20),
                 _buildSettingsSection(context),
                 const SizedBox(height: 24),
                 _buildLogoutButton(context, ref),
@@ -268,6 +270,49 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildShortcutsSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Shortcuts', style: AppTextStyles.bodySemiBold),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadowLight,
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildSettingsTile(
+                  icon: Icons.notifications_none_rounded,
+                  title: 'Alerts',
+                  isFirst: true,
+                  onTap: () => context.push('/notifications'),
+                ),
+                const Divider(height: 1, indent: 50, color: AppColors.divider),
+                _buildSettingsTile(
+                  icon: Icons.help_outline_rounded,
+                  title: 'Help',
+                  isLast: true,
+                  onTap: () => context.push('/help'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Settings ──────────────────────────────────────────────────────────
   Widget _buildSettingsSection(BuildContext context) {
     return Padding(
@@ -296,18 +341,21 @@ class ProfileScreen extends ConsumerWidget {
                   title: 'Language',
                   trailing: 'English',
                   isFirst: true,
+                  onTap: () {},
                 ),
                 const Divider(height: 1, indent: 50, color: AppColors.divider),
                 _buildSettingsTile(
                   icon: Icons.notifications_none_rounded,
                   title: 'Notifications',
                   trailing: 'Enabled',
+                  onTap: () {},
                 ),
                 const Divider(height: 1, indent: 50, color: AppColors.divider),
                 _buildSettingsTile(
                   icon: Icons.security_rounded,
                   title: 'Change Password',
                   isLast: true,
+                  onTap: () => context.push('/profile/change-password'),
                 ),
               ],
             ),
@@ -320,6 +368,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget _buildSettingsTile({
     required IconData icon,
     required String title,
+    required VoidCallback onTap,
     String? trailing,
     bool isFirst = false,
     bool isLast = false,
@@ -327,7 +376,7 @@ class ProfileScreen extends ConsumerWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         borderRadius: BorderRadius.vertical(
           top: isFirst ? const Radius.circular(14) : Radius.zero,
           bottom: isLast ? const Radius.circular(14) : Radius.zero,
