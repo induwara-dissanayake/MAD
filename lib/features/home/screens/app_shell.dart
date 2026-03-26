@@ -83,9 +83,9 @@ class AppShell extends StatelessWidget {
               _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
               _buildNavItem(
                 1,
-                Icons.notifications_none_rounded,
-                Icons.notifications_rounded,
-                'Alerts',
+                Icons.apps_outlined,
+                Icons.apps_rounded,
+                'Applications',
               ),
               const SizedBox(width: 48), // Space for FAB
               _buildNavItem(
@@ -96,9 +96,9 @@ class AppShell extends StatelessWidget {
               ),
               _buildNavItem(
                 4,
-                Icons.help_outline_rounded,
-                Icons.help_rounded,
-                'Help',
+                Icons.groups_outlined,
+                Icons.groups_rounded,
+                'Community',
               ),
             ],
           ),

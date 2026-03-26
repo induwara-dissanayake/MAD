@@ -86,6 +86,39 @@ class AuthService {
     await _auth.currentUser?.updateDisplayName(displayName);
   }
 
+  /// Change password for the currently signed-in user.
+  ///
+  /// Firebase requires a recent sign-in, so we first reauthenticate using
+  /// current email + current password.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No authenticated user found.',
+      );
+    }
+
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'missing-email',
+        message: 'Current account has no email for reauthentication.',
+      );
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
   Future<void> signOut() async {
     await _auth.signOut();
   }

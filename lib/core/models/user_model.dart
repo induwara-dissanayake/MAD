@@ -58,6 +58,8 @@ class UserModel {
   final String district;
   final String role; // citizen | admin | gn_officer | committee
   final MemberType memberType;
+  final String? relationship;
+  final bool hasSystemAccess;
   final String? createdByUid; // UID of the resident/admin who created this user
   final DateTime createdAt;
 
@@ -72,6 +74,8 @@ class UserModel {
     required this.district,
     this.role = 'citizen',
     this.memberType = MemberType.newResident,
+    this.relationship,
+    this.hasSystemAccess = true,
     this.createdByUid,
     required this.createdAt,
   });
@@ -87,6 +91,8 @@ class UserModel {
       'district': district,
       'role': role,
       'memberType': memberType.key,
+      'relationship': relationship,
+      'hasSystemAccess': hasSystemAccess,
       'createdByUid': createdByUid,
       'createdAt': Timestamp.fromDate(createdAt),
     };
@@ -111,6 +117,8 @@ class UserModel {
       district: map['district'] as String? ?? '',
       role: map['role'] as String? ?? 'citizen',
       memberType: MemberTypeX.fromString(map['memberType'] as String?),
+      relationship: map['relationship'] as String?,
+      hasSystemAccess: map['hasSystemAccess'] as bool? ?? true,
       createdByUid: map['createdByUid'] as String?,
       createdAt: date ?? DateTime.now(),
     );

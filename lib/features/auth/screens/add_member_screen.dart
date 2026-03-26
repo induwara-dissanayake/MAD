@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/credential_email_service.dart';
@@ -11,8 +12,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/validators.dart';
 
-/// Screen for any registered resident to add a family member or rental user.
-/// The new member receives login credentials via email.
 class AddMemberScreen extends ConsumerStatefulWidget {
   const AddMemberScreen({super.key});
 
@@ -30,32 +29,38 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   final _addressController = TextEditingController();
 
   MemberType _selectedType = MemberType.familyMember;
-  String _selectedVillage = '';
-  String _selectedDistrict = '';
+  String? _relationship;
+
+  bool _createSystemAccess = true;
+  bool _useSameAddress = true;
 
   bool _isLoading = false;
   bool _isDone = false;
+  bool _isLoadingProfile = true;
+  bool _createdWithSystemAccess = false;
   String? _errorMessage;
   String? _generatedPassword;
   String? _createdUserName;
   MemberType? _createdMemberType;
   String? _emailDispatchStatus;
 
-  final List<String> _villages = [
-    'Welivita South',
-    'Welivita North',
-    'Kaduwela East',
-    'Kaduwela West',
-    'Malabe Central',
+  UserModel? _creatorProfile;
+
+  static const List<String> _relationships = [
+    'Spouse',
+    'Child',
+    'Parent',
+    'Sibling',
+    'Grandparent',
+    'Guardian',
+    'Other',
   ];
 
-  final List<String> _districts = [
-    'Colombo',
-    'Gampaha',
-    'Kandy',
-    'Kalutara',
-    'Matara',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadCreatorProfile();
+  }
 
   @override
   void dispose() {
@@ -72,12 +77,46 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     setState(fn);
   }
 
+  Future<void> _loadCreatorProfile() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+      final userService = ref.read(userServiceProvider);
+      final uid = authService.currentUser?.uid;
+
+      if (uid == null) {
+        _safeSetState(() {
+          _isLoadingProfile = false;
+          _errorMessage = 'Session expired. Please sign in again.';
+        });
+        return;
+      }
+
+      final creator = await userService.getUserProfileOnce(uid);
+      _safeSetState(() {
+        _creatorProfile = creator;
+        _isLoadingProfile = false;
+        if (_useSameAddress) {
+          _addressController.text = creator?.address ?? '';
+        }
+      });
+    } catch (_) {
+      _safeSetState(() {
+        _isLoadingProfile = false;
+        _errorMessage = 'Failed to load your profile details.';
+      });
+    }
+  }
+
   Future<void> _addMember() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedVillage.isEmpty || _selectedDistrict.isEmpty) {
-      setState(() => _errorMessage = 'Please select village and district.');
+    if (_selectedType == MemberType.familyMember &&
+        (_relationship == null || _relationship!.isEmpty)) {
+      setState(
+        () => _errorMessage = 'Please select relationship for family member.',
+      );
       return;
     }
+
+    if (!_formKey.currentState!.validate()) return;
 
     _safeSetState(() {
       _isLoading = true;
@@ -85,65 +124,113 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     });
 
     try {
-      final nic = _nicController.text.trim();
       final userService = ref.read(userServiceProvider);
       final authService = ref.read(authServiceProvider);
       final credentialEmailService = ref.read(credentialEmailServiceProvider);
-
-      // Check NIC uniqueness
-      final alreadyExists = await userService.isNicRegistered(nic);
-      if (alreadyExists) {
-        _safeSetState(() {
-          _isLoading = false;
-          _errorMessage = 'This NIC is already registered in the system.';
-        });
-        return;
-      }
-
-      // Generate credentials
-      final password = AuthService.generatePassword();
-      final email = Validators.nicToEmail(nic);
       final currentUserUid = authService.currentUser?.uid;
 
-      // Create Firebase Auth account
-      final newUid = await authService.createUserAccount(
-        email: email,
-        password: password,
-      );
+      if (currentUserUid == null) {
+        throw Exception('Session expired. Please sign in again.');
+      }
 
-      // Create Firestore user profile
+      final creator =
+          _creatorProfile ??
+          await userService.getUserProfileOnce(currentUserUid);
+      if (creator == null) {
+        throw Exception('Your profile is not available.');
+      }
+
+      final inheritedVillage = creator.village;
+      final inheritedDistrict = creator.district;
+      if (inheritedVillage.isEmpty || inheritedDistrict.isEmpty) {
+        throw Exception(
+          'Your profile is missing village/district. Update your profile before adding members.',
+        );
+      }
+
+      final nic = _nicController.text.trim();
+      final contactEmail = _emailController.text.trim();
+      final contactPhone = _phoneController.text.trim();
+      final address = _useSameAddress
+          ? creator.address.trim()
+          : _addressController.text.trim();
+
+      if (address.isEmpty) {
+        throw Exception('Address is required to register a member.');
+      }
+
+      if (_createSystemAccess) {
+        if (nic.isEmpty) {
+          throw Exception('NIC is required to create system access.');
+        }
+        if (contactEmail.isEmpty) {
+          throw Exception('Email is required to send credentials.');
+        }
+      }
+
+      if (nic.isNotEmpty) {
+        final alreadyExists = await userService.isNicRegistered(nic);
+        if (alreadyExists) {
+          _safeSetState(() {
+            _isLoading = false;
+            _errorMessage = 'This NIC is already registered in the system.';
+          });
+          return;
+        }
+      }
+
+      String newUid;
+      String? password;
+      String emailStatus;
+
+      if (_createSystemAccess) {
+        password = AuthService.generatePassword();
+        final authEmail = Validators.nicToEmail(nic);
+
+        newUid = await authService.createUserAccount(
+          email: authEmail,
+          password: password,
+        );
+
+        try {
+          await credentialEmailService.queueCredentialsEmail(
+            toEmail: contactEmail,
+            fullName: _fullNameController.text.trim(),
+            nic: nic,
+            password: password,
+            memberTypeLabel: _selectedType.label,
+          );
+          emailStatus = '✅ Login credentials were sent to $contactEmail.';
+        } catch (e) {
+          emailStatus =
+              '⚠️ Account was created, but automatic email delivery failed (${e.toString()}). Please share the credentials manually.';
+        }
+      } else {
+        newUid = 'member-${DateTime.now().millisecondsSinceEpoch}';
+        emailStatus =
+            'ℹ️ Member profile saved without system access. Credentials were not created.';
+      }
+
       final userModel = UserModel(
         uid: newUid,
         fullName: _fullNameController.text.trim(),
         nic: nic,
-        phone: _phoneController.text.trim(),
-        email: _emailController.text.trim(),
-        address: _addressController.text.trim(),
-        village: _selectedVillage,
-        district: _selectedDistrict,
+        phone: contactPhone,
+        email: contactEmail,
+        address: address,
+        village: inheritedVillage,
+        district: inheritedDistrict,
         role: 'citizen',
         memberType: _selectedType,
+        relationship: _selectedType == MemberType.familyMember
+            ? _relationship
+            : null,
+        hasSystemAccess: _createSystemAccess,
         createdByUid: currentUserUid,
         createdAt: DateTime.now(),
       );
 
       await userService.createUserProfile(userModel);
-
-      String emailStatus;
-      try {
-        await credentialEmailService.queueCredentialsEmail(
-          toEmail: _emailController.text.trim(),
-          fullName: _fullNameController.text.trim(),
-          nic: nic,
-          password: password,
-          memberTypeLabel: _selectedType.label,
-        );
-        emailStatus =
-            '✅ Login credentials were sent to ${_emailController.text.trim()}.';
-      } catch (e) {
-        emailStatus =
-            '⚠️ Account was created, but automatic email delivery failed (${e.toString()}). Please share the credentials manually.';
-      }
 
       _safeSetState(() {
         _isLoading = false;
@@ -151,6 +238,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
         _generatedPassword = password;
         _createdUserName = _fullNameController.text.trim();
         _createdMemberType = _selectedType;
+        _createdWithSystemAccess = _createSystemAccess;
         _emailDispatchStatus = emailStatus;
       });
     } on FirebaseAuthException catch (e) {
@@ -201,13 +289,19 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       body: Column(
         children: [
           const Divider(height: 1, color: AppColors.divider),
-          Expanded(child: _isDone ? _buildSuccessView() : _buildForm()),
+          Expanded(
+            child: _isLoadingProfile
+                ? const Center(child: CircularProgressIndicator())
+                : (_isDone ? _buildSuccessView() : _buildForm()),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildForm() {
+    final creatorAddress = _creatorProfile?.address.trim() ?? '';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
@@ -224,12 +318,33 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
             ),
             const SizedBox(height: 16),
             _buildMemberTypeSelector(),
+            const SizedBox(height: 18),
+
+            if (_selectedType == MemberType.familyMember) ...[
+              _buildRelationshipField(),
+              const SizedBox(height: 24),
+            ],
+
+            _buildToggleTile(
+              title: 'Create system access for this member',
+              subtitle:
+                  'Turn OFF to register profile-only members (e.g., children without NIC or email).',
+              value: _createSystemAccess,
+              onChanged: (v) => setState(() {
+                _createSystemAccess = v;
+                if (!v) {
+                  _generatedPassword = null;
+                }
+              }),
+            ),
             const SizedBox(height: 28),
 
             Text('Personal Details', style: AppTextStyles.h3),
             const SizedBox(height: 6),
             Text(
-              'Fill in the details provided by the new member.',
+              _createSystemAccess
+                  ? 'Fill all details to create login credentials.'
+                  : 'Fill basic details to store this member without system login.',
               style: AppTextStyles.caption,
             ),
             const SizedBox(height: 24),
@@ -245,29 +360,47 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
             _buildFormField(
               label: 'NIC Number',
               controller: _nicController,
-              hint: 'e.g., 200012345678 or 987654321V',
+              hint: _createSystemAccess
+                  ? 'Required for system access'
+                  : 'Optional (leave blank for children/no NIC)',
               icon: Icons.badge_outlined,
-              validator: Validators.validateNic,
+              validator: (v) {
+                if (!_createSystemAccess && (v == null || v.trim().isEmpty)) {
+                  return null;
+                }
+                return Validators.validateNic(v);
+              },
             ),
             const SizedBox(height: 18),
             _buildFormField(
               label: 'Contact Number',
               controller: _phoneController,
-              hint: '+94 77 123 4567',
+              hint: _createSystemAccess
+                  ? '+94 77 123 4567'
+                  : 'Optional contact number',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
-              validator: Validators.validatePhone,
+              validator: (v) {
+                if (!_createSystemAccess && (v == null || v.trim().isEmpty)) {
+                  return null;
+                }
+                return Validators.validatePhone(v);
+              },
             ),
             const SizedBox(height: 18),
             _buildFormField(
               label: 'Email Address',
               controller: _emailController,
-              hint: 'member@example.com',
+              hint: _createSystemAccess
+                  ? 'Required to send credentials'
+                  : 'Optional (can be blank)',
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) {
-                  return 'Email is required to send login credentials';
+                  return _createSystemAccess
+                      ? 'Email is required to send credentials'
+                      : null;
                 }
                 if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v.trim())) {
                   return 'Enter a valid email address';
@@ -276,29 +409,53 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
               },
             ),
             const SizedBox(height: 18),
-            _buildFormField(
-              label: 'Address',
-              controller: _addressController,
-              hint: 'Enter address',
-              icon: Icons.location_on_outlined,
-              maxLines: 2,
+
+            _buildToggleTile(
+              title: 'Use same address as your profile',
+              subtitle:
+                  'Enable to register this member under your household address.',
+              value: _useSameAddress,
+              onChanged: (v) {
+                setState(() {
+                  _useSameAddress = v;
+                  if (v) {
+                    _addressController.text = creatorAddress;
+                  }
+                });
+              },
             ),
-            const SizedBox(height: 18),
-            _buildDropdownField(
-              label: 'Village / Division',
-              value: _selectedVillage,
-              items: _villages,
-              icon: Icons.holiday_village_outlined,
-              onChanged: (v) => setState(() => _selectedVillage = v ?? ''),
-            ),
-            const SizedBox(height: 18),
-            _buildDropdownField(
-              label: 'District',
-              value: _selectedDistrict,
-              items: _districts,
-              icon: Icons.map_outlined,
-              onChanged: (v) => setState(() => _selectedDistrict = v ?? ''),
-            ),
+            const SizedBox(height: 12),
+
+            if (_useSameAddress)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.infoLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.info.withOpacity(0.3)),
+                ),
+                child: Text(
+                  creatorAddress.isEmpty
+                      ? 'Your profile address is empty. Please turn off this option and enter an address.'
+                      : creatorAddress,
+                  style: AppTextStyles.small.copyWith(color: AppColors.info),
+                ),
+              )
+            else
+              _buildFormField(
+                label: 'Address',
+                controller: _addressController,
+                hint: 'Enter address',
+                icon: Icons.location_on_outlined,
+                maxLines: 2,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Address is required';
+                  }
+                  return null;
+                },
+              ),
 
             if (_errorMessage != null) ...[
               const SizedBox(height: 20),
@@ -376,7 +533,12 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     final isSelected = _selectedType == type;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedType = type),
+        onTap: () => setState(() {
+          _selectedType = type;
+          if (type != MemberType.familyMember) {
+            _relationship = null;
+          }
+        }),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
@@ -408,6 +570,67 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRelationshipField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Relationship', style: AppTextStyles.label),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: _relationship,
+          onChanged: (value) => setState(() => _relationship = value),
+          validator: (value) {
+            if (_selectedType == MemberType.familyMember &&
+                (value == null || value.isEmpty)) {
+              return 'Please select relationship';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: const Icon(
+              Icons.family_restroom_rounded,
+              color: AppColors.textMuted,
+              size: 20,
+            ),
+            filled: true,
+            fillColor: AppColors.surfaceGrey,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ),
+          ),
+          hint: Text(
+            'Select relationship',
+            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+          ),
+          items: _relationships
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, style: AppTextStyles.body),
+                ),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 
@@ -459,73 +682,94 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
             style: AppTextStyles.caption,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.key_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Login Credentials',
-                      style: AppTextStyles.bodySemiBold.copyWith(
+          if (_createdWithSystemAccess) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.key_rounded,
                         color: AppColors.primary,
+                        size: 20,
                       ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Login Credentials',
+                        style: AppTextStyles.bodySemiBold.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20, color: AppColors.border),
+                  _credentialRow('Username (NIC)', nic),
+                  const SizedBox(height: 12),
+                  _credentialRow(
+                    'Temporary Password',
+                    _generatedPassword ?? '',
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _emailDispatchStatus ??
+                        'ℹ️ Share these credentials with the member securely.',
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.primary,
                     ),
-                  ],
-                ),
-                const Divider(height: 20, color: AppColors.border),
-                _credentialRow('Username (NIC)', nic),
-                const SizedBox(height: 12),
-                _credentialRow('Temporary Password', _generatedPassword ?? ''),
-                const SizedBox(height: 16),
-                Text(
-                  _emailDispatchStatus ??
-                      'ℹ️ Share these credentials with the member securely.',
-                  style: AppTextStyles.small.copyWith(color: AppColors.primary),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () {
-              Clipboard.setData(
-                ClipboardData(
-                  text: 'NIC: $nic\nPassword: ${_generatedPassword ?? ''}',
-                ),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Credentials copied to clipboard'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.copy_rounded, size: 18),
-            label: const Text('Copy Credentials'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                  ),
+                ],
               ),
             ),
-          ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(
+                    text: 'NIC: $nic\nPassword: ${_generatedPassword ?? ''}',
+                  ),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Credentials copied to clipboard'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copy Credentials'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ] else ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.infoLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.info.withOpacity(0.3)),
+              ),
+              child: Text(
+                _emailDispatchStatus ??
+                    'Profile-only member has been saved without login credentials.',
+                style: AppTextStyles.small.copyWith(color: AppColors.info),
+              ),
+            ),
+          ],
 
           const SizedBox(height: 16),
           Container(
@@ -622,10 +866,57 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'ℹ️ The account will be created without signing you out. '
-              'Credentials are shown here and sent via email automatically.',
+              _createSystemAccess
+                  ? 'ℹ️ Login credentials will be created without signing you out.'
+                  : 'ℹ️ This member will be recorded for household/government records without app access.',
               style: AppTextStyles.small.copyWith(color: AppColors.warning),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.small.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
           ),
         ],
       ),
@@ -713,62 +1004,6 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
               borderSide: const BorderSide(color: AppColors.error, width: 1.5),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdownField({
-    required String label,
-    required String value,
-    required List<String> items,
-    required IconData icon,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.label),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          initialValue: value.isEmpty ? null : value,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
-            filled: true,
-            fillColor: AppColors.surfaceGrey,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primary,
-                width: 1.5,
-              ),
-            ),
-          ),
-          hint: Text(
-            'Select $label',
-            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-          ),
-          items: items
-              .map(
-                (e) => DropdownMenuItem(
-                  value: e,
-                  child: Text(e, style: AppTextStyles.body),
-                ),
-              )
-              .toList(),
         ),
       ],
     );

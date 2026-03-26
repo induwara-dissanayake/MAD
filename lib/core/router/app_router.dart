@@ -25,6 +25,7 @@ import '../../features/official/screens/official_dashboard_screen.dart';
 import '../../features/official/screens/pending_requests_screen.dart';
 import '../../features/official/screens/post_notice_screen.dart';
 import '../../features/official/screens/request_review_screen.dart';
+import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/emergency/screens/emergency_alert_screen.dart';
 import '../../features/incidents/screens/incident_dashboard_screen.dart';
@@ -38,7 +39,9 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/splash',
-  refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
+  refreshListenable: GoRouterRefreshStream(
+    FirebaseAuth.instance.authStateChanges(),
+  ),
   redirect: (context, state) {
     final isLoggedIn = FirebaseAuth.instance.currentUser != null;
     final path = state.uri.path;
@@ -62,10 +65,7 @@ final appRouter = GoRouter(
     return null;
   },
   routes: [
-    GoRoute(
-      path: '/splash',
-      builder: (context, state) => const SplashScreen(),
-    ),
+    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(
       path: '/auth/language',
       builder: (context, state) => const LanguageSelectorScreen(),
@@ -98,23 +98,23 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Notifications Branch
+        // Applications Branch
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/notifications',
-              builder: (context, state) => const NotificationsScreen(),
+              path: '/applications',
+              builder: (context, state) => const RequestTrackingScreen(),
             ),
           ],
         ),
         // Placeholder for FAB (handled in AppShell)
         StatefulShellBranch(
-           routes: [
-             GoRoute(
-               path: '/fab-placeholder',
-               builder: (context, state) => const SizedBox(),
-             )
-           ]
+          routes: [
+            GoRoute(
+              path: '/fab-placeholder',
+              builder: (context, state) => const SizedBox(),
+            ),
+          ],
         ),
         // Notices Branch
         StatefulShellBranch(
@@ -125,12 +125,12 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Help Branch
+        // Community Branch
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/help',
-              builder: (context, state) => const HelpScreen(),
+              path: '/community',
+              builder: (context, state) => const CommunityFeedScreen(),
             ),
           ],
         ),
@@ -154,6 +154,16 @@ final appRouter = GoRouter(
       builder: (context, state) => const RequestTrackingScreen(),
     ),
     GoRoute(
+      path: '/notifications',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const NotificationsScreen(),
+    ),
+    GoRoute(
+      path: '/help',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const HelpScreen(),
+    ),
+    GoRoute(
       path: '/documents/detail',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
@@ -164,11 +174,6 @@ final appRouter = GoRouter(
           status: extras['status'] as String? ?? '',
         );
       },
-    ),
-    GoRoute(
-      path: '/community',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const CommunityFeedScreen(),
     ),
     GoRoute(
       path: '/community/add',
@@ -204,6 +209,11 @@ final appRouter = GoRouter(
       path: '/profile',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: '/profile/change-password',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ChangePasswordScreen(),
     ),
     GoRoute(
       path: '/notice-detail',
@@ -249,9 +259,7 @@ final appRouter = GoRouter(
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
-    _subscription = stream.listen(
-      (dynamic _) => notifyListeners(),
-    );
+    _subscription = stream.listen((dynamic _) => notifyListeners());
   }
 
   late final StreamSubscription<dynamic> _subscription;
