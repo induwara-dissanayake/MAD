@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -36,30 +37,96 @@ import '../../features/admin/screens/admin_dashboard_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Returns the correct dashboard path for a given Firestore role string.
+String _dashboardForRole(String role) {
+  switch (role) {
+    case 'gn_officer':
+      return '/official/dashboard';
+    case 'committee':
+      return '/committee/tasks';
+    case 'admin':
+      return '/admin/dashboard';
+    default:
+      return '/home';
+  }
+}
+
+/// Fetches the role for the currently signed-in Firebase user from Firestore.
+/// Returns 'citizen' as a safe fallback if anything goes wrong.
+Future<String> _fetchCurrentUserRole() async {
+  try {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return 'citizen';
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    return doc.data()?['role'] as String? ?? 'citizen';
+  } catch (_) {
+    return 'citizen';
+  }
+}
+
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/splash',
   refreshListenable: GoRouterRefreshStream(
     FirebaseAuth.instance.authStateChanges(),
   ),
-  redirect: (context, state) {
+  redirect: (context, state) async {
     final isLoggedIn = FirebaseAuth.instance.currentUser != null;
     final path = state.uri.path;
 
-    // Allow splash, login, language, and member-creation screens
+    // ── Pre-login screens ────────────────────────────────────────────────
+    // Always allow splash and auth screens through.
+    // Exception: create-resident and add-member are officer-only actions
+    // that can be reached while already logged in.
     if (path == '/splash' || path.startsWith('/auth')) {
-      // Allow member creation screens even when logged in
       if (path == '/auth/create-resident' || path == '/auth/add-member') {
         return null;
       }
       if (isLoggedIn) {
-        return '/home';
+        // User is already authenticated — send them to the right dashboard.
+        final role = await _fetchCurrentUserRole();
+        return _dashboardForRole(role);
       }
       return null;
     }
 
+    // ── Not logged in ────────────────────────────────────────────────────
     if (!isLoggedIn) {
       return '/auth/login';
+    }
+
+    // ── Role-gate specific dashboards ─────────────────────────────────────
+    // Prevent a citizen from directly navigating to officer/admin routes
+    // (e.g. by typing the path or following a deep-link).
+    if (path == '/official/dashboard' ||
+        path == '/official/pending' ||
+        path == '/official/review' ||
+        path == '/official/post-notice' ||
+        path == '/official/broadcast' ||
+        path == '/incidents') {
+      final role = await _fetchCurrentUserRole();
+      if (role != 'gn_officer' && role != 'admin') {
+        return _dashboardForRole(role);
+      }
+    }
+
+    if (path == '/committee/tasks' ||
+        path == '/committee/meetings' ||
+        path == '/committee/polls') {
+      final role = await _fetchCurrentUserRole();
+      if (role != 'committee' && role != 'admin') {
+        return _dashboardForRole(role);
+      }
+    }
+
+    if (path == '/admin/dashboard') {
+      final role = await _fetchCurrentUserRole();
+      if (role != 'admin') {
+        return _dashboardForRole(role);
+      }
     }
 
     return null;
@@ -83,13 +150,12 @@ final appRouter = GoRouter(
       builder: (context, state) => const AddMemberScreen(),
     ),
 
-    // Shell Route for Bottom Navigation
+    // Shell Route for Bottom Navigation (citizen shell)
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return AppShell(navigationShell: navigationShell);
       },
       branches: [
-        // Home Branch
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -98,7 +164,6 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Applications Branch
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -107,7 +172,6 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Placeholder for FAB (handled in AppShell)
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -116,7 +180,6 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Notices Branch
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -125,7 +188,6 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        // Community Branch
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -137,7 +199,7 @@ final appRouter = GoRouter(
       ],
     ),
 
-    // Other routes (push on top of shell)
+    // ── Shared / push routes ─────────────────────────────────────────────
     GoRoute(
       path: '/chatbot',
       parentNavigatorKey: _rootNavigatorKey,
@@ -180,6 +242,8 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddCommunityPostScreen(),
     ),
+
+    // ── GN Officer routes ────────────────────────────────────────────────
     GoRoute(
       path: '/official/dashboard',
       parentNavigatorKey: _rootNavigatorKey,
@@ -205,6 +269,8 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const MassBroadcastScreen(),
     ),
+
+    // ── Profile ──────────────────────────────────────────────────────────
     GoRoute(
       path: '/profile',
       parentNavigatorKey: _rootNavigatorKey,
@@ -215,6 +281,8 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ChangePasswordScreen(),
     ),
+
+    // ── Notice detail ────────────────────────────────────────────────────
     GoRoute(
       path: '/notice-detail',
       parentNavigatorKey: _rootNavigatorKey,
@@ -223,6 +291,8 @@ final appRouter = GoRouter(
         return NoticeDetailScreen(notice: notice);
       },
     ),
+
+    // ── Emergency & incidents ────────────────────────────────────────────
     GoRoute(
       path: '/emergency/alert',
       parentNavigatorKey: _rootNavigatorKey,
@@ -233,6 +303,8 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const IncidentDashboardScreen(),
     ),
+
+    // ── Village Committee routes ──────────────────────────────────────────
     GoRoute(
       path: '/committee/tasks',
       parentNavigatorKey: _rootNavigatorKey,
@@ -248,6 +320,8 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const PollingScreen(),
     ),
+
+    // ── Admin ────────────────────────────────────────────────────────────
     GoRoute(
       path: '/admin/dashboard',
       parentNavigatorKey: _rootNavigatorKey,
