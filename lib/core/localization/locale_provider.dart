@@ -1,19 +1,21 @@
 import 'dart:ui';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-part 'locale_provider.g.dart';
+/// Holds the currently selected app locale.
+///
+/// Defaults to English on first run.
+///
+/// To persist across restarts, add `shared_preferences` to pubspec.yaml and
+/// replace the in-memory implementation below with SharedPreferences reads/writes.
+final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>(
+  (ref) => LocaleNotifier(),
+);
 
-@riverpod
-class LocaleNotifier extends _$LocaleNotifier {
-  @override
-  Locale build() {
-    // TODO: Load from local storage
-    return const Locale('en');
-  }
+class LocaleNotifier extends StateNotifier<Locale> {
+  LocaleNotifier() : super(const Locale('en'));
 
   void setLocale(Locale locale) {
     state = locale;
-    // TODO: Save to local storage
   }
 
   void setLocaleByCode(String languageCode) {

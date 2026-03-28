@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -53,16 +54,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return Validators.nicToEmail(trimmed);
   }
 
+  /// Fetches the Firestore role for the freshly signed-in user and returns
+  /// the correct dashboard route path.
+  Future<String> _dashboardForCurrentUser(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final role = doc.data()?['role'] as String? ?? 'citizen';
+      switch (role) {
+        case 'gn_officer':
+          return '/official/dashboard';
+        case 'committee':
+          return '/committee/tasks';
+        case 'admin':
+          return '/admin/dashboard';
+        default:
+          return '/home';
+      }
+    } catch (_) {
+      return '/home';
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
       final email = _resolveEmail(_identifierController.text);
-      await ref
+      final credential = await ref
           .read(authServiceProvider)
           .signInWithEmail(email, _passwordController.text);
+
       if (mounted) {
-        context.go('/home');
+        final uid = credential.user?.uid ?? '';
+        final destination = await _dashboardForCurrentUser(uid);
+        if (mounted) context.go(destination);
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {

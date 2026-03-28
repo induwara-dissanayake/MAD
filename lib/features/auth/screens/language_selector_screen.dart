@@ -1,20 +1,25 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
 /// Language selector screen.
 /// Allows the user to choose from English, Sinhala, or Tamil before
 /// proceeding to the login screen.
-class LanguageSelectorScreen extends StatefulWidget {
+class LanguageSelectorScreen extends ConsumerStatefulWidget {
   const LanguageSelectorScreen({super.key});
 
   @override
-  State<LanguageSelectorScreen> createState() => _LanguageSelectorScreenState();
+  ConsumerState<LanguageSelectorScreen> createState() =>
+      _LanguageSelectorScreenState();
 }
 
-class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
+class _LanguageSelectorScreenState
+    extends ConsumerState<LanguageSelectorScreen> {
   /// Index of the currently selected language (null = none selected).
   int? _selectedIndex;
 
@@ -26,12 +31,12 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
       localeCode: 'en',
     ),
     _LanguageOption(
-      nativeLabel: '\u0DC3\u0DD2\u0D82\u0DC4\u0DBD',
+      nativeLabel: 'සිංහල',
       englishLabel: 'Sinhala',
       localeCode: 'si',
     ),
     _LanguageOption(
-      nativeLabel: '\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD',
+      nativeLabel: 'தமிழ்',
       englishLabel: 'Tamil',
       localeCode: 'ta',
     ),
@@ -43,6 +48,14 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
 
   void _onContinue() {
     if (_selectedIndex == null) return;
+
+    final selected = _languages[_selectedIndex!];
+
+    // Update the global locale — MaterialApp.router rebuilds automatically.
+    ref
+        .read(localeProvider.notifier)
+        .setLocaleByCode(selected.localeCode);
+
     context.go('/auth/login');
   }
 
@@ -106,7 +119,7 @@ class _LanguageSelectorScreenState extends State<LanguageSelectorScreen> {
                 child: ListView.separated(
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _languages.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final lang = _languages[index];
                     final bool isSelected = _selectedIndex == index;
