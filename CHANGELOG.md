@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/induwara-dissanayake/MAD/compare/v1.0.0...v1.0.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* Refactor localization and routing logic; integrate locale selection in auth flow ([0ddb0b0](https://github.com/induwara-dissanayake/MAD/commit/0ddb0b022ac1ccb9772fe640d56329cc45275d04))
+
 ## 1.0.0 (2026-03-25)
 
 
