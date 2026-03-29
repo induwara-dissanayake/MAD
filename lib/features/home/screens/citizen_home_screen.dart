@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/localization/localization_extensions.dart';
 import '../../../core/models/request_model.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/user_service.dart';
@@ -39,6 +40,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
           stream: Connectivity().onConnectivityChanged,
           builder: (context, connectivitySnap) {
             final isOffline = _isOffline(connectivitySnap.data);
+            final l = context.l10n;
             return Scaffold(
               backgroundColor: AppColors.background,
               body: Column(
@@ -66,7 +68,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'You are currently in Offline Mode',
+                              l.offlineBanner,
                               style: AppTextStyles.small.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
@@ -88,13 +90,13 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                           const SizedBox(height: 24),
                           _buildEmergencyButton(context),
                           const SizedBox(height: 24),
-                          _buildPrimaryActions(context),
+                          _buildPrimaryActions(context, l),
                           const SizedBox(height: 32),
-                          _buildHouseholdSection(context, user),
+                          _buildHouseholdSection(context, user, l),
                           const SizedBox(height: 32),
-                          _buildSecondaryActions(context),
+                          _buildSecondaryActions(context, l),
                           const SizedBox(height: 32),
-                          _buildRecentActivity(context, const AsyncData([])),
+                          _buildRecentActivity(context, const AsyncData([]), l),
                           const SizedBox(height: 48),
                         ],
                       ),
@@ -116,8 +118,9 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
     UserModel? profile,
     bool isOffline,
   ) {
+    final l = context.l10n;
     final topPadding = isOffline ? 0.0 : MediaQuery.of(context).padding.top;
-    final displayName = profile?.fullName ?? user?.displayName ?? 'Citizen';
+    final displayName = profile?.fullName ?? user?.displayName ?? l.citizen;
     final village = profile?.village ?? 'Welivita South';
 
     return Container(
@@ -185,9 +188,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () {
-                  context.push('/profile');
-                },
+                onTap: () => context.push('/profile'),
                 child: Hero(
                   tag: 'profile_avatar',
                   child: Container(
@@ -270,12 +271,11 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: requestsValue.when(
         data: (requests) {
-          final pendingCount = requests
-              .where((r) => r.status == 'Pending')
-              .length;
-          final approvedCount = requests
-              .where((r) => r.status == 'Approved')
-              .length;
+          final l = context.l10n;
+          final pendingCount =
+              requests.where((r) => r.status == 'Pending').length;
+          final approvedCount =
+              requests.where((r) => r.status == 'Approved').length;
           final totalCount = requests.length;
 
           return Row(
@@ -283,7 +283,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
               _buildStatChip(
                 icon: Icons.access_time_filled_rounded,
                 value: '$pendingCount',
-                label: 'Pending',
+                label: l.pending,
                 color: AppColors.warning,
                 bgColor: AppColors.warningLight,
               ),
@@ -291,7 +291,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
               _buildStatChip(
                 icon: Icons.check_circle_rounded,
                 value: '$approvedCount',
-                label: 'Approved',
+                label: l.approved,
                 color: AppColors.success,
                 bgColor: AppColors.successLight,
               ),
@@ -299,7 +299,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
               _buildStatChip(
                 icon: Icons.insert_drive_file_rounded,
                 value: '$totalCount',
-                label: 'Total',
+                label: l.total,
                 color: AppColors.primary,
                 bgColor: AppColors.primaryLight,
               ),
@@ -307,7 +307,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error loading stats: $err')),
+        error: (err, stack) =>
+            Center(child: Text('Error loading stats: $err')),
       ),
     );
   }
@@ -450,22 +451,22 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
   }
 
   // ── Primary Actions ───────────────────────────────────────────────────
-  Widget _buildPrimaryActions(BuildContext context) {
+  Widget _buildPrimaryActions(BuildContext context, dynamic l) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Quick Actions',
+            l.quickActions,
             style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 20),
           _buildPrimaryActionCard(
             context: context,
             icon: Icons.edit_document,
-            title: 'Apply for Document',
-            subtitle: 'Request certificates and official documents',
+            title: l.applyDocument,
+            subtitle: l.requestCertificates,
             accentColor: AppColors.primary,
             bgAssetPath: 'assets/images/card_bg_document.jpg',
             onTap: () => context.push('/documents/request'),
@@ -474,8 +475,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
           _buildPrimaryActionCard(
             context: context,
             icon: Icons.campaign_rounded,
-            title: 'Report an Incident',
-            subtitle: 'Report issues in your area to the GN office',
+            title: l.reportIncident,
+            subtitle: l.reportIncidentDesc,
             accentColor: AppColors.warning,
             bgAssetPath: 'assets/images/card_bg_report.jpg',
             onTap: () {},
@@ -593,14 +594,14 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
   }
 
   // ── Secondary Actions ─────────────────────────────────────────────────
-  Widget _buildSecondaryActions(BuildContext context) {
+  Widget _buildSecondaryActions(BuildContext context, dynamic l) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Services',
+            l.services,
             style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
@@ -621,8 +622,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
               children: [
                 _buildSecondaryItem(
                   icon: Icons.track_changes_rounded,
-                  title: 'Track Application',
-                  subtitle: 'View status of your requests',
+                  title: l.trackApplication,
+                  subtitle: l.viewStatusOfRequests,
                   color: AppColors.info,
                   onTap: () => context.push('/documents/tracking'),
                   isFirst: true,
@@ -630,7 +631,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                 const Divider(height: 1, indent: 72, color: AppColors.divider),
                 _buildSecondaryItem(
                   icon: Icons.people_alt_rounded,
-                  title: 'Community Feed',
+                  title: l.communityFeed,
                   subtitle: 'Lost & Found, Local Jobs',
                   color: AppColors.accentPurple,
                   onTap: () => context.push('/community'),
@@ -638,8 +639,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                 const Divider(height: 1, indent: 72, color: AppColors.divider),
                 _buildSecondaryItem(
                   icon: Icons.notifications_active_rounded,
-                  title: 'Notice Board',
-                  subtitle: 'Official announcements',
+                  title: l.noticeBoard,
+                  subtitle: l.officialAnnouncements,
                   color: AppColors.primary,
                   onTap: () => context.push('/notices'),
                 ),
@@ -661,7 +662,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
   }
 
   // ── Household / Member Management ─────────────────────────────────────
-  Widget _buildHouseholdSection(BuildContext context, User? user) {
+  Widget _buildHouseholdSection(
+      BuildContext context, User? user, dynamic l) {
     if (user == null) return const SizedBox.shrink();
     final userService = ref.read(userServiceProvider);
 
@@ -671,7 +673,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Household Management',
+            l.householdManagement,
             style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
@@ -697,7 +699,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                     _buildSecondaryItem(
                       icon: Icons.group_add_rounded,
                       title: 'Add Family Member / Rental',
-                      subtitle: 'Register a family member or rental occupant',
+                      subtitle: l.registerFamilyMember,
                       color: AppColors.primary,
                       onTap: () => context.push('/auth/add-member'),
                       isFirst: true,
@@ -711,8 +713,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                       ),
                       _buildSecondaryItem(
                         icon: Icons.person_add_alt_1_rounded,
-                        title: 'Register New Resident',
-                        subtitle: 'Create account for a new village resident',
+                        title: l.registerNewResident,
+                        subtitle: l.createAccountNewResident,
                         color: AppColors.error,
                         onTap: () => context.push('/auth/create-resident'),
                         isLast: true,
@@ -795,6 +797,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
   Widget _buildRecentActivity(
     BuildContext context,
     AsyncValue<List<RequestModel>> requestsValue,
+    dynamic l,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -805,13 +808,13 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Recent Activity',
+                l.recentActivity,
                 style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
               ),
               GestureDetector(
                 onTap: () => context.push('/documents/tracking'),
                 child: Text(
-                  'View All',
+                  l.viewAll,
                   style: AppTextStyles.small.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
@@ -841,7 +844,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                     padding: const EdgeInsets.all(24.0),
                     child: Center(
                       child: Text(
-                        'No recent activity',
+                        l.noRecentActivity,
                         style: AppTextStyles.body.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -857,7 +860,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                         children: [
                           _buildActivityItem(
                             title: recentRequests[i].documentType,
-                            status: recentRequests[i].status,
+                            status: _localizedStatus(
+                                recentRequests[i].status, l),
                             statusColor: _getStatusColor(
                               recentRequests[i].status,
                             ),
@@ -883,8 +887,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (err, stack) => Padding(
-                padding: const EdgeInsets.all(24),
+              error: (err, stack) => const Padding(
+                padding: EdgeInsets.all(24),
                 child: Center(child: Text('Error loading activity')),
               ),
             ),
@@ -892,6 +896,21 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
         ],
       ),
     );
+  }
+
+  String _localizedStatus(String status, dynamic l) {
+    switch (status) {
+      case 'Approved':
+        return l.approved;
+      case 'Pending':
+        return l.pending;
+      case 'In Review':
+        return l.inReview;
+      case 'Rejected':
+        return l.rejected;
+      default:
+        return status;
+    }
   }
 
   Color _getStatusColor(String status) {

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/localization/localization_extensions.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -18,7 +19,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _identifierController = TextEditingController(); // NIC or Email
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -44,9 +45,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.dispose();
   }
 
-  /// Determine email to use for Firebase Auth.
-  /// If the input looks like a real email, use it directly.
-  /// Otherwise treat it as a NIC and derive the synthetic email.
   String _resolveEmail(String input) {
     final trimmed = input.trim();
     final isEmail = RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(trimmed);
@@ -54,8 +52,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return Validators.nicToEmail(trimmed);
   }
 
-  /// Fetches the Firestore role for the freshly signed-in user and returns
-  /// the correct dashboard route path.
   Future<String> _dashboardForCurrentUser(String uid) async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -94,29 +90,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
+        final l = context.l10n;
         String message;
         switch (e.code) {
           case 'user-not-found':
-            message =
-                'No account found. Please contact your Grama Niladhari office.';
+            message = l.loginFailedNoAccount;
             break;
           case 'wrong-password':
-            message = 'Incorrect password. Please try again.';
+            message = l.loginFailedWrongPassword;
             break;
           case 'invalid-credential':
-            message = 'Invalid credentials. Please check and try again.';
+            message = l.loginFailedInvalidCredential;
             break;
           case 'operation-not-allowed':
-            message =
-                'Sign-in is not enabled. Please contact the administrator.';
+            message = l.loginFailedNotEnabled;
             break;
           default:
-            message = 'Login failed: ${e.message}';
+            message = '${l.loginFailedDefault} (${e.message})';
         }
         _showError(message);
       }
     } catch (e) {
-      if (mounted) _showError('Login failed. Please try again.');
+      if (mounted) _showError(context.l10n.loginFailedDefault);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -142,6 +137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: FadeTransition(
@@ -150,7 +146,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           child: SingleChildScrollView(
             child: Column(
               children: [
-                _buildHeader(),
+                _buildHeader(l),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
                   child: Form(
@@ -158,38 +154,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Welcome text
-                        Text('Welcome Back', style: AppTextStyles.h1),
+                        Text(l.welcomeBack, style: AppTextStyles.h1),
                         const SizedBox(height: 6),
-                        Text(
-                          'Sign in with your NIC number or email address.',
-                          style: AppTextStyles.caption,
-                        ),
+                        Text(l.signInSubtitle, style: AppTextStyles.caption),
                         const SizedBox(height: 32),
 
-                        // NIC or Email field
-                        _buildFieldLabel('NIC Number or Email'),
+                        _buildFieldLabel(l.nicOrEmail),
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: _identifierController,
-                          hint: 'Enter NIC (e.g., 200012345678) or email',
+                          hint: l.nicOrEmailHint,
                           prefixIcon: Icons.badge_outlined,
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'NIC number or email is required';
+                              return l.nicOrEmailRequired;
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 20),
 
-                        // Password field
-                        _buildFieldLabel('Password'),
+                        _buildFieldLabel(l.password),
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: _passwordController,
-                          hint: 'Enter your password',
+                          hint: l.passwordHint,
                           prefixIcon: Icons.lock_outline_rounded,
                           obscureText: _obscurePassword,
                           suffixIcon: IconButton(
@@ -208,7 +198,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return 'Password is required';
+                              return l.passwordRequired;
                             }
                             return null;
                           },
@@ -216,7 +206,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                         const SizedBox(height: 32),
 
-                        // Sign-in button
                         SizedBox(
                           width: double.infinity,
                           height: 52,
@@ -240,12 +229,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : Text('Sign In', style: AppTextStyles.button),
+                                : Text(l.signIn, style: AppTextStyles.button),
                           ),
                         ),
 
                         const SizedBox(height: 32),
-                        _buildInfoBox(),
+                        _buildInfoBox(l),
                       ],
                     ),
                   ),
@@ -258,7 +247,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(dynamic l) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 48, 24, 36),
@@ -288,7 +277,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
           const SizedBox(height: 18),
           Text(
-            'Village Connect',
+            l.appTitle,
             style: AppTextStyles.h2.copyWith(
               color: Colors.white,
               letterSpacing: -0.3,
@@ -296,21 +285,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'Grama Niladhari Services Portal',
+            l.gnServicesPortal,
             style: AppTextStyles.small.copyWith(
               color: Colors.white.withOpacity(0.75),
             ),
           ),
           const SizedBox(height: 16),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -322,7 +308,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Official Government Platform',
+                  l.officialPlatform,
                   style: AppTextStyles.small.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -376,8 +362,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -392,7 +377,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildInfoBox() {
+  Widget _buildInfoBox(dynamic l) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -403,27 +388,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.info,
-            size: 20,
-          ),
+          Icon(Icons.info_outline_rounded, color: AppColors.info, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'First time accessing?',
+                  l.firstTimeAccessing,
                   style: AppTextStyles.captionMedium
                       .copyWith(color: AppColors.info),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Your account is created by your Grama Niladhari officer or an authorized resident. '
-                  'Check your email for your login credentials.',
-                  style:
-                      AppTextStyles.small.copyWith(color: AppColors.info),
+                  l.firstTimeDesc,
+                  style: AppTextStyles.small.copyWith(color: AppColors.info),
                 ),
               ],
             ),
