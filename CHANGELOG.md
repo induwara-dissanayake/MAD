@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/induwara-dissanayake/MAD/compare/v1.0.2...v1.1.0) (2026-03-29)
+
+
+### Features
+
+* add register shortcuts and registered users screen ([653dc61](https://github.com/induwara-dissanayake/MAD/commit/653dc61e45067174e81eef2c7301b7895ccdf086))
+
 ## [1.0.2](https://github.com/induwara-dissanayake/MAD/compare/v1.0.1...v1.0.2) (2026-03-29)
 
 
