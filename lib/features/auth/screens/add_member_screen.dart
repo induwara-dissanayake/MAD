@@ -376,7 +376,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
               label: 'Contact Number',
               controller: _phoneController,
               hint: _createSystemAccess
-                  ? '+94 77 123 4567'
+                  ? '077 123 4567'
                   : 'Optional contact number',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,

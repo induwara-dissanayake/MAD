@@ -236,7 +236,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
             _buildFormField(
               label: 'Contact Number',
               controller: _phoneController,
-              hint: '+94 77 123 4567',
+              hint: '077 123 4567',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
               validator: Validators.validatePhone,
