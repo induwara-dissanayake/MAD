@@ -66,6 +66,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           return '/committee/tasks';
         case 'admin':
           return '/admin/dashboard';
+        case 'admin_resident':
+          return '/home';
         default:
           return '/home';
       }
@@ -253,8 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       padding: const EdgeInsets.fromLTRB(24, 48, 24, 36),
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
-        borderRadius:
-            const BorderRadius.vertical(bottom: Radius.circular(32)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Column(
         children: [
@@ -370,8 +371,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.error, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
       ),
     );
@@ -396,8 +396,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               children: [
                 Text(
                   l.firstTimeAccessing,
-                  style: AppTextStyles.captionMedium
-                      .copyWith(color: AppColors.info),
+                  style: AppTextStyles.captionMedium.copyWith(
+                    color: AppColors.info,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

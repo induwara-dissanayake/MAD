@@ -10,10 +10,13 @@ import '../../../shared/widgets/vc_components.dart';
 import '../repositories/document_repository.dart';
 
 class DocumentRequestScreen extends ConsumerStatefulWidget {
-  const DocumentRequestScreen({super.key});
+  const DocumentRequestScreen({super.key, this.initialDocumentType});
+
+  final String? initialDocumentType;
 
   @override
-  ConsumerState<DocumentRequestScreen> createState() => _DocumentRequestScreenState();
+  ConsumerState<DocumentRequestScreen> createState() =>
+      _DocumentRequestScreenState();
 }
 
 class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
@@ -76,6 +79,23 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
   final List<String> _stepLabels = ['Document', 'Details', 'Upload', 'Confirm'];
 
   @override
+  void initState() {
+    super.initState();
+    final preselectedType = widget.initialDocumentType;
+    if (preselectedType == null || preselectedType.trim().isEmpty) return;
+
+    final index = _documentTypes.indexWhere(
+      (doc) =>
+          ((doc['title'] as String?) ?? '').toLowerCase() ==
+          preselectedType.toLowerCase(),
+    );
+
+    if (index >= 0) {
+      _selectedDocumentIndex = index;
+    }
+  }
+
+  @override
   void dispose() {
     _fullNameController.dispose();
     _nicController.dispose();
@@ -118,7 +138,9 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
     if (user == null) {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to submit a request.')),
+        const SnackBar(
+          content: Text('You must be logged in to submit a request.'),
+        ),
       );
       return;
     }
@@ -144,9 +166,9 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error submitting request: $e')));
       }
     } finally {
       if (mounted) {
@@ -178,7 +200,13 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/applications');
+              }
+            },
           ),
         ),
         title: Text(

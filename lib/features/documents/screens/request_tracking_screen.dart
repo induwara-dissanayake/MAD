@@ -12,7 +12,8 @@ class RequestTrackingScreen extends ConsumerStatefulWidget {
   const RequestTrackingScreen({super.key});
 
   @override
-  ConsumerState<RequestTrackingScreen> createState() => _RequestTrackingScreenState();
+  ConsumerState<RequestTrackingScreen> createState() =>
+      _RequestTrackingScreenState();
 }
 
 class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
@@ -56,7 +57,13 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/applications');
+              }
+            },
           ),
         ),
         title: Text(
@@ -128,8 +135,12 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                     child: Text(
                       filter,
                       style: AppTextStyles.captionMedium.copyWith(
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -265,7 +276,9 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                     Row(
                       children: [
                         Text(
-                          request.id.isNotEmpty ? request.id.substring(0, 8) : '...',
+                          request.id.isNotEmpty
+                              ? request.id.substring(0, 8)
+                              : '...',
                           style: AppTextStyles.small.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
