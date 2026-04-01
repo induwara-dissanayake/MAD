@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "344728487984",
+    "project_id": "village-connect-26949",
+    "storage_bucket": "village-connect-26949.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:344728487984:android:98650dda1c6739524b45f5",
+        "android_client_info": {
+          "package_name": "com.example.village_connect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbpnL1xJEvHsOb4zKe0_nZFaEvO08d0wY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
