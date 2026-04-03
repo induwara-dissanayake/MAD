@@ -36,6 +36,14 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
   String? _generatedPassword;
   String? _createdUserName;
   String? _emailDispatchStatus;
+  String _creatorRole = 'citizen';
+  String _targetRole = 'citizen';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCreatorRole();
+  }
 
   @override
   void dispose() {
@@ -50,6 +58,28 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
     setState(fn);
+  }
+
+  Future<void> _loadCreatorRole() async {
+    try {
+      final authService = ref.read(authServiceProvider);
+      final userService = ref.read(userServiceProvider);
+      final uid = authService.currentUser?.uid;
+      if (uid == null) return;
+
+      final profile = await userService.getUserProfileOnce(uid);
+      if (!mounted) return;
+
+      final role = profile?.role ?? 'citizen';
+      setState(() {
+        _creatorRole = role;
+        if (_creatorRole != 'gn_officer') {
+          _targetRole = 'citizen';
+        }
+      });
+    } catch (_) {
+      // Keep safe defaults.
+    }
   }
 
   Future<void> _createResident() async {
@@ -88,6 +118,16 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       final creatorProfile = await userService.getUserProfileOnce(
         currentAdminUid,
       );
+      final creatorRole = creatorProfile?.role ?? 'citizen';
+      if (creatorRole != 'admin_resident' && creatorRole != 'gn_officer') {
+        throw Exception(
+          'You do not have permission to create new resident records.',
+        );
+      }
+      if (_targetRole == 'admin_resident' && creatorRole != 'gn_officer') {
+        throw Exception('Only GN Officer can create resident admin accounts.');
+      }
+
       final inheritedVillage = creatorProfile?.village ?? '';
       final inheritedDistrict = creatorProfile?.district ?? '';
 
@@ -114,7 +154,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
         address: _addressController.text.trim(),
         village: inheritedVillage,
         district: inheritedDistrict,
-        role: 'citizen',
+        role: _targetRole,
         memberType: MemberType.newResident,
         createdByUid: currentAdminUid,
         createdAt: DateTime.now(),
@@ -236,7 +276,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
             _buildFormField(
               label: 'Contact Number',
               controller: _phoneController,
-              hint: '+94 77 123 4567',
+              hint: '077 123 4567',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
               validator: Validators.validatePhone,
@@ -258,6 +298,52 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
                 return null;
               },
             ),
+            if (_creatorRole == 'gn_officer') ...[
+              const SizedBox(height: 18),
+              Text('Account Role', style: AppTextStyles.label),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _targetRole,
+                items: const [
+                  DropdownMenuItem(value: 'citizen', child: Text('Citizen')),
+                  DropdownMenuItem(
+                    value: 'admin_resident',
+                    child: Text('Resident Admin'),
+                  ),
+                ],
+                onChanged: _isLoading
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _targetRole = value);
+                      },
+                decoration: InputDecoration(
+                  hintText: 'Select role for the new account',
+                  prefixIcon: const Icon(Icons.badge_outlined),
+                  filled: true,
+                  fillColor: AppColors.background,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.6,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 18),
             _buildFormField(
               label: 'Home Address',
@@ -266,16 +352,12 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
               icon: Icons.location_on_outlined,
               maxLines: 2,
             ),
-            const SizedBox(height: 18),
-            _buildInheritedLocationInfo(),
 
             if (_errorMessage != null) ...[
               const SizedBox(height: 20),
               _buildErrorBanner(_errorMessage!),
             ],
 
-            const SizedBox(height: 28),
-            _buildWarningBox(),
             const SizedBox(height: 28),
 
             SizedBox(
@@ -505,63 +587,6 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
               'You are creating a NEW RESIDENT account. '
               'Login credentials will be emailed to the resident automatically.',
               style: AppTextStyles.small.copyWith(color: AppColors.primary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWarningBox() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.warningLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: AppColors.warning,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'ℹ️ The account will be created without signing you out. '
-              'Credentials are shown here and sent via email automatically.',
-              style: AppTextStyles.small.copyWith(color: AppColors.warning),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInheritedLocationInfo() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.infoLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.info.withOpacity(0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.info,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Village and district are automatically inherited from your profile for this resident.',
-              style: AppTextStyles.small.copyWith(color: AppColors.info),
             ),
           ),
         ],

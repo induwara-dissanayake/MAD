@@ -51,8 +51,8 @@ class Validators {
       return 'Phone number is required';
     }
     final cleaned = value.replaceAll(RegExp(r'[\s\-]'), '');
-    if (!RegExp(r'^(\+94\d{9}|0\d{9})$').hasMatch(cleaned)) {
-      return 'Enter a valid phone number (e.g., +94771234567)';
+    if (!RegExp(r'^0\d{9}$').hasMatch(cleaned)) {
+      return 'Enter a valid phone number (e.g., 0771234567)';
     }
     return null;
   }
@@ -72,4 +72,3 @@ class Validators {
     return '${nic.trim().toLowerCase()}@villageconnect.local';
   }
 }
-

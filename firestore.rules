@@ -17,11 +17,35 @@ service cloud.firestore {
           in ['admin', 'gn_officer'];
     }
 
+    function currentUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
     function isCreatorForNewUser() {
       return isSignedIn()
         && request.resource.data.createdByUid == request.auth.uid
-        && request.resource.data.role == 'citizen'
-        && request.resource.data.memberType in ['new_resident', 'family_member', 'rental'];
+        && request.resource.data.memberType in ['new_resident', 'family_member', 'rental']
+        && (
+          // GN Officer: can create resident-admin (new resident) and all citizen types.
+          (
+            currentUserRole() == 'gn_officer'
+            && (
+              (request.resource.data.role == 'admin_resident' && request.resource.data.memberType == 'new_resident')
+              || request.resource.data.role == 'citizen'
+            )
+          )
+          // Resident admin: can create citizens (new resident, family member, rental).
+          || (
+            currentUserRole() == 'admin_resident'
+            && request.resource.data.role == 'citizen'
+          )
+          // Citizen: can create only family member / rental citizen records.
+          || (
+            currentUserRole() == 'citizen'
+            && request.resource.data.role == 'citizen'
+            && request.resource.data.memberType in ['family_member', 'rental']
+          )
+        );
     }
 
     // ── Users ────────────────────────────────────────────────────
@@ -50,6 +74,26 @@ service cloud.firestore {
 
       // Prevent clients from reading or mutating queued emails.
       allow read, update, delete: if false;
+    }
+
+    // ── Citizen document requests / applications ─────────────────────────
+    match /requests/{requestId} {
+      // Citizen submits own request.
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      // Owner can read own requests, admins/officers can read all.
+      allow read: if isSignedIn()
+        && (
+          resource.data.userId == request.auth.uid
+          || isAdminOrOfficer()
+        );
+
+      // Review/status updates are officer/admin actions.
+      allow update: if isAdminOrOfficer();
+
+      // Deletion disabled to preserve audit history.
+      allow delete: if false;
     }
 
     // ── Default deny ─────────────────────────────────────────────

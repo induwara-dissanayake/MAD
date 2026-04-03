@@ -19,7 +19,10 @@ final userRequestsProvider = StreamProvider<List<RequestModel>>((ref) {
   );
 });
 
-final requestDetailProvider = StreamProvider.family<RequestModel?, String>((ref, id) {
+final requestDetailProvider = StreamProvider.family<RequestModel?, String>((
+  ref,
+  id,
+) {
   return ref.watch(documentRepositoryProvider).getRequest(id);
 });
 
@@ -36,13 +39,15 @@ class DocumentRepository {
     return _firestore
         .collection('requests')
         .where('userId', isEqualTo: userId)
-        .orderBy('submittedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return RequestModel.fromMap(doc.data(), doc.id);
-      }).toList();
-    });
+          final requests = snapshot.docs.map((doc) {
+            return RequestModel.fromMap(doc.data(), doc.id);
+          }).toList();
+
+          requests.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+          return requests;
+        });
   }
 
   Stream<RequestModel?> getRequest(String id) {

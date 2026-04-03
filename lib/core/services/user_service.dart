@@ -40,7 +40,7 @@ class UserService {
       final doc = await _usersCollection.doc(uid).get();
       if (!doc.exists) return false;
       final role = doc.data()?['role'] as String? ?? 'citizen';
-      return role == 'admin' || role == 'gn_officer';
+      return role == 'admin_resident' || role == 'gn_officer';
     } catch (_) {
       return false;
     }
@@ -51,9 +51,10 @@ class UserService {
     return _usersCollection
         .where('createdByUid', isEqualTo: creatorUid)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => UserModel.fromMap(d.data(), d.id))
-            .toList());
+        .map(
+          (snap) =>
+              snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList(),
+        );
   }
 
   /// Check if a NIC is already registered.
@@ -79,8 +80,9 @@ class UserService {
     return _usersCollection
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => UserModel.fromMap(d.data(), d.id))
-            .toList());
+        .map(
+          (snap) =>
+              snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList(),
+        );
   }
 }

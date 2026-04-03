@@ -69,6 +69,8 @@ class ProfileScreen extends ConsumerWidget {
     switch (role) {
       case 'gn_officer':
         return 'GN Officer';
+      case 'admin_resident':
+        return 'Resident Admin';
       case 'admin':
         return 'Admin';
       case 'committee':

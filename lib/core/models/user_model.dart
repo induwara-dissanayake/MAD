@@ -56,7 +56,8 @@ class UserModel {
   final String address;
   final String village;
   final String district;
-  final String role; // citizen | admin | gn_officer | committee
+  final String
+  role; // citizen | admin_resident | admin | gn_officer | committee
   final MemberType memberType;
   final String? relationship;
   final bool hasSystemAccess;
