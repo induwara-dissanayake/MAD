@@ -17,46 +17,252 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
 
   final List<Map<String, dynamic>> _applications = [
     {
-      'title': 'Character Certificate',
-      'description': 'For employment and visa applications',
-      'category': 'Certificates',
-      'eta': '2-5 working days',
+      'title': 'Residence Certificate',
+      'category': 'Personal Identification & Verification',
+      'details': [
+        'Full Name',
+        'NIC Number',
+        'Permanent Address',
+        'Duration of residence',
+        'Purpose of certificate',
+        'Contact number',
+      ],
       'icon': Icons.verified_user_rounded,
     },
     {
-      'title': 'Residence Certificate',
-      'description': 'Official proof of residence in GN division',
-      'category': 'Certificates',
-      'eta': '1-3 working days',
-      'icon': Icons.home_rounded,
+      'title': 'Character Certificate',
+      'category': 'Personal Identification & Verification',
+      'details': [
+        'Full Name',
+        'NIC Number',
+        'Address',
+        'Occupation / Student status',
+        'Purpose (job, school, etc.)',
+        'Referee details (if required)',
+      ],
+      'icon': Icons.assignment_ind_rounded,
     },
     {
-      'title': 'Income Certificate',
-      'description': 'For subsidies, scholarships and aid',
-      'category': 'Certificates',
-      'eta': '2-4 working days',
-      'icon': Icons.account_balance_wallet_rounded,
-    },
-    {
-      'title': 'Birth Certificate',
-      'description': 'Birth registration and certified copies',
-      'category': 'Civil Records',
-      'eta': '3-7 working days',
-      'icon': Icons.child_care_rounded,
-    },
-    {
-      'title': 'Identity Verification',
-      'description': 'NIC-based identity confirmation letter',
-      'category': 'Identity',
-      'eta': '1-2 working days',
+      'title': 'NIC Application Confirmation',
+      'category': 'Personal Identification & Verification',
+      'details': [
+        'Full Name',
+        'Date of Birth',
+        'Birth Certificate Number',
+        'Address',
+        'Parent/Guardian details',
+        'Declaration of correctness',
+      ],
       'icon': Icons.badge_rounded,
     },
     {
-      'title': 'Land Ownership',
-      'description': 'Land title and ownership-related letters',
-      'category': 'Property',
-      'eta': '4-8 working days',
+      'title': 'Family Composition Certificate',
+      'category': 'Personal Identification & Verification',
+      'details': [
+        'Head of household name',
+        'Address',
+        'List of family members (name, age, relationship)',
+        'NIC numbers (if available)',
+      ],
+      'icon': Icons.family_restroom_rounded,
+    },
+    {
+      'title': 'Land Ownership Confirmation',
+      'category': 'Land & Property Related',
+      'details': [
+        'Owner’s name',
+        'NIC Number',
+        'Address',
+        'Land location (address)',
+        'Land size',
+        'Deed/permit details',
+      ],
       'icon': Icons.landscape_rounded,
+    },
+    {
+      'title': 'Boundary Verification',
+      'category': 'Land & Property Related',
+      'details': [
+        'Owner’s name',
+        'Land location',
+        'Survey plan details',
+        'Neighbor details',
+        'Issue description',
+      ],
+      'icon': Icons.map_rounded,
+    },
+    {
+      'title': 'Land Permit Recommendation',
+      'category': 'Land & Property Related',
+      'details': [
+        'Applicant name',
+        'NIC Number',
+        'Address',
+        'Requested land details',
+        'Purpose of land use',
+      ],
+      'icon': Icons.description_rounded,
+    },
+    {
+      'title': 'Samurdhi / Aswesuma Application',
+      'category': 'Social Welfare & Benefits',
+      'details': [
+        'Full Name',
+        'NIC Number',
+        'Address',
+        'Family details',
+        'Monthly income',
+        'Employment status',
+        'Assets owned',
+      ],
+      'icon': Icons.volunteer_activism_rounded,
+    },
+    {
+      'title': 'Low-Income Certificate',
+      'category': 'Social Welfare & Benefits',
+      'details': [
+        'Applicant name',
+        'NIC Number',
+        'Address',
+        'Occupation',
+        'Monthly income',
+        'Family dependents',
+      ],
+      'icon': Icons.savings_rounded,
+    },
+    {
+      'title': 'Disability / Elderly Allowance',
+      'category': 'Social Welfare & Benefits',
+      'details': [
+        'Name',
+        'NIC Number',
+        'Age',
+        'Medical condition (if applicable)',
+        'Income details',
+        'Family support details',
+      ],
+      'icon': Icons.accessible_forward_rounded,
+    },
+    {
+      'title': 'Scholarship Application Support',
+      'category': 'Education Related',
+      'details': [
+        'Student name',
+        'Date of Birth',
+        'School name',
+        'Address',
+        'Parent income details',
+        'Family details',
+      ],
+      'icon': Icons.school_rounded,
+    },
+    {
+      'title': 'University / Hostel Income Verification',
+      'category': 'Education Related',
+      'details': [
+        'Student name',
+        'Parent/Guardian name',
+        'Address',
+        'Occupation',
+        'Monthly income',
+        'Number of dependents',
+      ],
+      'icon': Icons.apartment_rounded,
+    },
+    {
+      'title': 'Passport Verification',
+      'category': 'Legal & Official Documentation',
+      'details': [
+        'Full Name',
+        'NIC Number',
+        'Address',
+        'Duration of residence',
+        'Occupation',
+      ],
+      'icon': Icons.travel_explore_rounded,
+    },
+    {
+      'title': 'Birth/Marriage/Death Confirmation',
+      'category': 'Legal & Official Documentation',
+      'details': [
+        'Relevant person’s name',
+        'Date of event',
+        'Address',
+        'Relationship to applicant',
+      ],
+      'icon': Icons.fact_check_rounded,
+    },
+    {
+      'title': 'Police Clearance Support',
+      'category': 'Legal & Official Documentation',
+      'details': [
+        'Name',
+        'NIC Number',
+        'Address',
+        'Duration of residence',
+        'Purpose',
+      ],
+      'icon': Icons.gavel_rounded,
+    },
+    {
+      'title': 'Job Character Certificate',
+      'category': 'Employment & Migration',
+      'details': [
+        'Name',
+        'NIC Number',
+        'Address',
+        'Occupation',
+        'Purpose (job type)',
+      ],
+      'icon': Icons.work_rounded,
+    },
+    {
+      'title': 'Foreign Employment Documents',
+      'category': 'Employment & Migration',
+      'details': [
+        'Name',
+        'NIC Number',
+        'Address',
+        'Passport details',
+        'Job details abroad',
+      ],
+      'icon': Icons.flight_takeoff_rounded,
+    },
+    {
+      'title': 'Electricity / Water Connection',
+      'category': 'Utility & Service Connections',
+      'details': [
+        'Applicant name',
+        'NIC Number',
+        'Address',
+        'Proof of residence',
+        'Land ownership/permission details',
+      ],
+      'icon': Icons.electrical_services_rounded,
+    },
+    {
+      'title': 'Business Registration Support',
+      'category': 'Miscellaneous / Special Requests',
+      'details': [
+        'Applicant name',
+        'NIC Number',
+        'Address',
+        'Business type',
+        'Business location',
+      ],
+      'icon': Icons.storefront_rounded,
+    },
+    {
+      'title': 'Disaster Damage Report',
+      'category': 'Miscellaneous / Special Requests',
+      'details': [
+        'Applicant name',
+        'Address',
+        'Type of disaster',
+        'Date of incident',
+        'Damage description',
+      ],
+      'icon': Icons.warning_amber_rounded,
     },
   ];
 
@@ -72,12 +278,16 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
     return _applications.where((app) {
       final category = app['category'] as String;
       final title = (app['title'] as String).toLowerCase();
-      final description = (app['description'] as String).toLowerCase();
+      final categoryLower = category.toLowerCase();
+      final details = (app['details'] as List<String>).join(' ').toLowerCase();
 
       final matchesCategory =
           _selectedCategory == 'All' || category == _selectedCategory;
       final matchesQuery =
-          query.isEmpty || title.contains(query) || description.contains(query);
+          query.isEmpty ||
+          title.contains(query) ||
+          categoryLower.contains(query) ||
+          details.contains(query);
 
       return matchesCategory && matchesQuery;
     }).toList();
@@ -91,6 +301,30 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
         backgroundColor: AppColors.card,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceGrey.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.textPrimary,
+                size: 20,
+              ),
+            ),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+        ),
         title: Text(
           'Applications',
           style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
@@ -105,17 +339,6 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'Choose an application type to submit to the GN officer.',
-              style: AppTextStyles.small.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
           _buildSearchBar(),
           const SizedBox(height: 12),
           _buildCategoryFilters(),
@@ -299,9 +522,8 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
 
   Widget _buildApplicationCard(Map<String, dynamic> app) {
     final title = app['title'] as String;
-    final description = app['description'] as String;
     final category = app['category'] as String;
-    final eta = app['eta'] as String;
+    final details = app['details'] as List<String>;
     final icon = app['icon'] as IconData;
 
     return Container(
@@ -339,67 +561,184 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceGrey.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  category,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            description,
-            style: AppTextStyles.small.copyWith(color: AppColors.textSecondary),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceGrey.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              category,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           const SizedBox(height: 12),
-          Row(
+          Text(
+            'Required details: ${details.length}',
+            style: AppTextStyles.small.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              const Icon(
-                Icons.schedule_rounded,
-                size: 16,
-                color: AppColors.info,
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _showRequiredDetailsSheet(title, details),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.list_alt_rounded,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Form Details',
+                        style: AppTextStyles.small.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Estimated: $eta',
-                style: AppTextStyles.caption.copyWith(color: AppColors.info),
-              ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: () {
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () {
                   context.push(
                     '/documents/request',
                     extra: {'documentType': title},
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
+                  child: Text(
+                    'Apply',
+                    style: AppTextStyles.small.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                child: const Text('Apply'),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  void _showRequiredDetailsSheet(String title, List<String> details) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.78,
+          ),
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Required details for GN submission',
+                style: AppTextStyles.small.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: details.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final detail = details[index];
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 7),
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            detail,
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

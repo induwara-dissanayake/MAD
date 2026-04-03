@@ -271,9 +271,14 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                       style: AppTextStyles.bodyMedium.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           request.id.isNotEmpty
@@ -283,19 +288,21 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
                         Icon(
                           Icons.circle,
                           size: 4,
                           color: AppColors.textMuted.withOpacity(0.5),
                         ),
-                        const SizedBox(width: 8),
                         Text(
                           DateFormat.yMMMd().format(request.submittedAt),
                           style: AppTextStyles.small.copyWith(
                             color: AppColors.textSecondary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

@@ -19,14 +19,23 @@ class RequestDetailScreen extends ConsumerWidget {
     required this.status,
   });
 
-  Map<String, String> _getApplicationDetails(RequestModel request) => {
-        'Document Type': request.documentType,
+  Map<String, String> _getApplicationDetails(RequestModel request) {
+    final details = <String, String>{'Document Type': request.documentType};
+
+    if (request.formData != null && request.formData!.isNotEmpty) {
+      details.addAll(request.formData!);
+    } else {
+      details.addAll({
         'Full Name': request.fullName,
         'NIC Number': request.nic,
         'Address': request.address,
         'Reason': request.reason,
-        'Submitted Date': DateFormat.yMMMd().format(request.submittedAt),
-      };
+      });
+    }
+
+    details['Submitted Date'] = DateFormat.yMMMd().format(request.submittedAt);
+    return details;
+  }
 
   String _getGnRemarks(RequestModel request) {
     if (request.status == 'Approved') {

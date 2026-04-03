@@ -86,12 +86,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                         children: [
                           _buildHeroGreeting(context, user, profile, isOffline),
                           const SizedBox(height: 24),
-                          _buildQuickStats(const AsyncData([])),
-                          const SizedBox(height: 24),
                           _buildEmergencyButton(context),
                           const SizedBox(height: 24),
-                          _buildPrimaryActions(context, l),
-                          const SizedBox(height: 32),
                           _buildHouseholdSection(context, user, l),
                           const SizedBox(height: 32),
                           _buildSecondaryActions(context, l),
@@ -171,22 +167,6 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () => _showVoiceAssistant(context),
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.mic_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => context.push('/profile'),
                 child: Hero(
@@ -265,159 +245,6 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
     );
   }
 
-  // ── Quick Stats ───────────────────────────────────────────────────────
-  Widget _buildQuickStats(AsyncValue<List<RequestModel>> requestsValue) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: requestsValue.when(
-        data: (requests) {
-          final l = context.l10n;
-          final pendingCount =
-              requests.where((r) => r.status == 'Pending').length;
-          final approvedCount =
-              requests.where((r) => r.status == 'Approved').length;
-          final totalCount = requests.length;
-
-          return Row(
-            children: [
-              _buildStatChip(
-                icon: Icons.access_time_filled_rounded,
-                value: '$pendingCount',
-                label: l.pending,
-                color: AppColors.warning,
-                bgColor: AppColors.warningLight,
-              ),
-              const SizedBox(width: 16),
-              _buildStatChip(
-                icon: Icons.check_circle_rounded,
-                value: '$approvedCount',
-                label: l.approved,
-                color: AppColors.success,
-                bgColor: AppColors.successLight,
-              ),
-              const SizedBox(width: 16),
-              _buildStatChip(
-                icon: Icons.insert_drive_file_rounded,
-                value: '$totalCount',
-                label: l.total,
-                color: AppColors.primary,
-                bgColor: AppColors.primaryLight,
-              ),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) =>
-            Center(child: Text('Error loading stats: $err')),
-      ),
-    );
-  }
-
-  Widget _buildStatChip({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-    required Color bgColor,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadowLight.withOpacity(0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: bgColor.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: AppTextStyles.h2.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Voice Assistant ───────────────────────────────────────────────────
-  void _showVoiceAssistant(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: 280,
-        decoration: const BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.mic_rounded,
-                color: AppColors.primary,
-                size: 48,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Listening...',
-              style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try saying "Report an incident"',
-              style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── Emergency Button ──────────────────────────────────────────────────
   Widget _buildEmergencyButton(BuildContext context) {
     return Padding(
@@ -443,149 +270,6 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
               fontWeight: FontWeight.w800,
               fontSize: 16,
               letterSpacing: 1,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Primary Actions ───────────────────────────────────────────────────
-  Widget _buildPrimaryActions(BuildContext context, dynamic l) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.quickActions,
-            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 20),
-          _buildPrimaryActionCard(
-            context: context,
-            icon: Icons.edit_document,
-            title: l.applyDocument,
-            subtitle: l.requestCertificates,
-            accentColor: AppColors.primary,
-            bgAssetPath: 'assets/images/card_bg_document.jpg',
-            onTap: () => context.push('/documents/request'),
-          ),
-          const SizedBox(height: 16),
-          _buildPrimaryActionCard(
-            context: context,
-            icon: Icons.campaign_rounded,
-            title: l.reportIncident,
-            subtitle: l.reportIncidentDesc,
-            accentColor: AppColors.warning,
-            bgAssetPath: 'assets/images/card_bg_report.jpg',
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrimaryActionCard({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color accentColor,
-    required String bgAssetPath,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          height: 120,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            image: DecorationImage(
-              image: AssetImage(bgAssetPath),
-              fit: BoxFit.cover,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowLight.withOpacity(0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.card.withOpacity(0.95),
-                  AppColors.card.withOpacity(0.6),
-                ],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: accentColor, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: AppTextStyles.small.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_rounded,
-                    color: accentColor,
-                    size: 18,
-                  ),
-                ),
-              ],
             ),
           ),
         ),
@@ -662,8 +346,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
   }
 
   // ── Household / Member Management ─────────────────────────────────────
-  Widget _buildHouseholdSection(
-      BuildContext context, User? user, dynamic l) {
+  Widget _buildHouseholdSection(BuildContext context, User? user, dynamic l) {
     if (user == null) return const SizedBox.shrink();
     final userService = ref.read(userServiceProvider);
 
@@ -861,7 +544,9 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                           _buildActivityItem(
                             title: recentRequests[i].documentType,
                             status: _localizedStatus(
-                                recentRequests[i].status, l),
+                              recentRequests[i].status,
+                              l,
+                            ),
                             statusColor: _getStatusColor(
                               recentRequests[i].status,
                             ),
