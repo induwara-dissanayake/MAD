@@ -227,13 +227,105 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
           ),
           onPressed: () => context.pop(),
         ),
-        title: Text('Register New Resident', style: AppTextStyles.h3),
+        title: Text(
+          _creatorRole == 'gn_officer'
+              ? 'Register Citizen'
+              : 'Register New Resident',
+          style: AppTextStyles.h3,
+        ),
         centerTitle: true,
       ),
       body: Column(
         children: [
+          if (_creatorRole == 'gn_officer') _buildGnOfficerHeader(),
           const Divider(height: 1, color: AppColors.divider),
           Expanded(child: _isDone ? _buildSuccessView() : _buildForm()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGnOfficerHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.person_add_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Register New Citizen',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'GN Division 521 — Kaduwela',
+                      style: TextStyle(fontSize: 12, color: Colors.white54),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white70,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Enter the citizen\'s NIC number. The system will generate their login credentials automatically.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white70,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

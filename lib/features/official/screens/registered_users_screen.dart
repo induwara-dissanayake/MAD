@@ -19,8 +19,7 @@ class RegisteredUsersScreen extends ConsumerStatefulWidget {
       _RegisteredUsersScreenState();
 }
 
-class _RegisteredUsersScreenState
-    extends ConsumerState<RegisteredUsersScreen> {
+class _RegisteredUsersScreenState extends ConsumerState<RegisteredUsersScreen> {
   _UserFilter _activeFilter = _UserFilter.all;
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -64,8 +63,11 @@ class _RegisteredUsersScreenState
         backgroundColor: AppColors.card,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textPrimary, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+            size: 20,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text('Registered Users', style: AppTextStyles.h3),
@@ -74,15 +76,16 @@ class _RegisteredUsersScreenState
           // Register new citizen shortcut
           IconButton(
             tooltip: 'Register Citizen',
-            icon: const Icon(Icons.person_add_alt_1_rounded,
-                color: AppColors.primary),
+            icon: const Icon(
+              Icons.person_add_alt_1_rounded,
+              color: AppColors.primary,
+            ),
             onPressed: () => context.push('/auth/create-resident'),
           ),
           // Register committee member shortcut
           IconButton(
             tooltip: 'Register Committee Member',
-            icon: const Icon(Icons.group_add_rounded,
-                color: AppColors.primary),
+            icon: const Icon(Icons.group_add_rounded, color: AppColors.primary),
             onPressed: () => context.push('/auth/add-member'),
           ),
           const SizedBox(width: 4),
@@ -151,14 +154,19 @@ class _RegisteredUsersScreenState
         style: AppTextStyles.bodyMedium,
         decoration: InputDecoration(
           hintText: 'Search by name, NIC or phone…',
-          hintStyle: AppTextStyles.bodySmall
-              .copyWith(color: AppColors.textMuted),
-          prefixIcon: const Icon(Icons.search_rounded,
-              color: AppColors.textMuted, size: 20),
+          hintStyle: AppTextStyles.small.copyWith(color: AppColors.textMuted),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textMuted,
+            size: 20,
+          ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear_rounded,
-                      color: AppColors.textMuted, size: 18),
+                  icon: const Icon(
+                    Icons.clear_rounded,
+                    color: AppColors.textMuted,
+                    size: 18,
+                  ),
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
@@ -167,8 +175,10 @@ class _RegisteredUsersScreenState
               : null,
           filled: true,
           fillColor: AppColors.card,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.border),
@@ -179,8 +189,7 @@ class _RegisteredUsersScreenState
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: AppColors.primary, width: 1.5),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),
@@ -203,16 +212,14 @@ class _RegisteredUsersScreenState
             label: 'Citizens',
             icon: Icons.person_rounded,
             selected: _activeFilter == _UserFilter.citizens,
-            onTap: () =>
-                setState(() => _activeFilter = _UserFilter.citizens),
+            onTap: () => setState(() => _activeFilter = _UserFilter.citizens),
           ),
           const SizedBox(width: 8),
           _FilterChip(
             label: 'Committee',
             icon: Icons.groups_rounded,
             selected: _activeFilter == _UserFilter.committee,
-            onTap: () =>
-                setState(() => _activeFilter = _UserFilter.committee),
+            onTap: () => setState(() => _activeFilter = _UserFilter.committee),
           ),
         ],
       ),
@@ -237,9 +244,10 @@ class _RegisteredUsersScreenState
             ),
             const SizedBox(height: 16),
             Text(
-              isFiltered ? 'No matching users found' : 'No users registered yet',
-              style: AppTextStyles.h3
-                  .copyWith(color: AppColors.textSecondary),
+              isFiltered
+                  ? 'No matching users found'
+                  : 'No users registered yet',
+              style: AppTextStyles.h3.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -247,8 +255,7 @@ class _RegisteredUsersScreenState
               isFiltered
                   ? 'Try adjusting your search or filter.'
                   : 'Register a citizen or committee member using the buttons above.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: AppColors.textMuted),
+              style: AppTextStyles.small.copyWith(color: AppColors.textMuted),
               textAlign: TextAlign.center,
             ),
           ],
@@ -264,17 +271,22 @@ class _RegisteredUsersScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 48, color: AppColors.error),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: AppColors.error,
+            ),
             const SizedBox(height: 12),
-            Text('Could not load users',
-                style: AppTextStyles.h3
-                    .copyWith(color: AppColors.textPrimary)),
+            Text(
+              'Could not load users',
+              style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
+            ),
             const SizedBox(height: 6),
-            Text(error,
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: AppColors.textMuted),
-                textAlign: TextAlign.center),
+            Text(
+              error,
+              style: AppTextStyles.small.copyWith(color: AppColors.textMuted),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -303,33 +315,32 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : AppColors.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color:
-                selected ? AppColors.primary : AppColors.border,
+            color: selected ? AppColors.primary : AppColors.border,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 16,
-                color: selected
-                    ? AppColors.textOnPrimary
-                    : AppColors.textSecondary),
+            Icon(
+              icon,
+              size: 16,
+              color: selected
+                  ? AppColors.textOnPrimary
+                  : AppColors.textSecondary,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
-              style: AppTextStyles.bodySmall.copyWith(
+              style: AppTextStyles.small.copyWith(
                 color: selected
                     ? AppColors.textOnPrimary
                     : AppColors.textSecondary,
-                fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
           ],
@@ -368,9 +379,7 @@ class _UserTile extends StatelessWidget {
     if (parts.length >= 2) {
       return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
     }
-    return user.fullName.isNotEmpty
-        ? user.fullName[0].toUpperCase()
-        : '?';
+    return user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?';
   }
 
   @override
@@ -420,9 +429,7 @@ class _UserTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          user.fullName.isNotEmpty
-                              ? user.fullName
-                              : 'Unknown',
+                          user.fullName.isNotEmpty ? user.fullName : 'Unknown',
                           style: AppTextStyles.bodyMedium.copyWith(
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
@@ -436,13 +443,10 @@ class _UserTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  _InfoRow(
-                      icon: Icons.badge_outlined, text: user.nic),
+                  _InfoRow(icon: Icons.badge_outlined, text: user.nic),
                   if (user.phone.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    _InfoRow(
-                        icon: Icons.phone_outlined,
-                        text: user.phone),
+                    _InfoRow(icon: Icons.phone_outlined, text: user.phone),
                   ],
                   if (user.address.isNotEmpty) ...[
                     const SizedBox(height: 2),
@@ -463,11 +467,7 @@ class _UserTile extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.text,
-    this.maxLines = 1,
-  });
+  const _InfoRow({required this.icon, required this.text, this.maxLines = 1});
 
   final IconData icon;
   final String text;
@@ -482,8 +482,7 @@ class _InfoRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: AppTextStyles.bodySmall
-                .copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.small.copyWith(color: AppColors.textSecondary),
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
           ),
@@ -509,7 +508,7 @@ class _RoleBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.bodySmall.copyWith(
+        style: AppTextStyles.small.copyWith(
           color: color,
           fontWeight: FontWeight.w600,
           fontSize: 11,
