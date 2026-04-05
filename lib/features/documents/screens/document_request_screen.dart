@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/models/request_model.dart';
 import '../../../core/services/auth_service.dart';
@@ -10,32 +11,30 @@ import '../../../shared/widgets/vc_components.dart';
 import '../repositories/document_repository.dart';
 
 class DocumentRequestScreen extends ConsumerStatefulWidget {
-  const DocumentRequestScreen({super.key});
+  const DocumentRequestScreen({super.key, this.initialDocumentType});
+
+  final String? initialDocumentType;
 
   @override
-  ConsumerState<DocumentRequestScreen> createState() => _DocumentRequestScreenState();
+  ConsumerState<DocumentRequestScreen> createState() =>
+      _DocumentRequestScreenState();
 }
 
 class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
   int _currentStep = 0;
   final int _totalSteps = 4;
   bool _isSubmitting = false;
+  String? _selectedDocumentTitle;
 
   // Step 1
   int _selectedDocumentIndex = -1;
 
   // Step 2
   final _formKey = GlobalKey<FormState>();
-  final _fullNameController = TextEditingController();
-  final _nicController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _reasonController = TextEditingController();
+  final Map<String, TextEditingController> _dynamicControllers = {};
 
   // Step 3
-  final List<Map<String, String>> _uploadedFiles = [
-    {'name': 'NIC_front.jpg', 'size': '245 KB'},
-    {'name': 'NIC_back.jpg', 'size': '198 KB'},
-  ];
+  final List<Map<String, String>> _uploadedFiles = [];
 
   // Step 4
   bool _confirmChecked = false;
@@ -75,12 +74,313 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
 
   final List<String> _stepLabels = ['Document', 'Details', 'Upload', 'Confirm'];
 
+  final Map<String, List<String>> _applicationFieldsByType = {
+    'Residence Certificate': [
+      'Full Name',
+      'NIC Number',
+      'Permanent Address',
+      'Duration of residence',
+      'Purpose of certificate',
+      'Contact number',
+    ],
+    'Character Certificate': [
+      'Full Name',
+      'NIC Number',
+      'Address',
+      'Occupation / Student status',
+      'Purpose (job, school, etc.)',
+      'Referee details (if required)',
+    ],
+    'NIC Application Confirmation': [
+      'Full Name',
+      'Date of Birth',
+      'Birth Certificate Number',
+      'Address',
+      'Parent/Guardian details',
+      'Declaration of correctness',
+    ],
+    'Family Composition Certificate': [
+      'Head of household name',
+      'Address',
+      'List of family members (name, age, relationship)',
+      'NIC numbers (if available)',
+    ],
+    'Land Ownership Confirmation': [
+      'Owner’s name',
+      'NIC Number',
+      'Address',
+      'Land location (address)',
+      'Land size',
+      'Deed/permit details',
+    ],
+    'Boundary Verification': [
+      'Owner’s name',
+      'Land location',
+      'Survey plan details',
+      'Neighbor details',
+      'Issue description',
+    ],
+    'Land Permit Recommendation': [
+      'Applicant name',
+      'NIC Number',
+      'Address',
+      'Requested land details',
+      'Purpose of land use',
+    ],
+    'Samurdhi / Aswesuma Application': [
+      'Full Name',
+      'NIC Number',
+      'Address',
+      'Family details',
+      'Monthly income',
+      'Employment status',
+      'Assets owned',
+    ],
+    'Low-Income Certificate': [
+      'Applicant name',
+      'NIC Number',
+      'Address',
+      'Occupation',
+      'Monthly income',
+      'Family dependents',
+    ],
+    'Disability / Elderly Allowance': [
+      'Name',
+      'NIC Number',
+      'Age',
+      'Medical condition (if applicable)',
+      'Income details',
+      'Family support details',
+    ],
+    'Scholarship Application Support': [
+      'Student name',
+      'Date of Birth',
+      'School name',
+      'Address',
+      'Parent income details',
+      'Family details',
+    ],
+    'University / Hostel Income Verification': [
+      'Student name',
+      'Parent/Guardian name',
+      'Address',
+      'Occupation',
+      'Monthly income',
+      'Number of dependents',
+    ],
+    'Passport Verification': [
+      'Full Name',
+      'NIC Number',
+      'Address',
+      'Duration of residence',
+      'Occupation',
+    ],
+    'Birth/Marriage/Death Confirmation': [
+      'Relevant person’s name',
+      'Date of event',
+      'Address',
+      'Relationship to applicant',
+    ],
+    'Police Clearance Support': [
+      'Name',
+      'NIC Number',
+      'Address',
+      'Duration of residence',
+      'Purpose',
+    ],
+    'Job Character Certificate': [
+      'Name',
+      'NIC Number',
+      'Address',
+      'Occupation',
+      'Purpose (job type)',
+    ],
+    'Foreign Employment Documents': [
+      'Name',
+      'NIC Number',
+      'Address',
+      'Passport details',
+      'Job details abroad',
+    ],
+    'Electricity / Water Connection': [
+      'Applicant name',
+      'NIC Number',
+      'Address',
+      'Proof of residence',
+      'Land ownership/permission details',
+    ],
+    'Business Registration Support': [
+      'Applicant name',
+      'NIC Number',
+      'Address',
+      'Business type',
+      'Business location',
+    ],
+    'Disaster Damage Report': [
+      'Applicant name',
+      'Address',
+      'Type of disaster',
+      'Date of incident',
+      'Damage description',
+    ],
+    // fallback for legacy shortcuts
+    'Income Certificate': [
+      'Applicant name',
+      'NIC Number',
+      'Address',
+      'Occupation',
+      'Monthly income',
+      'Family dependents',
+    ],
+    'Birth Certificate': [
+      'Relevant person’s name',
+      'Date of event',
+      'Address',
+      'Relationship to applicant',
+    ],
+    'Identity Verification': [
+      'Full Name',
+      'NIC Number',
+      'Address',
+      'Purpose of certificate',
+    ],
+    'Land Ownership': [
+      'Owner’s name',
+      'NIC Number',
+      'Address',
+      'Land location (address)',
+      'Land size',
+      'Deed/permit details',
+    ],
+  };
+
+  String get _activeDocumentType {
+    if (_selectedDocumentTitle != null && _selectedDocumentTitle!.isNotEmpty) {
+      return _selectedDocumentTitle!;
+    }
+    if (_selectedDocumentIndex >= 0) {
+      return _documentTypes[_selectedDocumentIndex]['title'] as String;
+    }
+    return '';
+  }
+
+  List<String> get _activeFieldLabels {
+    final type = _activeDocumentType;
+    return _applicationFieldsByType[type] ??
+        const ['Full Name', 'NIC Number', 'Address', 'Reason for Request'];
+  }
+
+  TextEditingController _controllerForField(String label) {
+    return _dynamicControllers.putIfAbsent(label, TextEditingController.new);
+  }
+
+  bool _areActiveFieldsFilled() {
+    if (_activeFieldLabels.isEmpty) return false;
+    return _activeFieldLabels.every(
+      (field) => _controllerForField(field).text.trim().isNotEmpty,
+    );
+  }
+
+  Map<String, String> _collectFormData() {
+    return {
+      for (final field in _activeFieldLabels)
+        field: _controllerForField(field).text.trim(),
+    };
+  }
+
+  String _firstValueContaining(
+    Map<String, String> data,
+    List<String> keywords,
+  ) {
+    for (final entry in data.entries) {
+      final key = entry.key.toLowerCase();
+      if (keywords.any((k) => key.contains(k.toLowerCase()))) {
+        return entry.value;
+      }
+    }
+    return '';
+  }
+
+  IconData _iconForField(String label) {
+    final key = label.toLowerCase();
+    if (key.contains('name')) return Icons.person_rounded;
+    if (key.contains('nic')) return Icons.badge_rounded;
+    if (key.contains('address') || key.contains('location')) {
+      return Icons.location_on_rounded;
+    }
+    if (key.contains('date') || key.contains('duration')) {
+      return Icons.calendar_month_rounded;
+    }
+    if (key.contains('phone') || key.contains('contact')) {
+      return Icons.phone_rounded;
+    }
+    if (key.contains('income')) return Icons.attach_money_rounded;
+    if (key.contains('occupation') || key.contains('employment')) {
+      return Icons.work_rounded;
+    }
+    if (key.contains('passport')) return Icons.flight_rounded;
+    if (key.contains('purpose')) return Icons.flag_rounded;
+    return Icons.note_alt_rounded;
+  }
+
+  String _hintForField(String label) {
+    final key = label.toLowerCase();
+    if (key.contains('nic')) return 'Enter NIC number';
+    if (key.contains('date')) return 'Enter date';
+    if (key.contains('address') || key.contains('location')) {
+      return 'Enter address details';
+    }
+    if (key.contains('income')) return 'Enter monthly income';
+    if (key.contains('purpose')) return 'Enter purpose';
+    return 'Enter $label';
+  }
+
+  TextInputType _keyboardTypeForField(String label) {
+    final key = label.toLowerCase();
+    if (key.contains('phone') || key.contains('contact')) {
+      return TextInputType.phone;
+    }
+    if (key.contains('income') || key.contains('age') || key.contains('size')) {
+      return TextInputType.number;
+    }
+    return TextInputType.text;
+  }
+
+  bool _isMultilineField(String label) {
+    final key = label.toLowerCase();
+    return key.contains('address') ||
+        key.contains('details') ||
+        key.contains('description') ||
+        key.contains('list of family members') ||
+        key.contains('declaration') ||
+        key.contains('issue');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final preselectedType = widget.initialDocumentType?.trim();
+    if (preselectedType == null || preselectedType.trim().isEmpty) return;
+
+    _selectedDocumentTitle = preselectedType;
+    _currentStep = 1;
+
+    final index = _documentTypes.indexWhere(
+      (doc) =>
+          ((doc['title'] as String?) ?? '').toLowerCase() ==
+          preselectedType.toLowerCase(),
+    );
+
+    if (index >= 0) {
+      _selectedDocumentIndex = index;
+    }
+  }
+
   @override
   void dispose() {
-    _fullNameController.dispose();
-    _nicController.dispose();
-    _addressController.dispose();
-    _reasonController.dispose();
+    for (final controller in _dynamicControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -89,12 +389,9 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
       case 0:
         return _selectedDocumentIndex >= 0;
       case 1:
-        return _fullNameController.text.trim().isNotEmpty &&
-            _nicController.text.trim().isNotEmpty &&
-            _addressController.text.trim().isNotEmpty &&
-            _reasonController.text.trim().isNotEmpty;
+        return _areActiveFieldsFilled();
       case 2:
-        return true;
+        return _uploadedFiles.isNotEmpty;
       case 3:
         return _confirmChecked;
       default:
@@ -103,12 +400,66 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
   }
 
   void _nextStep() {
+    if (_currentStep == 0 && _selectedDocumentIndex >= 0) {
+      _selectedDocumentTitle =
+          _documentTypes[_selectedDocumentIndex]['title'] as String;
+    }
     if (_currentStep == 1 && !_formKey.currentState!.validate()) return;
     if (_currentStep < _totalSteps - 1) setState(() => _currentStep++);
   }
 
   void _previousStep() {
+    if (_currentStep == 1 && _selectedDocumentTitle != null) {
+      context.go('/applications');
+      return;
+    }
     if (_currentStep > 0) setState(() => _currentStep--);
+  }
+
+  Future<void> _pickFiles() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'pdf'],
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      setState(() {
+        for (final file in result.files) {
+          final fileName = file.name;
+          final alreadyExists = _uploadedFiles.any(
+            (f) => f['name'] == fileName,
+          );
+          if (alreadyExists) continue;
+
+          _uploadedFiles.add({
+            'name': fileName,
+            'size': _formatFileSize(file.size),
+          });
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to pick files: $e')));
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    double size = bytes.toDouble();
+    int unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    return unitIndex == 0
+        ? '${size.toInt()} ${units[unitIndex]}'
+        : '${size.toStringAsFixed(1)} ${units[unitIndex]}';
   }
 
   Future<void> _submitApplication() async {
@@ -118,23 +469,45 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
     if (user == null) {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to submit a request.')),
+        const SnackBar(
+          content: Text('You must be logged in to submit a request.'),
+        ),
       );
       return;
     }
 
-    final docType = _documentTypes[_selectedDocumentIndex]['title'] as String;
+    final docType =
+        _selectedDocumentTitle ??
+        (_selectedDocumentIndex >= 0
+            ? _documentTypes[_selectedDocumentIndex]['title'] as String
+            : '');
 
+    if (docType.isEmpty) {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an application type.')),
+      );
+      return;
+    }
+
+    final formData = _collectFormData();
     final request = RequestModel(
       id: '', // Generated by Firestore
       userId: user.uid,
       documentType: docType,
-      fullName: _fullNameController.text,
-      nic: _nicController.text,
-      address: _addressController.text,
-      reason: _reasonController.text,
+      fullName: _firstValueContaining(formData, ['full name', 'name']),
+      nic: _firstValueContaining(formData, ['nic']),
+      address: _firstValueContaining(formData, ['address', 'location']),
+      reason: _firstValueContaining(formData, [
+        'purpose',
+        'reason',
+        'issue',
+        'description',
+      ]),
       status: 'Pending',
       submittedAt: DateTime.now(),
+      formData: formData,
+      requiredFields: _activeFieldLabels,
     );
 
     try {
@@ -144,9 +517,9 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting request: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error submitting request: $e')));
       }
     } finally {
       if (mounted) {
@@ -178,7 +551,13 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/applications');
+              }
+            },
           ),
         ),
         title: Text(
@@ -387,6 +766,9 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
 
   // ── Step 2: Details ───────────────────────────────────────────────────
   Widget _buildDetailsStep() {
+    final fieldLabels = _activeFieldLabels;
+    final selectedDocTitle = _activeDocumentType;
+
     return SingleChildScrollView(
       key: const ValueKey('doc_step2'),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -396,50 +778,34 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Personal Details',
+              selectedDocTitle.isEmpty
+                  ? 'Application Details'
+                  : selectedDocTitle,
               style: AppTextStyles.h2.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
-              'Fill in the specific information required for your document request.',
+              'Fill in the required fields for this application.',
               style: AppTextStyles.body.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 32),
-            _buildFormField(
-              label: 'Full Name',
-              controller: _fullNameController,
-              hint: 'Enter your full name',
-              icon: Icons.person_rounded,
-              validator: (v) => v!.trim().isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 24),
-            _buildFormField(
-              label: 'NIC Number',
-              controller: _nicController,
-              hint: 'e.g., 200012345678',
-              icon: Icons.badge_rounded,
-              validator: (v) => v!.trim().isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 24),
-            _buildFormField(
-              label: 'Address',
-              controller: _addressController,
-              hint: 'Enter your permanent address',
-              icon: Icons.location_on_rounded,
-              maxLines: 3,
-              validator: (v) => v!.trim().isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 24),
-            _buildFormField(
-              label: 'Reason for Request',
-              controller: _reasonController,
-              hint: 'Briefly explain why you need to obtain this document',
-              icon: Icons.note_alt_rounded,
-              maxLines: 3,
-              validator: (v) => v!.trim().isEmpty ? 'Required' : null,
-            ),
+            ...fieldLabels.map((label) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: _buildFormField(
+                  label: label,
+                  controller: _controllerForField(label),
+                  hint: _hintForField(label),
+                  icon: _iconForField(label),
+                  keyboardType: _keyboardTypeForField(label),
+                  maxLines: _isMultilineField(label) ? 3 : 1,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Required' : null,
+                ),
+              );
+            }),
             const SizedBox(height: 16),
           ],
         ),
@@ -468,7 +834,7 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
 
           // Upload area
           GestureDetector(
-            onTap: () {},
+            onTap: _pickFiles,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
@@ -611,9 +977,12 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
 
   // ── Step 4: Confirm ───────────────────────────────────────────────────
   Widget _buildConfirmStep() {
-    final selectedDoc = _selectedDocumentIndex >= 0
-        ? _documentTypes[_selectedDocumentIndex]['title'] as String
-        : '';
+    final formData = _collectFormData();
+    final selectedDoc =
+        _selectedDocumentTitle ??
+        (_selectedDocumentIndex >= 0
+            ? _documentTypes[_selectedDocumentIndex]['title'] as String
+            : '');
     final docIcon = _selectedDocumentIndex >= 0
         ? _documentTypes[_selectedDocumentIndex]['icon'] as IconData
         : Icons.description;
@@ -703,14 +1072,22 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
-                      _buildDetailRow('Full Name', _fullNameController.text),
-                      const Divider(height: 32, color: AppColors.divider),
-                      _buildDetailRow('NIC Number', _nicController.text),
-                      const Divider(height: 32, color: AppColors.divider),
-                      _buildDetailRow('Address', _addressController.text),
-                      const Divider(height: 32, color: AppColors.divider),
-                      _buildDetailRow('Reason', _reasonController.text),
-                      const Divider(height: 32, color: AppColors.divider),
+                      ...formData.entries.toList().asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final item = entry.value;
+                        return Column(
+                          children: [
+                            _buildDetailRow(item.key, item.value),
+                            if (index != formData.length - 1)
+                              const Divider(
+                                height: 32,
+                                color: AppColors.divider,
+                              ),
+                          ],
+                        );
+                      }),
+                      if (formData.isNotEmpty)
+                        const Divider(height: 32, color: AppColors.divider),
                       _buildDetailRow(
                         'Files Uploaded',
                         '${_uploadedFiles.length} file(s) attached',
@@ -808,6 +1185,7 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
@@ -821,6 +1199,7 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
         const SizedBox(height: 10),
         TextFormField(
           controller: controller,
+          keyboardType: keyboardType,
           maxLines: maxLines,
           validator: validator,
           onChanged: (_) => setState(() {}),
@@ -1016,7 +1395,7 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       context.pop(); // close dialog
-                      context.pop(); // go back
+                      context.go('/applications');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,

@@ -140,6 +140,19 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
         throw Exception('Your profile is not available.');
       }
 
+      final creatorRole = creator.role;
+      if (creatorRole != 'citizen' &&
+          creatorRole != 'admin_resident' &&
+          creatorRole != 'gn_officer') {
+        throw Exception('You do not have permission to add members.');
+      }
+
+      if (creatorRole == 'citizen' && _selectedType == MemberType.newResident) {
+        throw Exception(
+          'Citizens can only add family members or rental members.',
+        );
+      }
+
       final inheritedVillage = creator.village;
       final inheritedDistrict = creator.district;
       if (inheritedVillage.isEmpty || inheritedDistrict.isEmpty) {
@@ -376,7 +389,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
               label: 'Contact Number',
               controller: _phoneController,
               hint: _createSystemAccess
-                  ? '+94 77 123 4567'
+                  ? '077 123 4567'
                   : 'Optional contact number',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
@@ -848,6 +861,10 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   }
 
   Widget _buildWarningBox() {
+    if (_createSystemAccess) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -866,9 +883,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              _createSystemAccess
-                  ? 'ℹ️ Login credentials will be created without signing you out.'
-                  : 'ℹ️ This member will be recorded for household/government records without app access.',
+              'ℹ️ This member will be recorded for household/government records without app access.',
               style: AppTextStyles.small.copyWith(color: AppColors.warning),
             ),
           ),

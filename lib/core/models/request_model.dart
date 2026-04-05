@@ -12,6 +12,8 @@ class RequestModel {
   final DateTime submittedAt;
   final String? rejectionReason;
   final String? certificateUrl;
+  final Map<String, String>? formData;
+  final List<String>? requiredFields;
 
   RequestModel({
     required this.id,
@@ -25,6 +27,8 @@ class RequestModel {
     required this.submittedAt,
     this.rejectionReason,
     this.certificateUrl,
+    this.formData,
+    this.requiredFields,
   });
 
   Map<String, dynamic> toMap() {
@@ -39,6 +43,8 @@ class RequestModel {
       'submittedAt': Timestamp.fromDate(submittedAt),
       'rejectionReason': rejectionReason,
       'certificateUrl': certificateUrl,
+      'formData': formData,
+      'requiredFields': requiredFields,
     };
   }
 
@@ -62,6 +68,12 @@ class RequestModel {
       submittedAt: date ?? DateTime.now(),
       rejectionReason: map['rejectionReason'],
       certificateUrl: map['certificateUrl'],
+      formData: (map['formData'] as Map?)?.map(
+        (key, value) => MapEntry('$key', '$value'),
+      ),
+      requiredFields: (map['requiredFields'] as List?)
+          ?.map((e) => '$e')
+          .toList(),
     );
   }
 }

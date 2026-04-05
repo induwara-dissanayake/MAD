@@ -13,6 +13,7 @@ import '../../features/chatbot/screens/chatbot_screen.dart';
 import '../../features/community/screens/add_community_post_screen.dart';
 import '../../features/community/screens/community_feed_screen.dart';
 import '../../features/documents/screens/document_request_screen.dart';
+import '../../features/documents/screens/applications_hub_screen.dart';
 import '../../features/documents/screens/request_detail_screen.dart';
 import '../../features/documents/screens/request_tracking_screen.dart';
 import '../../features/help/screens/help_screen.dart';
@@ -79,10 +80,24 @@ final appRouter = GoRouter(
 
     // ── Pre-login screens ────────────────────────────────────────────────
     // Always allow splash and auth screens through.
-    // Exception: create-resident and add-member are officer-only actions
+    // Exception: create-resident and add-member are role-gated actions
     // that can be reached while already logged in.
     if (path == '/splash' || path.startsWith('/auth')) {
       if (path == '/auth/create-resident' || path == '/auth/add-member') {
+        if (!isLoggedIn) return '/auth/login';
+
+        final role = await _fetchCurrentUserRole();
+        if (path == '/auth/create-resident') {
+          if (role != 'admin_resident' && role != 'gn_officer') {
+            return _dashboardForRole(role);
+          }
+        } else {
+          if (role != 'citizen' &&
+              role != 'admin_resident' &&
+              role != 'gn_officer') {
+            return _dashboardForRole(role);
+          }
+        }
         return null;
       }
       if (isLoggedIn) {
@@ -168,7 +183,7 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/applications',
-              builder: (context, state) => const RequestTrackingScreen(),
+              builder: (context, state) => const ApplicationsHubScreen(),
             ),
           ],
         ),
@@ -208,7 +223,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/documents/request',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const DocumentRequestScreen(),
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>? ?? {};
+        return DocumentRequestScreen(
+          initialDocumentType: extras['documentType'] as String?,
+        );
+      },
     ),
     GoRoute(
       path: '/documents/tracking',
