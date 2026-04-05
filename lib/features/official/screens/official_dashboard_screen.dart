@@ -160,19 +160,22 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen>
                   ],
                 ),
               ),
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.textOnPrimary.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    'NF',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textOnPrimary,
-                      fontWeight: FontWeight.w600,
+              GestureDetector(
+                onTap: () => context.push('/official/profile'),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.textOnPrimary.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      'NF',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textOnPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -312,6 +315,33 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen>
           backgroundColor: const Color(0xFFF3E5F5),
           onTap: () {
             context.push('/admin/dashboard');
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildActionCard(
+          title: 'Community Moderation',
+          icon: Icons.how_to_reg_outlined,
+          backgroundColor: AppColors.warningLight,
+          onTap: () {
+            context.push('/official/moderation');
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildActionCard(
+          title: 'Manage Notices',
+          icon: Icons.article_outlined,
+          backgroundColor: AppColors.infoLight,
+          onTap: () {
+            context.push('/official/notices');
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildActionCard(
+          title: 'Register Citizen',
+          icon: Icons.person_add_outlined,
+          backgroundColor: AppColors.successLight,
+          onTap: () {
+            context.push('/auth/create-resident');
           },
         ),
       ],

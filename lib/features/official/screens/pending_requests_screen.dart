@@ -12,6 +12,14 @@ class PendingRequestsScreen extends StatefulWidget {
 
 class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
   String _selectedFilter = 'All';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   final List<String> _filters = [
     'All',
@@ -80,15 +88,31 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
   ];
 
   List<_RequestItem> get _filteredRequests {
-    if (_selectedFilter == 'All') return _requests;
+    List<_RequestItem> results;
+    if (_selectedFilter == 'All') {
+      results = _requests;
+    } else {
+      final typeMap = {
+        'Character Cert': 'Character Certificate',
+        'Residence Cert': 'Residence Certificate',
+        'Income Cert': 'Income Certificate',
+      };
+      final targetType = typeMap[_selectedFilter] ?? '';
+      results = _requests.where((r) => r.documentType == targetType).toList();
+    }
 
-    final typeMap = {
-      'Character Cert': 'Character Certificate',
-      'Residence Cert': 'Residence Certificate',
-      'Income Cert': 'Income Certificate',
-    };
-    final targetType = typeMap[_selectedFilter] ?? '';
-    return _requests.where((r) => r.documentType == targetType).toList();
+    final query = _searchQuery.toLowerCase();
+    if (query.isNotEmpty) {
+      results = results
+          .where(
+            (r) =>
+                r.citizenName.toLowerCase().contains(query) ||
+                r.nic.toLowerCase().contains(query),
+          )
+          .toList();
+    }
+
+    return results;
   }
 
   @override
@@ -126,9 +150,62 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
       ),
       body: Column(
         children: [
+          _buildSearchBar(),
           _buildFilterChips(),
+          _buildResultsCount(),
           Expanded(child: _buildRequestsList()),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+        style: AppTextStyles.body,
+        decoration: InputDecoration(
+          hintText: 'Search by name or NIC...',
+          hintStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+          filled: true,
+          fillColor: AppColors.card,
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textMuted,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultsCount() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Text(
+        '${_filteredRequests.length} result${_filteredRequests.length == 1 ? "" : "s"}',
+        style: AppTextStyles.caption,
       ),
     );
   }
@@ -184,14 +261,19 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.inbox_outlined,
+              Icons.search_off_rounded,
               size: 56,
               color: AppColors.textMuted.withOpacity(0.5),
             ),
             const SizedBox(height: 12),
             Text(
-              'No pending requests',
+              'No matching requests',
               style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Try adjusting your search or filter',
+              style: AppTextStyles.caption,
             ),
           ],
         ),

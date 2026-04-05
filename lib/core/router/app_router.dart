@@ -27,6 +27,10 @@ import '../../features/official/screens/official_dashboard_screen.dart';
 import '../../features/official/screens/pending_requests_screen.dart';
 import '../../features/official/screens/post_notice_screen.dart';
 import '../../features/official/screens/request_review_screen.dart';
+import '../../features/official/screens/community_moderation_screen.dart';
+import '../../features/official/screens/notice_history_screen.dart';
+import '../../features/official/screens/gn_profile_screen.dart';
+import '../../features/incidents/screens/incident_detail_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/emergency/screens/emergency_alert_screen.dart';
@@ -121,6 +125,9 @@ final appRouter = GoRouter(
         path == '/official/review' ||
         path == '/official/post-notice' ||
         path == '/official/broadcast' ||
+        path == '/official/moderation' ||
+        path == '/official/notices' ||
+        path == '/official/profile' ||
         path == '/incidents') {
       final role = await _fetchCurrentUserRole();
       if (role != 'gn_officer' && role != 'admin') {
@@ -288,6 +295,28 @@ final appRouter = GoRouter(
       path: '/official/broadcast',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const MassBroadcastScreen(),
+    ),
+
+    // ── GN Officer routes (additions) ─────────────────────────────────────
+    GoRoute(
+      path: '/official/moderation',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CommunityModerationScreen(),
+    ),
+    GoRoute(
+      path: '/official/notices',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const NoticeHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/official/profile',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const GnProfileScreen(),
+    ),
+    GoRoute(
+      path: '/incidents/detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const IncidentDetailScreen(),
     ),
 
     // ── Profile ──────────────────────────────────────────────────────────
