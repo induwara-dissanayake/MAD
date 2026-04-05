@@ -30,6 +30,7 @@ import '../../features/official/screens/request_review_screen.dart';
 import '../../features/official/screens/community_moderation_screen.dart';
 import '../../features/official/screens/notice_history_screen.dart';
 import '../../features/official/screens/gn_profile_screen.dart';
+import '../../features/official/screens/registered_users_screen.dart';
 import '../../features/incidents/screens/incident_detail_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
@@ -128,6 +129,7 @@ final appRouter = GoRouter(
         path == '/official/moderation' ||
         path == '/official/notices' ||
         path == '/official/profile' ||
+        path == '/official/registered-users' ||
         path == '/incidents') {
       final role = await _fetchCurrentUserRole();
       if (role != 'gn_officer' && role != 'admin') {
@@ -312,6 +314,11 @@ final appRouter = GoRouter(
       path: '/official/profile',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const GnProfileScreen(),
+    ),
+    GoRoute(
+      path: '/official/registered-users',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const RegisteredUsersScreen(),
     ),
     GoRoute(
       path: '/incidents/detail',

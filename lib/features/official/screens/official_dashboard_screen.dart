@@ -344,6 +344,24 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen>
             context.push('/auth/create-resident');
           },
         ),
+        const SizedBox(height: 10),
+        _buildActionCard(
+          title: 'Register Committee Member',
+          icon: Icons.group_add_rounded,
+          backgroundColor: AppColors.accentPurple,
+          onTap: () {
+            context.push('/auth/add-member');
+          },
+        ),
+        const SizedBox(height: 10),
+        _buildActionCard(
+          title: 'Registered Users',
+          icon: Icons.people_alt_rounded,
+          backgroundColor: AppColors.accentBlue,
+          onTap: () {
+            context.push('/official/registered-users');
+          },
+        ),
       ],
     );
   }
@@ -472,26 +490,24 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen>
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                context.push('/official/pending');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.textOnPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+          ElevatedButton(
+            onPressed: () {
+              context.push('/official/pending');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.textOnPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                'Review',
-                style: AppTextStyles.buttonSmall.copyWith(
-                  color: AppColors.textOnPrimary,
-                ),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              minimumSize: const Size(0, 48),
+            ),
+            child: Text(
+              'Review',
+              style: AppTextStyles.buttonSmall.copyWith(
+                color: AppColors.textOnPrimary,
               ),
             ),
           ),
