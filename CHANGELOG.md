@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0](https://github.com/induwara-dissanayake/MAD/compare/v1.1.0...v1.2.0) (2026-04-05)
+
+
+### Features
+
+* add profile screen and notice history screen with functionality ([8d6a149](https://github.com/induwara-dissanayake/MAD/commit/8d6a149efb0dfccbd1dbd2e86d5916bd54dabf49))
+* enhance AddMemberScreen for GN officers with conditional UI and header ([e06ca15](https://github.com/induwara-dissanayake/MAD/commit/e06ca1585b379ceddf8c21a777bfd9492dd5c4f4))
+* enhance OfficialDashboardScreen with new categories and improved UI elements ([e22f591](https://github.com/induwara-dissanayake/MAD/commit/e22f591fed74346c8a8a91328e0cabc9a3a21b2c))
+
 ## [1.1.0](https://github.com/induwara-dissanayake/MAD/compare/v1.0.2...v1.1.0) (2026-03-29)
 
 
