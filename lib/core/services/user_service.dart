@@ -75,6 +75,20 @@ class UserService {
     await _usersCollection.doc(uid).update({'role': newRole});
   }
 
+  /// Update editable personal information fields.
+  Future<void> updatePersonalInformation({
+    required String uid,
+    required String fullName,
+    required String email,
+    required String phone,
+  }) async {
+    await _usersCollection.doc(uid).update({
+      'fullName': fullName,
+      'email': email,
+      'phone': phone,
+    });
+  }
+
   /// Stream all residents (for admin user management).
   Stream<List<UserModel>> streamAllUsers() {
     return _usersCollection
