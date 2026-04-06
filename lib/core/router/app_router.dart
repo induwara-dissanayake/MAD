@@ -34,6 +34,7 @@ import '../../features/official/screens/registered_users_screen.dart';
 import '../../features/incidents/screens/incident_detail_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
+import '../../features/profile/screens/change_personal_information.dart';
 import '../../features/emergency/screens/emergency_alert_screen.dart';
 import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/committee/screens/committee_task_screen.dart';
@@ -336,6 +337,12 @@ final appRouter = GoRouter(
       path: '/profile/change-password',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ChangePasswordScreen(),
+    ),
+
+    GoRoute(
+      path: '/profile/edit-personal-information',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ChangePersonalInfoScreen(),
     ),
 
     // ── Notice detail ────────────────────────────────────────────────────
