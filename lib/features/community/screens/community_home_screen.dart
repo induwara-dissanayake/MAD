@@ -15,28 +15,13 @@ class CommunityHomeScreen extends StatefulWidget {
 
 class _CommunityHomeScreenState extends State<CommunityHomeScreen>
     with SingleTickerProviderStateMixin {
+
   late TabController _tabController;
-
-  final tabs = const [
-    Tab(icon: Icon(Icons.chat), text: "Chats"),
-    Tab(icon: Icon(Icons.report), text: "Issues"),
-    Tab(icon: Icon(Icons.work), text: "Jobs"),
-    Tab(icon: Icon(Icons.search), text: "Lost"),
-    Tab(icon: Icon(Icons.person), text: "Profile"),
-  ];
-
-  final screens = const [
-    ChatListScreen(),
-    ComplaintsScreen(),
-    JobsServicesScreen(),
-    LostFoundScreen(),
-    ProfileScreen(),
-  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: tabs.length, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -51,16 +36,59 @@ class _CommunityHomeScreenState extends State<CommunityHomeScreen>
       appBar: AppBar(
         title: const Text("Community"),
         centerTitle: true,
+
+        // ✅ FIXED TAB BAR (CENTERED PROPERLY)
         bottom: TabBar(
           controller: _tabController,
-          tabs: tabs,
-          isScrollable: true,
+
+          // 🔥 IMPORTANT (this makes equal spacing)
+          isScrollable: false,
+
+          tabs: const [
+            Tab(
+              icon: Icon(Icons.chat),
+              text: "Chats",
+            ),
+            Tab(
+              icon: Icon(Icons.report_problem),
+              text: "Issues",
+            ),
+            Tab(
+              icon: Icon(Icons.work),
+              text: "Jobs",
+            ),
+            Tab(
+              icon: Icon(Icons.search),
+              text: "Lost",
+            ),
+            Tab(
+              icon: Icon(Icons.person),
+              text: "Profile",
+            ),
+          ],
+
+          indicatorColor: Colors.blue,
+          indicatorWeight: 3,
+          indicatorSize: TabBarIndicatorSize.label,
+
+          labelColor: Colors.blue,
+          unselectedLabelColor: Colors.grey,
+
+          labelStyle: const TextStyle(fontSize: 12),
         ),
       ),
+
+      // ✅ TAB SCREENS
       body: TabBarView(
         controller: _tabController,
-        children: screens,
+        children: const [
+          ChatListScreen(),
+          ComplaintsScreen(),
+          JobsServicesScreen(),
+          LostFoundScreen(),
+          ProfileScreen(),
+        ],
       ),
     );
   }
-}
+}   

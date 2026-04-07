@@ -11,7 +11,7 @@ import '../../features/auth/screens/add_member_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chatbot/screens/chatbot_screen.dart';
 import '../../features/community/screens/add_community_post_screen.dart';
-import '../../features/community/screens/community_feed_screen.dart';
+import '../../features/community/screens/community_Home_screen.dart';
 import '../../features/documents/screens/document_request_screen.dart';
 import '../../features/documents/screens/request_detail_screen.dart';
 import '../../features/documents/screens/request_tracking_screen.dart';
@@ -194,7 +194,7 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/community',
-              builder: (context, state) => const CommunityFeedScreen(),
+              builder: (context, state) => const CommunityHomeScreen(),
             ),
           ],
         ),

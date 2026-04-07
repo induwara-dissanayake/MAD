@@ -5,10 +5,10 @@ class ChatListScreen extends StatelessWidget {
   const ChatListScreen({super.key});
 
   final List<Map<String, String>> chats = const [
-    {"name": "Village Group", "lastMsg": "Meeting at 5PM"},
-    {"name": "Water Issue Team", "lastMsg": "Problem fixed"},
-    {"name": "Garbage Team", "lastMsg": "Truck coming tomorrow"},
-  ];
+  {"name": "Village Group", "lastMsg": "Meeting at 5PM"},
+  {"name": "Water Issue Team", "lastMsg": "Problem fixed"},
+  {"name": "Garbage Team", "lastMsg": "Truck coming tomorrow"},
+];
 
   @override
   Widget build(BuildContext context) {
