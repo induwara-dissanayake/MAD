@@ -22,7 +22,18 @@ class _EditFamilyMemberScreenState
   final _fullNameController = TextEditingController();
   final _nicController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _relationshipController = TextEditingController();
+
+  static const List<String> _relationships = [
+    'Spouse',
+    'Child',
+    'Parent',
+    'Sibling',
+    'Grandparent',
+    'Guardian',
+    'Other',
+  ];
+  String? _selectedRelationship;
+  bool _hasSystemAccess = true;
 
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -46,7 +57,11 @@ class _EditFamilyMemberScreenState
         _fullNameController.text = data['fullName'] as String? ?? '';
         _nicController.text = data['nic'] as String? ?? '';
         _phoneController.text = data['phone'] as String? ?? '';
-        _relationshipController.text = data['relationship'] as String? ?? '';
+        final relationship = data['relationship'] as String?;
+        _hasSystemAccess = data['hasSystemAccess'] as bool? ?? true;
+        if (relationship != null && _relationships.contains(relationship)) {
+          _selectedRelationship = relationship;
+        }
       }
     } catch (_) {
       // handle silently
@@ -60,7 +75,6 @@ class _EditFamilyMemberScreenState
     _fullNameController.dispose();
     _nicController.dispose();
     _phoneController.dispose();
-    _relationshipController.dispose();
     super.dispose();
   }
 
@@ -76,7 +90,8 @@ class _EditFamilyMemberScreenState
             'fullName': _fullNameController.text.trim(),
             'nic': _nicController.text.trim(),
             'phone': _phoneController.text.trim(),
-            'relationship': _relationshipController.text.trim(),
+            'relationship': _selectedRelationship ?? '',
+            'hasSystemAccess': _hasSystemAccess,
           });
 
       if (!mounted) return;
@@ -88,12 +103,10 @@ class _EditFamilyMemberScreenState
       );
       context.pop();
     } catch (e) {
+      print('Update error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update. Please try again.'),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -220,16 +233,13 @@ class _EditFamilyMemberScreenState
                       },
                     ),
                     const SizedBox(height: 18),
-                    _buildTextField(
-                      label: 'Relationship',
-                      controller: _relationshipController,
-                      icon: Icons.people_outline,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Relationship is required';
-                        }
-                        return null;
-                      },
+                    _buildRelationshipField(),
+                    const SizedBox(height: 18),
+                    _buildToggleTile(
+                      title: 'System Access',
+                      subtitle: 'Allow this member to log in to the app.',
+                      value: _hasSystemAccess,
+                      onChanged: (v) => setState(() => _hasSystemAccess = v),
                     ),
                     const SizedBox(height: 18),
                     _buildTextField(
@@ -289,6 +299,120 @@ class _EditFamilyMemberScreenState
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildToggleTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.small.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRelationshipField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Relationship', style: AppTextStyles.label),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedRelationship,
+          onChanged: (value) => setState(() => _selectedRelationship = value),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select relationship';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            prefixIcon: const Icon(
+              Icons.family_restroom_rounded,
+              color: AppColors.textMuted,
+              size: 20,
+            ),
+            filled: true,
+            fillColor: AppColors.surfaceGrey,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.error),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+            ),
+          ),
+          hint: Text(
+            'Select relationship',
+            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+          ),
+          items: _relationships
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e,
+                  child: Text(e, style: AppTextStyles.body),
+                ),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 

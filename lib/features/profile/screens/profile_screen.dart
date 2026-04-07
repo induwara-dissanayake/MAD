@@ -455,38 +455,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildMemberRow(
               Icons.person_outline_rounded,
               'Full Name',
-              member.fullName.isNotEmpty ? member.fullName : 'N/A',
+              '${member.fullName.isNotEmpty ? member.fullName : 'N/A'}'
+                  '${member.relationship != null && member.relationship!.isNotEmpty ? ' (${member.relationship})' : ''}',
               isFirst: true,
-              onTap: () => context.push(
-                '/profile/edit-family-member',
-                extra: member.uid,
-              ),
-            ),
-            const Divider(height: 1, indent: 50, color: AppColors.divider),
-            _buildMemberRow(
-              Icons.people_outline,
-              'Relationship',
-              member.relationship ?? 'N/A',
-              onTap: () => context.push(
-                '/profile/edit-family-member',
-                extra: member.uid,
-              ),
-            ),
-            const Divider(height: 1, indent: 50, color: AppColors.divider),
-            _buildMemberRow(
-              Icons.badge_outlined,
-              'NIC',
-              member.nic.isNotEmpty ? member.nic : 'N/A',
-              onTap: () => context.push(
-                '/profile/edit-family-member',
-                extra: member.uid,
-              ),
-            ),
-            const Divider(height: 1, indent: 50, color: AppColors.divider),
-            _buildMemberRow(
-              Icons.phone_outlined,
-              'Phone',
-              member.phone.isNotEmpty ? member.phone : 'N/A',
               isLast: true,
               onTap: () => context.push(
                 '/profile/edit-family-member',
