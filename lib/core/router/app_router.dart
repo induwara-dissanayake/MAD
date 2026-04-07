@@ -35,6 +35,7 @@ import '../../features/incidents/screens/incident_detail_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/change_personal_information.dart';
+import '../../features/profile/screens/edit_family_member_screen.dart';
 import '../../features/emergency/screens/emergency_alert_screen.dart';
 import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/committee/screens/committee_task_screen.dart';
@@ -172,6 +173,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/auth/add-member',
+      parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddMemberScreen(),
     ),
 
@@ -342,6 +344,14 @@ final appRouter = GoRouter(
       path: '/profile/edit-personal-information',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ChangePersonalInfoScreen(),
+    ),
+    GoRoute(
+      path: '/profile/edit-family-member',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final memberUid = state.extra as String;
+        return EditFamilyMemberScreen(memberUid: memberUid);
+      },
     ),
 
     // ── Notice detail ────────────────────────────────────────────────────

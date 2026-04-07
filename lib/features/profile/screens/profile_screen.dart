@@ -8,12 +8,99 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _isUploadingPhoto = false;
+
+  Future<void> _pickAndUploadPhoto(String uid) async {
+    final picker = ImagePicker();
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Profile Picture', style: AppTextStyles.h3),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text('Choose from Gallery', style: AppTextStyles.body),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.camera_alt_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text('Take a Photo', style: AppTextStyles.body),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final picked = await picker.pickImage(
+      source: source,
+      imageQuality: 70,
+      maxWidth: 512,
+    );
+
+    if (picked == null) return;
+
+    setState(() => _isUploadingPhoto = true);
+    try {
+      final ref = FirebaseStorage.instance.ref().child(
+        'profile_pictures/$uid.jpg',
+      );
+      final bytes = await picked.readAsBytes();
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      final url = await ref.getDownloadURL();
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'photoURL': url,
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile picture updated successfully.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      print('Upload error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authServiceProvider).currentUser;
 
     if (user == null) {
@@ -50,7 +137,7 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 _buildVillageInfo(profile),
                 const SizedBox(height: 20),
-                _buildFamilyMembers(profile), // ← added here
+                _buildFamilyMembers(context, profile),
                 const SizedBox(height: 20),
                 _buildShortcutsSection(context),
                 const SizedBox(height: 20),
@@ -86,6 +173,11 @@ class ProfileScreen extends ConsumerWidget {
     final displayName = profile?.fullName ?? user.displayName ?? 'Citizen';
     final role = _roleLabel(profile?.role ?? 'citizen');
     final initials = displayName.substring(0, 1).toUpperCase();
+
+    final photoURL = (profile?.photoURL?.isNotEmpty == true)
+        ? profile!.photoURL
+        : user.photoURL;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -103,31 +195,66 @@ class ProfileScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.25),
-                width: 2,
+          Stack(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.25),
+                    width: 2,
+                  ),
+                  image: photoURL != null
+                      ? DecorationImage(
+                          image: NetworkImage(photoURL),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: photoURL == null
+                    ? Center(
+                        child: Text(
+                          initials,
+                          style: AppTextStyles.h1.copyWith(color: Colors.white),
+                        ),
+                      )
+                    : null,
               ),
-              image: user.photoURL != null
-                  ? DecorationImage(
-                      image: NetworkImage(user.photoURL!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: user.photoURL == null
-                ? Center(
-                    child: Text(
-                      initials,
-                      style: AppTextStyles.h1.copyWith(color: Colors.white),
+              // Camera button
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _isUploadingPhoto
+                      ? null
+                      : () => _pickAndUploadPhoto(user.uid),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  )
-                : null,
+                    child: _isUploadingPhoto
+                        ? const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Text(
@@ -211,7 +338,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Family Members ────────────────────────────────────────────────────
-  Widget _buildFamilyMembers(UserModel? profile) {
+  Widget _buildFamilyMembers(BuildContext context, UserModel? profile) {
     if (profile == null) return const SizedBox.shrink();
 
     return Padding(
@@ -219,7 +346,22 @@ class ProfileScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Family Members', style: AppTextStyles.bodySemiBold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Family Members', style: AppTextStyles.bodySemiBold),
+              GestureDetector(
+                onTap: () => context.push('/auth/add-member'),
+                child: Text(
+                  '+ Add',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -281,7 +423,7 @@ class ProfileScreen extends ConsumerWidget {
                     padding: EdgeInsets.only(
                       bottom: entry.key < members.length - 1 ? 10 : 0,
                     ),
-                    child: _buildFamilyMemberCard(member),
+                    child: _buildFamilyMemberCard(context, member),
                   );
                 }).toList(),
               );
@@ -293,7 +435,7 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Single Family Member Card ─────────────────────────────────────────
-  Widget _buildFamilyMemberCard(UserModel member) {
+  Widget _buildFamilyMemberCard(BuildContext context, UserModel member) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -315,18 +457,30 @@ class ProfileScreen extends ConsumerWidget {
               'Full Name',
               member.fullName.isNotEmpty ? member.fullName : 'N/A',
               isFirst: true,
+              onTap: () => context.push(
+                '/profile/edit-family-member',
+                extra: member.uid,
+              ),
             ),
             const Divider(height: 1, indent: 50, color: AppColors.divider),
             _buildMemberRow(
               Icons.people_outline,
               'Relationship',
               member.relationship ?? 'N/A',
+              onTap: () => context.push(
+                '/profile/edit-family-member',
+                extra: member.uid,
+              ),
             ),
             const Divider(height: 1, indent: 50, color: AppColors.divider),
             _buildMemberRow(
               Icons.badge_outlined,
               'NIC',
               member.nic.isNotEmpty ? member.nic : 'N/A',
+              onTap: () => context.push(
+                '/profile/edit-family-member',
+                extra: member.uid,
+              ),
             ),
             const Divider(height: 1, indent: 50, color: AppColors.divider),
             _buildMemberRow(
@@ -334,6 +488,10 @@ class ProfileScreen extends ConsumerWidget {
               'Phone',
               member.phone.isNotEmpty ? member.phone : 'N/A',
               isLast: true,
+              onTap: () => context.push(
+                '/profile/edit-family-member',
+                extra: member.uid,
+              ),
             ),
           ],
         ),
@@ -348,24 +506,35 @@ class ProfileScreen extends ConsumerWidget {
     String value, {
     bool isFirst = false,
     bool isLast = false,
+    VoidCallback? onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.primary),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: AppTextStyles.small),
-                const SizedBox(height: 2),
-                Text(value, style: AppTextStyles.bodyMedium),
-              ],
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.vertical(
+          top: isFirst ? const Radius.circular(14) : Radius.zero,
+          bottom: isLast ? const Radius.circular(14) : Radius.zero,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: AppColors.primary),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: AppTextStyles.small),
+                    const SizedBox(height: 2),
+                    Text(value, style: AppTextStyles.bodyMedium),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
