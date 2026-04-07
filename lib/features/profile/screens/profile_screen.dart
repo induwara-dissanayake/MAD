@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +17,6 @@ class ProfileScreen extends ConsumerWidget {
     final user = ref.watch(authServiceProvider).currentUser;
 
     if (user == null) {
-      // Should not happen if guarded by auth state, but just in case
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
@@ -46,9 +46,11 @@ class ProfileScreen extends ConsumerWidget {
                 const Divider(height: 1, color: AppColors.divider),
                 _buildProfileHeader(user, profile),
                 const SizedBox(height: 24),
-                _buildPersonalInfo(user, profile),
+                _buildPersonalInfo(context, user, profile),
                 const SizedBox(height: 20),
                 _buildVillageInfo(profile),
+                const SizedBox(height: 20),
+                _buildFamilyMembers(profile), // ← added here
                 const SizedBox(height: 20),
                 _buildShortcutsSection(context),
                 const SizedBox(height: 20),
@@ -162,12 +164,17 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   // ── Personal Information ──────────────────────────────────────────────
-  Widget _buildPersonalInfo(User user, UserModel? profile) {
+  Widget _buildPersonalInfo(
+    BuildContext context,
+    User user,
+    UserModel? profile,
+  ) {
     final fullName = profile?.fullName ?? user.displayName ?? 'N/A';
     final email = profile?.email ?? user.email ?? 'N/A';
     final phone = profile?.phone ?? user.phoneNumber ?? 'N/A';
     return _buildInfoSection(
       title: 'Personal Information',
+      onTap: () => context.push('/profile/edit-personal-information'),
       items: [
         _InfoRow(Icons.person_outline_rounded, 'Full Name', fullName),
         _InfoRow(Icons.email_outlined, 'Email', email),
@@ -185,6 +192,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget _buildVillageInfo(UserModel? profile) {
     return _buildInfoSection(
       title: 'Village Details',
+      onTap: null,
       items: [
         _InfoRow(
           Icons.holiday_village_outlined,
@@ -202,16 +210,194 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  // ── Family Members ────────────────────────────────────────────────────
+  Widget _buildFamilyMembers(UserModel? profile) {
+    if (profile == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Family Members', style: AppTextStyles.bodySemiBold),
+          const SizedBox(height: 12),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .where('createdByUid', isEqualTo: profile.uid)
+                .where('memberType', isEqualTo: MemberType.familyMember.key)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final docs = snapshot.data?.docs ?? [];
+
+              if (docs.isEmpty) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowLight,
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.group_outlined,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 14),
+                      Text(
+                        'No family members added',
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final members = docs
+                  .map(
+                    (d) => UserModel.fromMap(
+                      d.data() as Map<String, dynamic>,
+                      d.id,
+                    ),
+                  )
+                  .toList();
+
+              return Column(
+                children: members.asMap().entries.map((entry) {
+                  final member = entry.value;
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: entry.key < members.length - 1 ? 10 : 0,
+                    ),
+                    child: _buildFamilyMemberCard(member),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Single Family Member Card ─────────────────────────────────────────
+  Widget _buildFamilyMemberCard(UserModel member) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          children: [
+            _buildMemberRow(
+              Icons.person_outline_rounded,
+              'Full Name',
+              member.fullName.isNotEmpty ? member.fullName : 'N/A',
+              isFirst: true,
+            ),
+            const Divider(height: 1, indent: 50, color: AppColors.divider),
+            _buildMemberRow(
+              Icons.people_outline,
+              'Relationship',
+              member.relationship ?? 'N/A',
+            ),
+            const Divider(height: 1, indent: 50, color: AppColors.divider),
+            _buildMemberRow(
+              Icons.badge_outlined,
+              'NIC',
+              member.nic.isNotEmpty ? member.nic : 'N/A',
+            ),
+            const Divider(height: 1, indent: 50, color: AppColors.divider),
+            _buildMemberRow(
+              Icons.phone_outlined,
+              'Phone',
+              member.phone.isNotEmpty ? member.phone : 'N/A',
+              isLast: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Member Row ────────────────────────────────────────────────────────
+  Widget _buildMemberRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primary),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: AppTextStyles.small),
+                const SizedBox(height: 2),
+                Text(value, style: AppTextStyles.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared Info Section ───────────────────────────────────────────────
   Widget _buildInfoSection({
     required String title,
     required List<_InfoRow> items,
+    VoidCallback? onTap,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.bodySemiBold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: AppTextStyles.bodySemiBold),
+              if (onTap != null)
+                GestureDetector(
+                  onTap: onTap,
+                  child: Text(
+                    'Edit',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
@@ -225,46 +411,71 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            child: Column(
-              children: items.asMap().entries.map((entry) {
-                final item = entry.value;
-                final isLast = entry.key == items.length - 1;
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(item.icon, size: 20, color: AppColors.primary),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Column(
+                children: items.asMap().entries.map((entry) {
+                  final item = entry.value;
+                  final isLast = entry.key == items.length - 1;
+                  return Column(
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onTap,
+                          borderRadius: BorderRadius.vertical(
+                            top: entry.key == 0
+                                ? const Radius.circular(14)
+                                : Radius.zero,
+                            bottom: isLast
+                                ? const Radius.circular(14)
+                                : Radius.zero,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: Row(
                               children: [
-                                Text(item.label, style: AppTextStyles.small),
-                                const SizedBox(height: 2),
-                                Text(
-                                  item.value,
-                                  style: AppTextStyles.bodyMedium,
+                                Icon(
+                                  item.icon,
+                                  size: 20,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.label,
+                                        style: AppTextStyles.small,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item.value,
+                                        style: AppTextStyles.bodyMedium,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    if (!isLast)
-                      const Divider(
-                        height: 1,
-                        indent: 50,
-                        color: AppColors.divider,
-                      ),
-                  ],
-                );
-              }).toList(),
+                      if (!isLast)
+                        const Divider(
+                          height: 1,
+                          indent: 50,
+                          color: AppColors.divider,
+                        ),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
         ],
@@ -272,6 +483,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  // ── Shortcuts ─────────────────────────────────────────────────────────
   Widget _buildShortcutsSection(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -338,11 +550,11 @@ class ProfileScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
+                const Divider(height: 1, indent: 50, color: AppColors.divider),
                 _buildSettingsTile(
                   icon: Icons.translate_rounded,
                   title: 'Language',
                   trailing: 'English',
-                  isFirst: true,
                   onTap: () {},
                 ),
                 const Divider(height: 1, indent: 50, color: AppColors.divider),
@@ -415,7 +627,6 @@ class ProfileScreen extends ConsumerWidget {
         child: OutlinedButton.icon(
           onPressed: () async {
             await ref.read(authServiceProvider).signOut();
-            // AppRouter will handle redirection
           },
           icon: const Icon(Icons.logout_rounded, size: 20),
           label: const Text('Sign Out'),

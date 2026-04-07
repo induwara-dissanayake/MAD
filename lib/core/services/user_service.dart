@@ -27,6 +27,19 @@ class UserService {
     });
   }
 
+  Future<void> updatePersonalInformation({
+    required String uid,
+    required String fullName,
+    required String email,
+    required String phone,
+  }) async {
+    await _firestore.collection('users').doc(uid).update({
+      'fullName': fullName,
+      'email': email,
+      'phone': phone,
+    });
+  }
+
   /// Fetch a single user profile once.
   Future<UserModel?> getUserProfileOnce(String uid) async {
     final doc = await _usersCollection.doc(uid).get();
