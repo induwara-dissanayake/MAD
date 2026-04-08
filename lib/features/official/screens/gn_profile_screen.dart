@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -20,6 +21,19 @@ class _GnProfileScreenState extends State<GnProfileScreen> {
   final String _status = 'Active';
   final String _created = '01 January 2024';
   final String _lastLogin = 'Today at 09:14 AM';
+
+  Future<void> _logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      context.go('/auth/login');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to log out. Please try again.')),
+      );
+    }
+  }
 
   Widget _buildProfileHero() {
     return Container(
@@ -274,7 +288,10 @@ class _GnProfileScreenState extends State<GnProfileScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => context.go('/auth/login'),
+                    onPressed: () async {
+                      dialogContext.pop();
+                      await _logout();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.error,
                       foregroundColor: AppColors.textOnPrimary,
