@@ -1023,7 +1023,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
           ),
         ],
       ),

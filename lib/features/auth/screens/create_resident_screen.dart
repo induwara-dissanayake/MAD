@@ -395,7 +395,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
               Text('Account Role', style: AppTextStyles.label),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _targetRole,
+                initialValue: _targetRole,
                 items: const [
                   DropdownMenuItem(value: 'citizen', child: Text('Citizen')),
                   DropdownMenuItem(
