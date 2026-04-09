@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/induwara-dissanayake/MAD/compare/v1.2.0...v1.3.0) (2026-04-09)
+
+
+### Features
+
+* initialize project structure with splash screen, core theme, and incident dashboard features ([a9bdd7c](https://github.com/induwara-dissanayake/MAD/commit/a9bdd7c0c3258f69efcbb232b39c74445e84a309))
+
+
+### Bug Fixes
+
+* downgrade matcher and test_api versions in pubspec.lock ([bcc7ba9](https://github.com/induwara-dissanayake/MAD/commit/bcc7ba93f046425cfefae7f69a63b94cbb17c84d))
+* downgrade matcher and test_api versions in pubspec.lock ([fb3bf54](https://github.com/induwara-dissanayake/MAD/commit/fb3bf54d592a0127455920e283891e1458a5a6ab))
+
 ## [1.2.0](https://github.com/induwara-dissanayake/MAD/compare/v1.1.0...v1.2.0) (2026-04-05)
 
 
