@@ -96,6 +96,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── In-app notifications (Firestore-backed, cross-device sync) ────────
+    match /notifications/{notificationId} {
+      // Only user can read their own notifications
+      allow read: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      // Create notifications from trusted client (simplified for Spark plan)
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      // User can update read status on own notifications
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      // No deletion allowed
+      allow delete: if false;
+    }
+
     // ── Default deny ─────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

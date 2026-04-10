@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/models/request_model.dart';
+import '../repositories/document_repository.dart';
 
-class PendingRequestsScreen extends StatefulWidget {
+class PendingRequestsScreen extends ConsumerStatefulWidget {
   const PendingRequestsScreen({super.key});
 
   @override
-  State<PendingRequestsScreen> createState() => _PendingRequestsScreenState();
+  ConsumerState<PendingRequestsScreen> createState() =>
+      _PendingRequestsScreenState();
 }
 
-class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
+class _PendingRequestsScreenState
+    extends ConsumerState<PendingRequestsScreen> {
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -23,82 +28,20 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
 
   final List<String> _filters = [
     'All',
-    'Character Cert',
-    'Residence Cert',
-    'Income Cert',
+    'Character Certificate',
+    'Residence Certificate',
+    'Income Certificate',
+    'Birth Certificate',
   ];
 
-  final List<_RequestItem> _requests = [
-    _RequestItem(
-      citizenName: 'Nadeeka Silva',
-      documentType: 'Character Certificate',
-      submittedDate: '22 Feb 2026',
-      nic: '199512345678',
-      initials: 'NS',
-    ),
-    _RequestItem(
-      citizenName: 'Ruwan Jayasinghe',
-      documentType: 'Residence Certificate',
-      submittedDate: '21 Feb 2026',
-      nic: '198823456789',
-      initials: 'RJ',
-    ),
-    _RequestItem(
-      citizenName: 'Malini Kumari',
-      documentType: 'Income Certificate',
-      submittedDate: '20 Feb 2026',
-      nic: '197634567890',
-      initials: 'MK',
-    ),
-    _RequestItem(
-      citizenName: 'Sunil Bandara',
-      documentType: 'Character Certificate',
-      submittedDate: '19 Feb 2026',
-      nic: '200045678901',
-      initials: 'SB',
-    ),
-    _RequestItem(
-      citizenName: 'Priya Fernando',
-      documentType: 'Residence Certificate',
-      submittedDate: '18 Feb 2026',
-      nic: '199256789012',
-      initials: 'PF',
-    ),
-    _RequestItem(
-      citizenName: 'Amara Wijesinghe',
-      documentType: 'Character Certificate',
-      submittedDate: '17 Feb 2026',
-      nic: '198567890123',
-      initials: 'AW',
-    ),
-    _RequestItem(
-      citizenName: 'Dinesh Rajapaksa',
-      documentType: 'Income Certificate',
-      submittedDate: '16 Feb 2026',
-      nic: '199378901234',
-      initials: 'DR',
-    ),
-    _RequestItem(
-      citizenName: 'Kamala Herath',
-      documentType: 'Residence Certificate',
-      submittedDate: '15 Feb 2026',
-      nic: '198189012345',
-      initials: 'KH',
-    ),
-  ];
-
-  List<_RequestItem> get _filteredRequests {
-    List<_RequestItem> results;
+  List<RequestModel> _filterAndSearchRequests(List<RequestModel> requests) {
+    List<RequestModel> results;
     if (_selectedFilter == 'All') {
-      results = _requests;
+      results = requests;
     } else {
-      final typeMap = {
-        'Character Cert': 'Character Certificate',
-        'Residence Cert': 'Residence Certificate',
-        'Income Cert': 'Income Certificate',
-      };
-      final targetType = typeMap[_selectedFilter] ?? '';
-      results = _requests.where((r) => r.documentType == targetType).toList();
+      results = requests
+          .where((r) => r.documentType == _selectedFilter)
+          .toList();
     }
 
     final query = _searchQuery.toLowerCase();
@@ -106,7 +49,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
       results = results
           .where(
             (r) =>
-                r.citizenName.toLowerCase().contains(query) ||
+                r.fullName.toLowerCase().contains(query) ||
                 r.nic.toLowerCase().contains(query),
           )
           .toList();
@@ -117,6 +60,8 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final requestsAsync = ref.watch(pendingRequestsProvider(null));
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -148,14 +93,46 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          _buildFilterChips(),
-          _buildResultsCount(),
-          Expanded(child: _buildRequestsList()),
-        ],
+      body: requestsAsync.when(
+        data: (requests) => _buildContent(context, requests),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: AppColors.error,
+              ),
+              const SizedBox(height: 16),
+              Text('Error loading requests', style: AppTextStyles.bodyMedium),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  err.toString(),
+                  style: AppTextStyles.caption,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, List<RequestModel> requests) {
+    final filtered = _filterAndSearchRequests(requests);
+
+    return Column(
+      children: [
+        _buildSearchBar(),
+        _buildFilterChips(),
+        _buildResultsCount(filtered.length),
+        Expanded(child: _buildRequestsList(context, filtered)),
+      ],
     );
   }
 
@@ -200,16 +177,6 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
     );
   }
 
-  Widget _buildResultsCount() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      child: Text(
-        '${_filteredRequests.length} result${_filteredRequests.length == 1 ? "" : "s"}',
-        style: AppTextStyles.caption,
-      ),
-    );
-  }
-
   Widget _buildFilterChips() {
     return SizedBox(
       height: 56,
@@ -217,7 +184,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         itemCount: _filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final filter = _filters[index];
           final isSelected = _selectedFilter == filter;
@@ -252,9 +219,17 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
     );
   }
 
-  Widget _buildRequestsList() {
-    final filtered = _filteredRequests;
+  Widget _buildResultsCount(int count) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Text(
+        '$count result${count == 1 ? "" : "s"}',
+        style: AppTextStyles.caption,
+      ),
+    );
+  }
 
+  Widget _buildRequestsList(BuildContext context, List<RequestModel> filtered) {
     if (filtered.isEmpty) {
       return Center(
         child: Column(
@@ -283,14 +258,23 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       itemCount: filtered.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        return _buildRequestCard(filtered[index]);
+        return _buildRequestCard(context, filtered[index]);
       },
     );
   }
 
-  Widget _buildRequestCard(_RequestItem request) {
+  Widget _buildRequestCard(BuildContext context, RequestModel request) {
+    // Extract first and last initial for avatar
+    final initials = request.fullName.isNotEmpty
+        ? (request.fullName.split(' ')[0][0] +
+                (request.fullName.split(' ').length > 1
+                    ? request.fullName.split(' ')[1][0]
+                    : ''))
+            .toUpperCase()
+        : 'N/A';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -310,7 +294,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
             ),
             child: Center(
               child: Text(
-                request.initials,
+                initials,
                 style: AppTextStyles.captionMedium.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w600,
@@ -323,12 +307,12 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(request.citizenName, style: AppTextStyles.bodySemiBold),
+                Text(request.fullName, style: AppTextStyles.bodySemiBold),
                 const SizedBox(height: 4),
                 Text(request.documentType, style: AppTextStyles.caption),
                 const SizedBox(height: 2),
                 Text(
-                  'Submitted: ${request.submittedDate}',
+                  'Submitted: ${_formatDate(request.submittedAt)}',
                   style: AppTextStyles.small,
                 ),
                 const SizedBox(height: 2),
@@ -346,7 +330,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
             height: 48,
             child: ElevatedButton(
               onPressed: () {
-                context.push('/official/review');
+                context.push('/official/review/${request.id}');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -369,20 +353,37 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
       ),
     );
   }
-}
 
-class _RequestItem {
-  final String citizenName;
-  final String documentType;
-  final String submittedDate;
-  final String nic;
-  final String initials;
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
 
-  const _RequestItem({
-    required this.citizenName,
-    required this.documentType,
-    required this.submittedDate,
-    required this.nic,
-    required this.initials,
-  });
+    if (dateOnly == today) {
+      return 'Today';
+    } else if (dateOnly == yesterday) {
+      return 'Yesterday';
+    } else {
+      return '${date.day} ${_monthName(date.month)} ${date.year}';
+    }
+  }
+
+  String _monthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return months[month - 1];
+  }
 }

@@ -14,6 +14,10 @@ class RequestModel {
   final String? certificateUrl;
   final Map<String, String>? formData;
   final List<String>? requiredFields;
+  final DateTime? processedAt;
+  final String? processedBy;
+  final Map<String, String>? infoRequestDetails;
+  final String? remarks;
 
   RequestModel({
     required this.id,
@@ -29,6 +33,10 @@ class RequestModel {
     this.certificateUrl,
     this.formData,
     this.requiredFields,
+    this.processedAt,
+    this.processedBy,
+    this.infoRequestDetails,
+    this.remarks,
   });
 
   Map<String, dynamic> toMap() {
@@ -45,6 +53,10 @@ class RequestModel {
       'certificateUrl': certificateUrl,
       'formData': formData,
       'requiredFields': requiredFields,
+      'processedAt': processedAt != null ? Timestamp.fromDate(processedAt!) : null,
+      'processedBy': processedBy,
+      'infoRequestDetails': infoRequestDetails,
+      'remarks': remarks,
     };
   }
 
@@ -54,6 +66,13 @@ class RequestModel {
       date = (map['submittedAt'] as Timestamp).toDate();
     } else if (map['submittedAt'] is String) {
       date = DateTime.tryParse(map['submittedAt']);
+    }
+
+    DateTime? processedDate;
+    if (map['processedAt'] is Timestamp) {
+      processedDate = (map['processedAt'] as Timestamp).toDate();
+    } else if (map['processedAt'] is String) {
+      processedDate = DateTime.tryParse(map['processedAt']);
     }
 
     return RequestModel(
@@ -74,6 +93,12 @@ class RequestModel {
       requiredFields: (map['requiredFields'] as List?)
           ?.map((e) => '$e')
           .toList(),
+      processedAt: processedDate,
+      processedBy: map['processedBy'],
+      infoRequestDetails: (map['infoRequestDetails'] as Map?)?.map(
+        (key, value) => MapEntry('$key', '$value'),
+      ),
+      remarks: map['remarks'],
     );
   }
 }
