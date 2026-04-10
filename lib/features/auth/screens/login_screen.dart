@@ -61,8 +61,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           .get();
       final role = doc.data()?['role'] as String? ?? 'citizen';
       switch (role) {
-        case 'gn_officer':
-          return RoutePaths.officialDashboard;
         case 'committee':
           return RoutePaths.committeeTasks;
         case 'admin':
