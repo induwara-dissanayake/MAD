@@ -52,6 +52,12 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // ── Community Chats ──────────────────────────────────────────
+    match /community_chats/{chatId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if isOwner(resource.data.senderId) || isAdminOrOfficer();
+    }
+
     // ── Default deny ─────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

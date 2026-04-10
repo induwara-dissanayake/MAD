@@ -1,94 +1,380 @@
 import 'package:flutter/material.dart';
-
-import 'chat_list_screen.dart';
+import 'chat_screen.dart';
 import 'complaints_screen.dart';
 import 'jobs_services_screen.dart';
 import 'lost_found_screen.dart';
-import 'profile_screen.dart';
 
-class CommunityHomeScreen extends StatefulWidget {
-  const CommunityHomeScreen({super.key});
+// ---------------- ALERT DETAIL ----------------
+class AlertDetailScreen extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
 
-  @override
-  State<CommunityHomeScreen> createState() => _CommunityHomeScreenState();
-}
-
-class _CommunityHomeScreenState extends State<CommunityHomeScreen>
-    with SingleTickerProviderStateMixin {
-
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 5, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  const AlertDetailScreen({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Community"),
-        centerTitle: true,
-
-        // ✅ FIXED TAB BAR (CENTERED PROPERLY)
-        bottom: TabBar(
-          controller: _tabController,
-
-          // 🔥 IMPORTANT (this makes equal spacing)
-          isScrollable: false,
-
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.chat),
-              text: "Chats",
+      appBar: AppBar(title: Text(title)),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
-            Tab(
-              icon: Icon(Icons.report_problem),
-              text: "Issues",
+            const SizedBox(height: 20),
+            Text(
+              subtitle,
+              style: TextStyle(color: color, fontSize: 16),
             ),
-            Tab(
-              icon: Icon(Icons.work),
-              text: "Jobs",
-            ),
-            Tab(
-              icon: Icon(Icons.search),
-              text: "Lost",
-            ),
-            Tab(
-              icon: Icon(Icons.person),
-              text: "Profile",
+            const SizedBox(height: 20),
+            const Text(
+              "More details about this update can be shown here.",
+              style: TextStyle(color: Colors.grey),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
 
-          indicatorColor: Colors.blue,
-          indicatorWeight: 3,
-          indicatorSize: TabBarIndicatorSize.label,
+// ---------------- MAIN SCREEN ----------------
+class CommunityHomeScreen extends StatefulWidget {
+  const CommunityHomeScreen({super.key});
 
-          labelColor: Colors.blue,
-          unselectedLabelColor: Colors.grey,
+  @override
+  State<CommunityHomeScreen> createState() =>
+      _CommunityHomeScreenState();
+}
 
-          labelStyle: const TextStyle(fontSize: 12),
+class _CommunityHomeScreenState
+    extends State<CommunityHomeScreen> {
+  final primaryGreen = const Color(0xFF2E7D32);
+  final lightGreen = const Color(0xFF388E3C);
+  final bgColor = const Color(0xFFF5F5F5);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgColor,
+
+      // 🔥 PREMIUM DRAWER
+      drawer: Drawer(
+        backgroundColor: const Color(0xFFF5F5F5),
+        child: SafeArea(
+          child: Column(
+            children: [
+
+              Container(
+                margin: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: primaryGreen,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: const [
+                    CircleAvatar(
+                      radius: 25,
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.person, color: Colors.grey),
+                    ),
+                    SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Kaduwela Village",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                        Text("Community App",
+                            style: TextStyle(color: Colors.white70)),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  children: [
+
+                    drawerItem(Icons.home, "Home", true, () {
+                      Navigator.pop(context);
+                    }),
+
+                    drawerItem(Icons.chat, "Chat", false, () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const ChatScreen(name: "Community Chat")));
+                    }),
+
+                    drawerItem(Icons.report, "Complaints", false, () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const ComplaintsScreen()));
+                    }),
+
+                    drawerItem(Icons.work, "Jobs", false, () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const JobsServicesScreen()));
+                    }),
+
+                    drawerItem(Icons.search, "Lost", false, () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const LostFoundScreen()));
+                    }),
+
+                    const Divider(),
+
+                    drawerItem(Icons.settings, "Settings", false, () {}),
+                    drawerItem(Icons.info, "About", false, () {}),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
 
-      // ✅ TAB SCREENS
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          ChatListScreen(),
-          ComplaintsScreen(),
-          JobsServicesScreen(),
-          LostFoundScreen(),
-          ProfileScreen(),
+      appBar: AppBar(
+        title: const Text("Kaduwela Village"),
+        backgroundColor: primaryGreen,
+        centerTitle: true,
+      ),
+
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: primaryGreen,
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+
+          // HEADER
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: primaryGreen,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(greeting(),
+                    style: const TextStyle(color: Colors.white70)),
+                const Text("Kaduwela Village Community",
+                    style: TextStyle(color: Colors.white)),
+                const Text("120 Members",
+                    style: TextStyle(color: Colors.white70)),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          buildCommunityActions(),
+
+          const SizedBox(height: 20),
+
+          buildRecentUpdates(),
         ],
       ),
     );
   }
-}   
+
+  // ---------------- DRAWER ITEM ----------------
+  Widget drawerItem(
+      IconData icon, String title, bool selected, VoidCallback onTap) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: selected
+            ? primaryGreen.withOpacity(0.15)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: selected ? primaryGreen : Colors.grey[700],
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: selected ? primaryGreen : Colors.black87,
+            fontWeight:
+                selected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  // ---------------- COMMUNITY ACTIONS ----------------
+  Widget buildCommunityActions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primaryGreen,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          double width = constraints.maxWidth;
+
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              buildActionCard(Icons.chat, "Chat", width),
+              buildActionCard(Icons.report, "Complaints", width),
+              buildActionCard(Icons.work, "Jobs", width),
+              buildActionCard(Icons.search, "Lost", width),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildActionCard(IconData icon, String title, double width) {
+    return Material(
+      color: const Color(0xFF53A252),
+      borderRadius: BorderRadius.circular(14),
+      elevation: 3,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => navigate(title),
+        child: SizedBox(
+          width: (width - 12) / 2,
+          height: 90,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white),
+              Text(title, style: const TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------- ALERTS ----------------
+  Widget buildRecentUpdates() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F1F1),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [const Text(
+          "RECENT UPDATES",
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFEC6A00),
+            letterSpacing: 1,
+          ),
+        ),
+          buildAlertItem(Icons.work, "Electrician needed",
+              "Urgent requirement", Colors.orange),
+          buildAlertItem(Icons.search, "Wallet found",
+              "Near school area", Colors.green),
+          buildAlertItem(Icons.event, "Meeting Sunday",
+              "Community discussion", Colors.red),
+        ],
+      ),
+    );
+  }
+
+  Widget buildAlertItem(
+      IconData icon, String title, String subtitle, Color color) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AlertDetailScreen(
+              title: title,
+              subtitle: subtitle,
+              icon: icon,
+              color: color,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------- NAVIGATION ----------------
+  void navigate(String title) {
+    if (title == "Chat") {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const ChatScreen(name: "Community Chat")));
+    } else if (title == "Complaints") {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const ComplaintsScreen()));
+    } else if (title == "Jobs") {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const JobsServicesScreen()));
+    } else if (title == "Lost") {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const LostFoundScreen()));
+    }
+  }
+
+  // ---------------- GREETING ----------------
+  String greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good Morning ☀️";
+    if (hour < 17) return "Good Afternoon 🌤️";
+    return "Good Evening 🌙";
+  }
+}
