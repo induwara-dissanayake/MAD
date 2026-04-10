@@ -30,6 +30,9 @@ import '../../features/committee/screens/committee_task_screen.dart';
 import '../../features/committee/screens/meeting_scheduler_screen.dart';
 import '../../features/committee/screens/polling_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/official/screens/official_dashboard_screen.dart';
+import '../../features/official/screens/pending_requests_screen.dart';
+import '../../features/official/screens/request_review_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -40,6 +43,8 @@ String _dashboardForRole(String role) {
       return '/committee/tasks';
     case 'admin':
       return '/admin/dashboard';
+    case 'gn_officer':
+      return '/official/dashboard';
     default:
       return '/home';
   }
@@ -127,6 +132,13 @@ final appRouter = GoRouter(
     if (path == '/admin/dashboard') {
       final role = await _fetchCurrentUserRole();
       if (role != 'admin') {
+        return _dashboardForRole(role);
+      }
+    }
+
+    if (path.startsWith('/official')) {
+      final role = await _fetchCurrentUserRole();
+      if (role != 'gn_officer' && role != 'admin') {
         return _dashboardForRole(role);
       }
     }
@@ -304,6 +316,26 @@ final appRouter = GoRouter(
       path: '/admin/dashboard',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AdminDashboardScreen(),
+    ),
+
+    // ── GN Officer ──────────────────────────────────────────────────────
+    GoRoute(
+      path: '/official/dashboard',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const OfficialDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/official/requests/pending',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PendingRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/official/requests/:requestId/review',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final requestId = state.pathParameters['requestId'] ?? '';
+        return RequestReviewScreen(requestId: requestId);
+      },
     ),
   ],
 );
