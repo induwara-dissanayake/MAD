@@ -62,22 +62,38 @@ class DocumentRepository {
     });
   }
 
-  /// Get pending requests for GN Officer (status = 'Pending')
-  /// If division is provided, filter by division (for future use with divisions)
+  /// Get pending requests for GN Officer
+  /// Fetches all requests and filters by status in memory for flexibility
   Stream<List<RequestModel>> getPendingRequests(String? division) {
-    var query = _firestore
+    print('🔍 getPendingRequests() called');
+
+    return _firestore
         .collection('requests')
-        .where('status', isEqualTo: 'Pending') as Query<Map<String, dynamic>>;
+        .snapshots()
+        .map((snapshot) {
+          print('📦 Total requests in collection: ${snapshot.docs.length}');
 
-    return query.snapshots().map((snapshot) {
-      final requests = snapshot.docs.map((doc) {
-        return RequestModel.fromMap(doc.data(), doc.id);
-      }).toList();
+          final requests = <RequestModel>[];
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            final status = data['status'] as String?;
+            print('   • Doc: ${doc.id}');
+            print('     Status: "$status" (type: ${status.runtimeType})');
+            print('     Name: ${data['fullName']}');
 
-      // Sort by submitted date, newest first
-      requests.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
-      return requests;
-    });
+            // Match both "Pending" and "pending"
+            if (status?.toLowerCase() == 'pending') {
+              requests.add(RequestModel.fromMap(data, doc.id));
+              print('     ✅ ADDED (status matches)');
+            } else {
+              print('     ❌ SKIPPED (status: $status)');
+            }
+          }
+
+          print('📋 Total pending requests: ${requests.length}');
+          requests.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+          return requests;
+        });
   }
 
   /// Get request by ID for review

@@ -287,9 +287,11 @@ final appRouter = GoRouter(
       builder: (context, state) => const PendingRequestsScreen(),
     ),
     GoRoute(
-      path: '/official/review',
+      path: '/official/review/:requestId',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const RequestReviewScreen(),
+      builder: (context, state) => RequestReviewScreen(
+        requestId: state.pathParameters['requestId'] ?? '',
+      ),
     ),
     GoRoute(
       path: '/official/post-notice',

@@ -1,11 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/request_model.dart';
-import '../models/user_model.dart';
 import 'notification_service.dart';
 import 'email_service.dart';
-import 'user_service.dart';
-import '../services/auth_service.dart';
 import '../../features/documents/repositories/document_repository.dart';
 
 final requestApprovalServiceProvider =
@@ -14,7 +9,6 @@ final requestApprovalServiceProvider =
     ref.watch(documentRepositoryProvider),
     ref.watch(notificationServiceProvider),
     ref.watch(emailServiceProvider),
-    ref.watch(userServiceProvider),
   );
 });
 
@@ -22,13 +16,11 @@ class RequestApprovalService {
   final DocumentRepository _documentRepository;
   final NotificationService _notificationService;
   final EmailService _emailService;
-  final UserService _userService;
 
   RequestApprovalService(
     this._documentRepository,
     this._notificationService,
     this._emailService,
-    this._userService,
   );
 
   /// Approve a request and send notifications

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/models/request_model.dart';
-import '../repositories/document_repository.dart';
+import '../../../features/documents/repositories/document_repository.dart';
 
 class PendingRequestsScreen extends ConsumerStatefulWidget {
   const PendingRequestsScreen({super.key});
@@ -61,6 +61,8 @@ class _PendingRequestsScreenState
   @override
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(pendingRequestsProvider(null));
+    print('🎯 PendingRequestsScreen build() called');
+    print('   AsyncValue state: ${requestsAsync.runtimeType}');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -94,36 +96,85 @@ class _PendingRequestsScreenState
         ],
       ),
       body: requestsAsync.when(
-        data: (requests) => _buildContent(context, requests),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline_rounded,
-                size: 48,
-                color: AppColors.error,
-              ),
-              const SizedBox(height: 16),
-              Text('Error loading requests', style: AppTextStyles.bodyMedium),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  err.toString(),
-                  style: AppTextStyles.caption,
-                  textAlign: TextAlign.center,
+        data: (requests) {
+          print('✅ DATA RECEIVED: ${requests.length} requests');
+          return requests.isEmpty
+              ? _buildEmptyState()
+              : _buildContent(context, requests);
+        },
+        loading: () {
+          print('⏳ LOADING state');
+          return const Center(child: CircularProgressIndicator());
+        },
+        error: (err, stack) {
+          print('❌ ERROR: $err');
+          print('Stack trace: $stack');
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: AppColors.error,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text('Error loading requests', style: AppTextStyles.bodyMedium),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    err.toString(),
+                    style: AppTextStyles.caption,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    // Trigger a rebuild by popping and pushing
+                    if (context.canPop()) context.pop();
+                  },
+                  child: const Text('Go Back'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inbox_rounded,
+            size: 64,
+            color: AppColors.textMuted.withOpacity(0.5),
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            'No Pending Requests',
+            style: AppTextStyles.bodyMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'All requests have been processed',
+            style: AppTextStyles.caption,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildContent(BuildContext context, List<RequestModel> requests) {
+    if (requests.isEmpty) {
+      return _buildEmptyState();
+    }
+
     final filtered = _filterAndSearchRequests(requests);
 
     return Column(

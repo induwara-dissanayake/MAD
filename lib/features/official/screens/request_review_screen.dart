@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/services/request_approval_service.dart';
 import '../../../core/services/auth_service.dart';
-import '../repositories/document_repository.dart';
+import '../../../features/documents/repositories/document_repository.dart';
 
 class RequestReviewScreen extends ConsumerStatefulWidget {
   final String requestId;
@@ -597,8 +597,8 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Please provide a rejection reason:',
-                style: AppTextStyles.bodySmall.copyWith(
+                'Reject Request',
+                style: AppTextStyles.body.copyWith(
                   color: AppColors.textMuted,
                 ),
               ),
@@ -728,7 +728,7 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
               const SizedBox(height: 20),
               Text(
                 'What information do you need?',
-                style: AppTextStyles.bodySmall.copyWith(
+                style: AppTextStyles.body.copyWith(
                   color: AppColors.textMuted,
                 ),
               ),
