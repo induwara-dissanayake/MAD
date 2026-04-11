@@ -30,6 +30,8 @@ import '../../features/committee/screens/committee_task_screen.dart';
 import '../../features/committee/screens/meeting_scheduler_screen.dart';
 import '../../features/committee/screens/polling_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/user_management_screen.dart';
+import '../../features/admin/screens/official_registration_screen.dart';
 import '../../features/official/screens/official_dashboard_screen.dart';
 import '../../features/official/screens/pending_requests_screen.dart';
 import '../../features/official/screens/request_review_screen.dart';
@@ -42,6 +44,7 @@ String _dashboardForRole(String role) {
     case 'committee':
       return '/committee/tasks';
     case 'admin':
+    case 'super_admin':
       return '/admin/dashboard';
     case 'gn_officer':
       return '/official/dashboard';
@@ -129,9 +132,11 @@ final appRouter = GoRouter(
       }
     }
 
-    if (path == '/admin/dashboard') {
+    if (path == '/admin/dashboard' ||
+        path == '/admin/users' ||
+        path == '/admin/register-official') {
       final role = await _fetchCurrentUserRole();
-      if (role != 'admin') {
+      if (role != 'admin' && role != 'super_admin') {
         return _dashboardForRole(role);
       }
     }
@@ -316,6 +321,16 @@ final appRouter = GoRouter(
       path: '/admin/dashboard',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/admin/users',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const UserManagementScreen(),
+    ),
+    GoRoute(
+      path: '/admin/register-official',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const OfficialRegistrationScreen(),
     ),
 
     // ── GN Officer ──────────────────────────────────────────────────────

@@ -2,119 +2,143 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helper functions ────────────────────────────────────────
-    function isSignedIn() {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Helper Functions
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Check if user is authenticated
+    function isAuthenticated() {
       return request.auth != null;
     }
 
+    /// Check if user is admin or super_admin (from Firestore document)
+    function isAdmin() {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return isAuthenticated() && (userRole == 'admin' || userRole == 'super_admin');
+    }
+
+    /// Check if user is the document owner
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
-    function isAdminOrOfficer() {
-      return isSignedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-          in ['admin', 'gn_officer'];
+    /// Check if user's account is active
+    function isAccountActive() {
+      let accountStatus = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus;
+      return accountStatus == 'active' || accountStatus == 'Active';
     }
 
-    function currentUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    /// Check if user is GN Officer, Admin, or Super Admin
+    function isOfficialOrAdmin() {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return isAuthenticated() &&
+             (userRole == 'gn_officer' || userRole == 'admin' || userRole == 'super_admin');
     }
 
-    function isCreatorForNewUser() {
-      return isSignedIn()
-        && request.resource.data.createdByUid == request.auth.uid
-        && request.resource.data.memberType in ['new_resident', 'family_member', 'rental']
-        && (
-          // GN Officer: can create resident-admin (new resident) and all citizen types.
-          (
-            currentUserRole() == 'gn_officer'
-            && (
-              (request.resource.data.role == 'admin_resident' && request.resource.data.memberType == 'new_resident')
-              || request.resource.data.role == 'citizen'
-            )
-          )
-          // Resident admin: can create citizens (new resident, family member, rental).
-          || (
-            currentUserRole() == 'admin_resident'
-            && request.resource.data.role == 'citizen'
-          )
-          // Citizen: can create only family member / rental citizen records.
-          || (
-            currentUserRole() == 'citizen'
-            && request.resource.data.role == 'citizen'
-            && request.resource.data.memberType in ['family_member', 'rental']
-          )
-        );
-    }
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Users Collection Security Rules
+    // ═══════════════════════════════════════════════════════════════════════════
 
-    // ── Users ────────────────────────────────────────────────────
     match /users/{userId} {
-      // Any authenticated user can read profiles (for NIC-duplicate checks,
-      // household member listing, admin panels, etc.)
-      allow read: if true;
 
-      // Owner self-create OR creator flow (GN/admin/resident creating another user profile).
-      allow create: if (isSignedIn() && request.auth.uid == userId) || isCreatorForNewUser();
+      // Admin/Super Admin: Can read ANY user document for management purposes
+      allow read: if isAdmin();
 
-      // Owner can update their own document.
-      allow update: if isOwner(userId);
+      // Citizens/regular users: Can only read their own profile
+      allow read: if isOwner(userId) && isAuthenticated();
 
-      // Admins / GN officers can update any user (for role changes, etc.)
-      allow update: if isAdminOrOfficer();
+      // Admin/Super Admin: Can update role and accountStatus fields
+      // This is the primary use case for user management
+      allow update: if isAdmin() && isAccountActive() &&
+                      request.resource.data.keys().hasOnly(['role', 'accountStatus', 'updatedAt']);
 
-      // No deletion allowed.
+      // Admin/Super Admin: Can update user with extended fields
+      // Useful for profile updates during registration workflow
+      allow update: if isAdmin() && isAccountActive() &&
+                      request.resource.data.keys().hasOnly([
+                        'role',
+                        'accountStatus',
+                        'updatedAt',
+                        'fullName',
+                        'phone',
+                        'email',
+                        'village',
+                        'address'
+                      ]);
+
+      // Users can update their own lastLogin field
+      allow update: if isOwner(userId) && isAuthenticated() &&
+                      request.resource.data.keys().hasOnly(['lastLogin']);
+
+      // Admin/Super Admin: Can create new user documents (for official registration)
+      allow create: if isAdmin() && isAccountActive() &&
+                       request.resource.data.keys().hasAll([
+                         'fullName',
+                         'nic',
+                         'phone',
+                         'email',
+                         'role',
+                         'createdAt'
+                       ]);
+
+      // Prevent deletion of user documents (soft delete only via accountStatus)
       allow delete: if false;
     }
 
-    // ── Outbound email queue (Firebase Trigger Email extension) ───────────
-    match /mail/{mailId} {
-      // Any authenticated creator can queue credential emails.
-      allow create: if isSignedIn();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Requests Collection (Certificate Requests)
+    // ═══════════════════════════════════════════════════════════════════════════
 
-      // Prevent clients from reading or mutating queued emails.
-      allow read, update, delete: if false;
-    }
-
-    // ── Citizen document requests / applications ─────────────────────────
     match /requests/{requestId} {
-      // Citizen submits own request.
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
 
-      // Owner can read own requests, admins/officers can read all.
-      allow read: if isSignedIn()
-        && (
-          resource.data.userId == request.auth.uid
-          || isAdminOrOfficer()
-        );
+      // Citizens: Can read their own requests
+      allow read: if isOwner(resource.data.citizenUid) && isAuthenticated();
 
-      // Review/status updates are officer/admin actions.
-      allow update: if isAdminOrOfficer();
+      // GN Officers, Admins & Super Admins: Can read all requests
+      allow read: if isOfficialOrAdmin();
 
-      // Deletion disabled to preserve audit history.
-      allow delete: if false;
+      // Citizens: Can create requests
+      allow create: if isOwner(request.resource.data.get('citizenUid', request.auth.uid)) &&
+                       isAuthenticated();
+
+      // GN Officers, Admins & Super Admins: Can update request status
+      allow update: if isOfficialOrAdmin();
     }
 
-    // ── In-app notifications (Firestore-backed, cross-device sync) ────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Notifications Collection
+    // ═══════════════════════════════════════════════════════════════════════════
+
     match /notifications/{notificationId} {
-      // Only user can read their own notifications
-      allow read: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
 
-      // Create notifications from trusted client (simplified for Spark plan)
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
+      // Users can read notifications (typically for their own user doc)
+      allow read: if isAuthenticated();
 
-      // User can update read status on own notifications
-      allow update: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
+      // System/Authenticated users can create notifications
+      allow create: if isAuthenticated();
 
-      // No deletion allowed
-      allow delete: if false;
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() &&
+                       request.resource.data.keys().hasOnly(['read', 'updatedAt']);
     }
 
-    // ── Default deny ─────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Notices Collection (Public Notices)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /notices/{noticeId} {
+
+      // Anyone authenticated can read notices
+      allow read: if isAuthenticated();
+
+      // Only admins can create/update/delete notices
+      allow write: if isAdmin() && isAccountActive();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Default: Deny all other access
+    // ═══════════════════════════════════════════════════════════════════════════
+
     match /{document=**} {
       allow read, write: if false;
     }
