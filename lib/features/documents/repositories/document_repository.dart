@@ -19,6 +19,19 @@ final userRequestsProvider = StreamProvider<List<RequestModel>>((ref) {
   );
 });
 
+final userCertificateRequestsProvider =
+    StreamProvider<List<RequestModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.when(
+    data: (user) {
+      if (user == null) return Stream.value([]);
+      return ref.watch(documentRepositoryProvider).getCertificateRequests(user.uid);
+    },
+    loading: () => Stream.value([]),
+    error: (_, _) => Stream.value([]),
+  );
+});
+
 final requestDetailProvider = StreamProvider.family<RequestModel?, String>((
   ref,
   id,
@@ -36,8 +49,9 @@ class DocumentRepository {
 
   DocumentRepository(this._firestore);
 
-  Future<void> createRequest(RequestModel request) async {
-    await _firestore.collection('requests').add(request.toMap());
+  Future<String> createRequest(RequestModel request) async {
+    final doc = await _firestore.collection('requests').add(request.toMap());
+    return doc.id;
   }
 
   Stream<List<RequestModel>> getUserRequests(String userId) {
@@ -60,6 +74,41 @@ class DocumentRepository {
       if (!doc.exists || doc.data() == null) return null;
       return RequestModel.fromMap(doc.data()!, doc.id);
     });
+  }
+
+  Stream<List<RequestModel>> getCertificateRequests(String userId) {
+    return _firestore
+        .collection('certificaterq')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+          final requests = snapshot.docs.map((doc) {
+            return RequestModel.fromMap(doc.data(), doc.id);
+          }).toList();
+
+          requests.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+          return requests;
+        });
+  }
+
+  Future<void> saveCertificateRequestOutcome({
+    required RequestModel request,
+    required String status,
+    required String reviewedBy,
+    String? remarks,
+    String? rejectionReason,
+    String? certificateUrl,
+  }) async {
+    await _firestore.collection('certificaterq').doc(request.id).set({
+      ...request.toMap(),
+      'requestId': request.id,
+      'status': status,
+      'processedAt': FieldValue.serverTimestamp(),
+      'processedBy': reviewedBy,
+      'remarks': remarks,
+      'rejectionReason': rejectionReason,
+      'certificateUrl': certificateUrl ?? request.certificateUrl,
+    }, SetOptions(merge: true));
   }
 
   /// Get pending requests for GN Officer
@@ -111,7 +160,7 @@ class DocumentRepository {
     String? remarks,
   }) async {
     await _firestore.collection('requests').doc(requestId).update({
-      'status': 'approved',
+      'status': 'Approved',
       'processedAt': FieldValue.serverTimestamp(),
       'processedBy': approvedBy,
       'remarks': remarks,
@@ -124,7 +173,7 @@ class DocumentRepository {
     required String rejectionReason,
   }) async {
     await _firestore.collection('requests').doc(requestId).update({
-      'status': 'rejected',
+      'status': 'Rejected',
       'rejectionReason': rejectionReason,
       'processedAt': FieldValue.serverTimestamp(),
     });
@@ -136,7 +185,7 @@ class DocumentRepository {
     required String infoNeeded,
   }) async {
     await _firestore.collection('requests').doc(requestId).update({
-      'status': 'info_requested',
+      'status': 'More Info Required',
       'infoRequestDetails': {'details': infoNeeded},
       'processedAt': FieldValue.serverTimestamp(),
     });

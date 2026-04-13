@@ -86,7 +86,7 @@ class OfficialRepository {
     required String infoNeeded,
   }) async {
     await _firestore.collection('requests').doc(requestId).update({
-      'status': 'Info Requested',
+      'status': 'More Info Required',
       'infoRequestDetails': {'details': infoNeeded},
       'processedAt': FieldValue.serverTimestamp(),
     });

@@ -12,24 +12,24 @@ final requestDetailProvider =
 final approveRequestProvider =
     FutureProvider.family<void, ({String requestId, String approvedBy, String remarks})>(
         (ref, params) async {
-  final repository = ref.watch(officialRepositoryProvider);
-  await repository.approveRequest(
+  final service = ref.read(requestApprovalServiceProvider);
+  await service.approveRequest(
     requestId: params.requestId,
-    approvedBy: params.approvedBy,
+    approverUid: params.approvedBy,
     remarks: params.remarks,
   );
 
-  // Optional: Trigger notification through RequestApprovalService
   ref.invalidate(dashboardMetricsProvider);
 });
 
 final rejectRequestProvider =
-    FutureProvider.family<void, ({String requestId, String rejectionReason})>(
+    FutureProvider.family<void, ({String requestId, String rejectionReason, String approverUid})>(
         (ref, params) async {
-  final repository = ref.watch(officialRepositoryProvider);
-  await repository.rejectRequest(
+  final service = ref.read(requestApprovalServiceProvider);
+  await service.rejectRequest(
     requestId: params.requestId,
     rejectionReason: params.rejectionReason,
+    approverUid: params.approverUid,
   );
 
   ref.invalidate(dashboardMetricsProvider);

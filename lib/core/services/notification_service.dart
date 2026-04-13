@@ -1,9 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notification_model.dart';
+import 'auth_service.dart';
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService(FirebaseFirestore.instance);
+});
+
+final userNotificationsProvider = StreamProvider<List<NotificationModel>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.when(
+    data: (user) {
+      if (user == null) return Stream.value([]);
+      return ref.watch(notificationServiceProvider).getNotifications(user.uid);
+    },
+    loading: () => Stream.value([]),
+    error: (_, _) => Stream.value([]),
+  );
 });
 
 class NotificationService {
@@ -51,6 +64,22 @@ class NotificationService {
         .collection('notifications')
         .doc(notificationId)
         .update({'isRead': true});
+  }
+
+  Future<void> markAllAsRead(String userId) async {
+    final unreadSnapshot = await _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    if (unreadSnapshot.docs.isEmpty) return;
+
+    final batch = _firestore.batch();
+    for (final doc in unreadSnapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    await batch.commit();
   }
 
   /// Delete a notification

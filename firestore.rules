@@ -106,20 +106,40 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // Certificate Request Results Collection
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    match /certificaterq/{requestId} {
+
+      // Citizens can read their own reviewed certificate records
+      allow read: if isAuthenticated() &&
+                    (isOfficialOrAdmin() || isOwner(resource.data.userId));
+
+      // GN Officers, Admins & Super Admins can create reviewed records
+      allow create: if isOfficialOrAdmin();
+
+      // GN Officers, Admins & Super Admins can update reviewed records
+      allow update: if isOfficialOrAdmin();
+
+      allow delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // Notifications Collection
     // ═══════════════════════════════════════════════════════════════════════════
 
     match /notifications/{notificationId} {
 
-      // Users can read notifications (typically for their own user doc)
-      allow read: if isAuthenticated();
+      // Users can read their own notifications only
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
 
       // System/Authenticated users can create notifications
       allow create: if isAuthenticated();
 
       // Users can update their own notifications (mark as read)
       allow update: if isAuthenticated() &&
-                       request.resource.data.keys().hasOnly(['read', 'updatedAt']);
+                       isOwner(resource.data.userId) &&
+                       request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead']);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

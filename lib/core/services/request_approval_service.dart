@@ -41,6 +41,13 @@ class RequestApprovalService {
       // Get request details to extract citizen info
       final request = await _documentRepository.getRequestById(requestId).first;
       if (request != null) {
+        await _documentRepository.saveCertificateRequestOutcome(
+          request: request,
+          status: 'Approved',
+          reviewedBy: approverUid,
+          remarks: remarks,
+        );
+
         // Send in-app notification to citizen
         await _notificationService.sendNotification(
           userId: request.userId,
@@ -86,6 +93,13 @@ class RequestApprovalService {
       // Get request details
       final request = await _documentRepository.getRequestById(requestId).first;
       if (request != null) {
+        await _documentRepository.saveCertificateRequestOutcome(
+          request: request,
+          status: 'Rejected',
+          reviewedBy: approverUid,
+          rejectionReason: rejectionReason,
+        );
+
         // Send in-app notification to citizen
         await _notificationService.sendNotification(
           userId: request.userId,
@@ -131,6 +145,13 @@ class RequestApprovalService {
       // Get request details
       final request = await _documentRepository.getRequestById(requestId).first;
       if (request != null) {
+        await _documentRepository.saveCertificateRequestOutcome(
+          request: request,
+          status: 'More Info Required',
+          reviewedBy: approverUid,
+          remarks: infoNeeded,
+        );
+
         // Send in-app notification to citizen
         await _notificationService.sendNotification(
           userId: request.userId,

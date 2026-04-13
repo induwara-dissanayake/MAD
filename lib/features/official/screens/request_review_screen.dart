@@ -134,7 +134,10 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _isApproving || _isRejecting
                             ? null
-                            : () => _showRejectDialog(context),
+                            : () => _showRejectDialog(
+                                  context,
+                                  authService.currentUser?.uid,
+                                ),
                         icon: const Icon(Icons.close_rounded),
                         label: const Text('Reject'),
                         style: OutlinedButton.styleFrom(
@@ -405,7 +408,14 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
     }
   }
 
-  Future<void> _rejectRequest(String reason) async {
+  Future<void> _rejectRequest(String reason, String? approverUid) async {
+    if (approverUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not authenticated')),
+      );
+      return;
+    }
+
     setState(() => _isRejecting = true);
 
     try {
@@ -413,6 +423,7 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
         (
           requestId: widget.requestId,
           rejectionReason: reason,
+          approverUid: approverUid,
         ),
       ).future);
 
@@ -432,55 +443,58 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
     }
   }
 
-  void _showRejectDialog(BuildContext context) {
+  void _showRejectDialog(BuildContext context, String? approverUid) {
     final reasonController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Reject Request',
-          style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Please provide a rejection reason:',
-              style: AppTextStyles.body,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Reason for rejection',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(
+            'Reject Request',
+            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Please provide a rejection reason:',
+                style: AppTextStyles.body,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                maxLines: 3,
+                onChanged: (_) => setDialogState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Reason for rejection',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => context.pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: reasonController.text.trim().isEmpty
+                  ? null
+                  : () {
+                      context.pop();
+                      _rejectRequest(reasonController.text.trim(), approverUid);
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+              ),
+              child: const Text('Reject'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: reasonController.text.isEmpty
-                ? null
-                : () {
-                    context.pop();
-                    _rejectRequest(reasonController.text.trim());
-                  },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
-            child: const Text('Reject'),
-          ),
-        ],
       ),
     );
   }
