@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -305,13 +306,7 @@ class _OfficialRegistrationScreenState
             icon: const Icon(Icons.copy_rounded, size: 16),
             label: const Text('Copy Credentials'),
             onPressed: () {
-              // Implementation: copy to clipboard
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Credentials copied to clipboard'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              _copyCredentialsToClipboard(uid, _emailController.text.trim(), password);
             },
           ),
           ElevatedButton(
@@ -368,6 +363,28 @@ class _OfficialRegistrationScreenState
       _generatedPassword = null;
       _isLoading = false;
     });
+  }
+
+  void _copyCredentialsToClipboard(String uid, String email, String password) {
+    final credentialsText = '''GN Officer Account Credentials
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UID: $uid
+Email: $email
+Temporary Password: $password
+
+⚠️  Provide these credentials to the GN Officer.
+They must change their password on first login.''';
+
+    Clipboard.setData(ClipboardData(text: credentialsText));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Credentials copied to clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override

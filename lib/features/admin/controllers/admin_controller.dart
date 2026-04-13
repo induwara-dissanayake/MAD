@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/admin_user_model.dart';
+import '../../../core/models/request_model.dart';
+import '../../../core/models/notice_model.dart';
 import '../repositories/admin_repository.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -148,4 +150,92 @@ final getUserCountByRoleProvider =
     (error) => throw Exception(error),
     (counts) => counts,
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Request Metrics Providers
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Get all requests (real-time)
+final allRequestsProvider = StreamProvider<List<RequestModel>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('requests')
+      .snapshots()
+      .map((snapshot) {
+    return snapshot.docs
+        .map((doc) => RequestModel.fromMap(doc.data(), doc.id))
+        .toList();
+  });
+});
+
+/// Get request metrics - pending, approved this month, rejected this month
+final requestMetricsProvider = StreamProvider<({
+  int pending,
+  int approved,
+  int rejected,
+  int total,
+})>((ref) {
+  return FirebaseFirestore.instance
+      .collection('requests')
+      .snapshots()
+      .asyncMap((snapshot) async {
+    final requests = snapshot.docs;
+
+    int pending = 0;
+    int approved = 0;
+    int rejected = 0;
+
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    for (final doc in requests) {
+      final status = (doc['status'] as String?)?.toLowerCase();
+
+      if (status == 'pending') {
+        pending++;
+      } else if (status == 'approved') {
+        final processedAt = doc['processedAt'] as Timestamp?;
+        if (processedAt != null && processedAt.toDate().isAfter(monthStart)) {
+          approved++;
+        }
+      } else if (status == 'rejected') {
+        final processedAt = doc['processedAt'] as Timestamp?;
+        if (processedAt != null && processedAt.toDate().isAfter(monthStart)) {
+          rejected++;
+        }
+      }
+    }
+
+    return (
+      pending: pending,
+      approved: approved,
+      rejected: rejected,
+      total: requests.length,
+    );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Notice Providers
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Get all notices (real-time)
+final allNoticesProvider = StreamProvider<List<NoticeModel>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('notices')
+      .orderBy('date', descending: true)
+      .snapshots()
+      .map((snapshot) {
+    return snapshot.docs
+        .map((doc) => NoticeModel.fromMap(doc.data(), doc.id))
+        .toList();
+  });
+});
+
+/// Get notice count
+final noticeCountProvider = StreamProvider<int>((ref) {
+  return FirebaseFirestore.instance
+      .collection('notices')
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length);
 });
