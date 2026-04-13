@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-/// Account status for Super Admin user management.
+/// Account status for admin user management.
 enum AccountStatus {
   active,
   inactive,
@@ -43,7 +43,7 @@ extension AccountStatusX on AccountStatus {
   }
 }
 
-/// Admin-focused user view for Super Admin management screens.
+/// Admin-focused user view for system admin management screens.
 /// Designed for rapid role/status updates without exposing unnecessary fields.
 class AdminUserModel {
   final String uid;
@@ -53,7 +53,7 @@ class AdminUserModel {
   final String email;
   final String address;
   final String village;
-  final String role; // citizen | gn_officer | committee | admin | super_admin
+  final String role; // citizen | gn_officer | committee | admin
   final AccountStatus accountStatus;
   final DateTime createdAt;
   final DateTime? lastLogin;

@@ -687,8 +687,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                   'citizen',
                   'gn_officer',
                   'committee',
-                  'admin',
-                  'super_admin'
+                  'admin'
                 ].map((role) {
                   return RadioListTile<String>(
                     title: Text(role.replaceAll('_', ' ')),

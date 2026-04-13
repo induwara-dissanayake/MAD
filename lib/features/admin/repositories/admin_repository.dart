@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../../core/models/admin_user_model.dart';
 
-/// Admin repository for Super Admin operations.
+/// Admin repository for system admin operations.
 /// **CRITICAL:** Implements search-first pattern to respect Firebase Spark Plan limits (50k daily reads).
 /// No bulk collection fetches are performed.
 class AdminRepository {
@@ -95,7 +95,7 @@ class AdminRepository {
   /// Update a user's role.
   /// **Optimized:** Single write operation.
   ///
-  /// Valid roles: 'citizen', 'gn_officer', 'committee', 'admin', 'super_admin'
+  /// Valid roles: 'citizen', 'gn_officer', 'committee', 'admin'
   TaskEither<String, void> updateUserRole(
     String uid,
     String newRole,
@@ -106,8 +106,7 @@ class AdminRepository {
           'citizen',
           'gn_officer',
           'committee',
-          'admin',
-          'super_admin'
+          'admin'
         ];
         if (!validRoles.contains(newRole)) {
           throw Exception('Invalid role: $newRole');
@@ -152,8 +151,7 @@ class AdminRepository {
           'citizen',
           'gn_officer',
           'committee',
-          'admin',
-          'super_admin'
+          'admin'
         ];
         if (!validRoles.contains(newRole)) {
           throw Exception('Invalid role: $newRole');

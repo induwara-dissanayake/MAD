@@ -71,11 +71,10 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       if (!mounted) return;
 
       final role = profile?.role ?? 'citizen';
+      final normalizedRole = role == 'super_admin' ? 'admin' : role;
       setState(() {
-        _creatorRole = role;
-        if (_creatorRole != 'gn_officer' &&
-            _creatorRole != 'admin' &&
-            _creatorRole != 'super_admin') {
+        _creatorRole = normalizedRole;
+        if (_creatorRole != 'gn_officer' && _creatorRole != 'admin') {
           _targetRole = 'citizen';
         }
       });
@@ -120,19 +119,19 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       final creatorProfile = await userService.getUserProfileOnce(
         currentAdminUid,
       );
-      final creatorRole = creatorProfile?.role ?? 'citizen';
+      final creatorRoleRaw = creatorProfile?.role ?? 'citizen';
+      final creatorRole =
+          creatorRoleRaw == 'super_admin' ? 'admin' : creatorRoleRaw;
       if (creatorRole != 'admin_resident' &&
           creatorRole != 'gn_officer' &&
-          creatorRole != 'admin' &&
-          creatorRole != 'super_admin') {
+          creatorRole != 'admin') {
         throw Exception(
           'You do not have permission to create new resident records.',
         );
       }
       if (_targetRole == 'admin_resident' &&
           creatorRole != 'gn_officer' &&
-          creatorRole != 'admin' &&
-          creatorRole != 'super_admin') {
+          creatorRole != 'admin') {
         throw Exception('Only GN Officer can create resident admin accounts.');
       }
 
@@ -240,8 +239,6 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
               ? 'Register Citizen'
               : _creatorRole == 'admin'
                   ? 'Create User'
-                : _creatorRole == 'super_admin'
-                  ? 'Create User'
                   : 'Register New Resident',
           style: AppTextStyles.h3,
         ),
@@ -250,7 +247,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       body: Column(
         children: [
           if (_creatorRole == 'gn_officer') _buildGnOfficerHeader(),
-          if (_creatorRole == 'admin' || _creatorRole == 'super_admin')
+          if (_creatorRole == 'admin')
             _buildAdminHeader(),
           const Divider(height: 1, color: AppColors.divider),
           Expanded(child: _isDone ? _buildSuccessView() : _buildForm()),
@@ -491,14 +488,13 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
               },
             ),
             if (_creatorRole == 'gn_officer' ||
-                _creatorRole == 'admin' ||
-                _creatorRole == 'super_admin') ...[
+                _creatorRole == 'admin') ...[
               const SizedBox(height: 18),
               Text('Account Role', style: AppTextStyles.label),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _targetRole,
-                items: (_creatorRole == 'admin' || _creatorRole == 'super_admin'
+                items: (_creatorRole == 'admin'
                         ? const [
                             DropdownMenuItem(
                               value: 'citizen',

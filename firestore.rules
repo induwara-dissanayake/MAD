@@ -11,7 +11,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /// Check if user is admin or super_admin (from Firestore document)
+    /// Check if user is admin.
+    /// `super_admin` is treated as a legacy alias for backward compatibility.
     function isAdmin() {
       let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return isAuthenticated() && (userRole == 'admin' || userRole == 'super_admin');
@@ -28,7 +29,8 @@ service cloud.firestore {
       return accountStatus == 'active' || accountStatus == 'Active';
     }
 
-    /// Check if user is GN Officer, Admin, or Super Admin
+    /// Check if user is GN Officer or Admin permissions.
+    /// `super_admin` is treated as a legacy alias for admin.
     function isOfficialOrAdmin() {
       let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return isAuthenticated() &&
@@ -41,18 +43,18 @@ service cloud.firestore {
 
     match /users/{userId} {
 
-      // Admin/Super Admin: Can read ANY user document for management purposes
+      // Admin permissions: Can read any user document for management purposes
       allow read: if isAdmin();
 
       // Citizens/regular users: Can only read their own profile
       allow read: if isOwner(userId) && isAuthenticated();
 
-      // Admin/Super Admin: Can update role and accountStatus fields
+      // Admin permissions: Can update role and accountStatus fields
       // This is the primary use case for user management
       allow update: if isAdmin() && isAccountActive() &&
                       request.resource.data.keys().hasOnly(['role', 'accountStatus', 'updatedAt']);
 
-      // Admin/Super Admin: Can update user with extended fields
+      // Admin permissions: Can update user with extended fields
       // Useful for profile updates during registration workflow
       allow update: if isAdmin() && isAccountActive() &&
                       request.resource.data.keys().hasOnly([
@@ -99,14 +101,14 @@ service cloud.firestore {
       // Citizens: Can read their own requests
       allow read: if isOwner(resource.data.citizenUid) && isAuthenticated();
 
-      // GN Officers, Admins & Super Admins: Can read all requests
+      // GN officers and admin permissions can read all requests
       allow read: if isOfficialOrAdmin();
 
       // Citizens: Can create requests
       allow create: if isOwner(request.resource.data.get('citizenUid', request.auth.uid)) &&
                        isAuthenticated();
 
-      // GN Officers, Admins & Super Admins: Can update request status
+      // GN officers and admin permissions can update request status
       allow update: if isOfficialOrAdmin();
     }
 
@@ -120,10 +122,10 @@ service cloud.firestore {
       allow read: if isAuthenticated() &&
                     (isOfficialOrAdmin() || isOwner(resource.data.userId));
 
-      // GN Officers, Admins & Super Admins can create reviewed records
+      // GN officers and admin permissions can create reviewed records
       allow create: if isOfficialOrAdmin();
 
-      // GN Officers, Admins & Super Admins can update reviewed records
+      // GN officers and admin permissions can update reviewed records
       allow update: if isOfficialOrAdmin();
 
       allow delete: if false;

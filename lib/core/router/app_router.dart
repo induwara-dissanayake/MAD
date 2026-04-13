@@ -45,7 +45,6 @@ String _dashboardForRole(String role) {
     case 'committee':
       return '/committee/tasks';
     case 'admin':
-    case 'super_admin':
       return '/admin/dashboard';
     case 'gn_officer':
       return '/official/dashboard';
@@ -64,7 +63,8 @@ Future<String> _fetchCurrentUserRole() async {
         .collection('users')
         .doc(uid)
         .get();
-    return doc.data()?['role'] as String? ?? 'citizen';
+    final role = doc.data()?['role'] as String? ?? 'citizen';
+    return role == 'super_admin' ? 'admin' : role;
   } catch (_) {
     return 'citizen';
   }
@@ -139,7 +139,7 @@ final appRouter = GoRouter(
         path == '/admin/certificates' ||
         path == '/admin/register-official') {
       final role = await _fetchCurrentUserRole();
-      if (role != 'admin' && role != 'super_admin') {
+      if (role != 'admin') {
         return _dashboardForRole(role);
       }
     }
