@@ -40,6 +40,9 @@ class AdminDashboardScreen extends ConsumerWidget {
             _buildWelcomeHeader(),
             const SizedBox(height: 24),
 
+            _buildManagementBanner(context),
+            const SizedBox(height: 24),
+
             // Quick Stats - Row 1 (User & Request Metrics)
             _buildQuickStatsRow1(userCountAsync, requestMetricsAsync),
             const SizedBox(height: 16),
@@ -284,20 +287,20 @@ class AdminDashboardScreen extends ConsumerWidget {
           subtitle: 'Review requests',
           icon: Icons.hourglass_bottom_rounded,
           color: AppColors.warning,
-          onTap: () => context.go('/admin/users'),
+          onTap: () => context.go('/official/requests/pending'),
         ),
         _buildActionCard(
           context,
-          title: 'All Requests',
-          subtitle: 'View all requests',
-          icon: Icons.description_rounded,
+          title: 'Certificates',
+          subtitle: 'Filter request records',
+          icon: Icons.folder_copy_rounded,
           color: AppColors.info,
-          onTap: () => context.go('/admin/users'),
+          onTap: () => context.go('/admin/certificates'),
         ),
         _buildActionCard(
           context,
           title: 'Manage Users',
-          subtitle: 'Search & update',
+          subtitle: 'Search, edit, delete',
           icon: Icons.people_rounded,
           color: AppColors.primary,
           onTap: () => context.go('/admin/users'),
@@ -392,6 +395,15 @@ class AdminDashboardScreen extends ConsumerWidget {
         const SizedBox(height: 12),
         _buildFullWidthAction(
           context,
+          title: 'Add New User',
+          subtitle: 'Create citizen or resident admin account',
+          icon: Icons.person_add_alt_rounded,
+          color: AppColors.info,
+          onTap: () => context.go('/admin/create-user'),
+        ),
+        const SizedBox(height: 12),
+        _buildFullWidthAction(
+          context,
           title: 'Register New GN Officer',
           subtitle: 'Create government official account',
           icon: Icons.person_add_rounded,
@@ -399,6 +411,60 @@ class AdminDashboardScreen extends ConsumerWidget {
           onTap: () => context.go('/admin/register-official'),
         ),
       ],
+    );
+  }
+
+  Widget _buildManagementBanner(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.14),
+            AppColors.info.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.dashboard_customize_rounded,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Admin Control Center',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Create users, manage roles, review certificates, and keep the system organized.',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

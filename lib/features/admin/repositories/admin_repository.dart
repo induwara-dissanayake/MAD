@@ -169,6 +169,46 @@ class AdminRepository {
     );
   }
 
+  /// Delete a user profile and related Firestore records.
+  /// This removes the Firestore profile and user-facing records; Firebase Auth
+  /// account deletion still requires a backend admin SDK.
+  TaskEither<String, void> deleteUser(String uid) {
+    return TaskEither.tryCatch(
+      () async {
+        final batch = _firestore.batch();
+
+        batch.delete(_firestore.collection('users').doc(uid));
+
+        final notifications = await _firestore
+            .collection('notifications')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (final doc in notifications.docs) {
+          batch.delete(doc.reference);
+        }
+
+        final requests = await _firestore
+            .collection('requests')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (final doc in requests.docs) {
+          batch.delete(doc.reference);
+        }
+
+        final certificateRequests = await _firestore
+            .collection('certificaterq')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (final doc in certificateRequests.docs) {
+          batch.delete(doc.reference);
+        }
+
+        await batch.commit();
+      },
+      (error, stackTrace) => error.toString(),
+    );
+  }
+
   /// Check if a NIC is already registered in the system.
   /// **Optimized:** Single indexed query = 1 read operation.
   TaskEither<String, bool> nicExists(String nic) {

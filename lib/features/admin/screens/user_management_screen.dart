@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/models/admin_user_model.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -85,11 +86,21 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUsersAsync = ref.watch(currentUsersProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('User Management'),
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () => context.go('/admin/create-user'),
+            icon: const Icon(Icons.person_add_alt_rounded),
+            tooltip: 'Add user',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -97,6 +108,8 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSearchSection(),
+            const SizedBox(height: 24),
+            _buildCurrentUsersSection(currentUsersAsync),
             const SizedBox(height: 24),
             if (_selectedUser != null) ...[
               _buildUserDetailsCard(),
@@ -146,6 +159,157 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCurrentUsersSection(AsyncValue<List<AdminUserModel>> usersAsync) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Current Users',
+                style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => ref.invalidate(currentUsersProvider),
+                icon: const Icon(Icons.refresh_rounded),
+                tooltip: 'Refresh users',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          usersAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Failed to load users: $error',
+                style: AppTextStyles.small.copyWith(color: AppColors.error),
+              ),
+            ),
+            data: (users) {
+              if (users.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'No users available.',
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Showing ${users.length} users',
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: users.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      return _buildCurrentUserTile(users[index]);
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentUserTile(AdminUserModel user) {
+    final isSelected = _selectedUser?.uid == user.uid;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          setState(() => _selectedUser = user);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withOpacity(0.08)
+                : AppColors.surfaceGrey.withOpacity(0.35),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary.withOpacity(0.45)
+                  : AppColors.border.withOpacity(0.35),
+            ),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withOpacity(0.12),
+                child: Text(
+                  user.fullName.isEmpty ? '?' : user.fullName.substring(0, 1).toUpperCase(),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${user.nic} • ${user.role.replaceAll('_', ' ')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -413,6 +577,14 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
           color: AppColors.warning,
           onTap: () => _showStatusDialog(),
         ),
+        const SizedBox(height: 12),
+        _buildManagementTile(
+          title: 'Delete User',
+          subtitle: 'Remove profile and related records',
+          icon: Icons.delete_forever_rounded,
+          color: AppColors.error,
+          onTap: () => _showDeleteDialog(),
+        ),
       ],
     );
   }
@@ -615,6 +787,36 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     );
   }
 
+  void _showDeleteDialog() {
+    if (_selectedUser == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Delete User', style: AppTextStyles.h3),
+        content: Text(
+          'This will remove the user profile and related Firestore records. The Firebase Auth account must be removed from a backend admin process.',
+          style: AppTextStyles.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteUser();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _updateUserRole(String newRole) async {
     if (_selectedUser == null) return;
 
@@ -671,6 +873,32 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
           ),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteUser() async {
+    if (_selectedUser == null) return;
+
+    try {
+      await ref.read(deleteUserProvider(_selectedUser!.uid).future);
+
+      if (!mounted) return;
+      setState(() => _selectedUser = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User deleted successfully'),
+          backgroundColor: AppColors.success,
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

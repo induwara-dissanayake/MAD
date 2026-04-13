@@ -73,7 +73,9 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       final role = profile?.role ?? 'citizen';
       setState(() {
         _creatorRole = role;
-        if (_creatorRole != 'gn_officer') {
+        if (_creatorRole != 'gn_officer' &&
+            _creatorRole != 'admin' &&
+            _creatorRole != 'super_admin') {
           _targetRole = 'citizen';
         }
       });
@@ -119,12 +121,18 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
         currentAdminUid,
       );
       final creatorRole = creatorProfile?.role ?? 'citizen';
-      if (creatorRole != 'admin_resident' && creatorRole != 'gn_officer') {
+      if (creatorRole != 'admin_resident' &&
+          creatorRole != 'gn_officer' &&
+          creatorRole != 'admin' &&
+          creatorRole != 'super_admin') {
         throw Exception(
           'You do not have permission to create new resident records.',
         );
       }
-      if (_targetRole == 'admin_resident' && creatorRole != 'gn_officer') {
+      if (_targetRole == 'admin_resident' &&
+          creatorRole != 'gn_officer' &&
+          creatorRole != 'admin' &&
+          creatorRole != 'super_admin') {
         throw Exception('Only GN Officer can create resident admin accounts.');
       }
 
@@ -230,7 +238,11 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
         title: Text(
           _creatorRole == 'gn_officer'
               ? 'Register Citizen'
-              : 'Register New Resident',
+              : _creatorRole == 'admin'
+                  ? 'Create User'
+                : _creatorRole == 'super_admin'
+                  ? 'Create User'
+                  : 'Register New Resident',
           style: AppTextStyles.h3,
         ),
         centerTitle: true,
@@ -238,8 +250,96 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       body: Column(
         children: [
           if (_creatorRole == 'gn_officer') _buildGnOfficerHeader(),
+          if (_creatorRole == 'admin' || _creatorRole == 'super_admin')
+            _buildAdminHeader(),
           const Divider(height: 1, color: AppColors.divider),
           Expanded(child: _isDone ? _buildSuccessView() : _buildForm()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F766E), Color(0xFF134E4A)],
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.admin_panel_settings_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Create New User',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Admin management access',
+                      style: TextStyle(fontSize: 12, color: Colors.white54),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white70,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Use this form to create citizens, resident admins, or committee accounts. Login credentials will be generated automatically.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white70,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -390,19 +490,40 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
                 return null;
               },
             ),
-            if (_creatorRole == 'gn_officer') ...[
+            if (_creatorRole == 'gn_officer' ||
+                _creatorRole == 'admin' ||
+                _creatorRole == 'super_admin') ...[
               const SizedBox(height: 18),
               Text('Account Role', style: AppTextStyles.label),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _targetRole,
-                items: const [
-                  DropdownMenuItem(value: 'citizen', child: Text('Citizen')),
-                  DropdownMenuItem(
-                    value: 'admin_resident',
-                    child: Text('Resident Admin'),
-                  ),
-                ],
+                items: (_creatorRole == 'admin' || _creatorRole == 'super_admin'
+                        ? const [
+                            DropdownMenuItem(
+                              value: 'citizen',
+                              child: Text('Citizen'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'admin_resident',
+                              child: Text('Resident Admin'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'committee',
+                              child: Text('Committee'),
+                            ),
+                          ]
+                        : const [
+                            DropdownMenuItem(
+                              value: 'citizen',
+                              child: Text('Citizen'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'admin_resident',
+                              child: Text('Resident Admin'),
+                            ),
+                          ])
+                    .toList(),
                 onChanged: _isLoading
                     ? null
                     : (value) {

@@ -152,6 +152,20 @@ final getUserCountByRoleProvider =
   );
 });
 
+/// Stream current users for user management listing.
+final currentUsersProvider = StreamProvider<List<AdminUserModel>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .orderBy('createdAt', descending: true)
+      .limit(100)
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => AdminUserModel.fromMap(doc.data(), doc.id))
+            .toList();
+      });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Request Metrics Providers
 // ═══════════════════════════════════════════════════════════════════════════
@@ -238,4 +252,28 @@ final noticeCountProvider = StreamProvider<int>((ref) {
       .collection('notices')
       .snapshots()
       .map((snapshot) => snapshot.docs.length);
+});
+
+/// Get all reviewed certificate requests for admin oversight.
+final allCertificateRequestsProvider =
+    StreamProvider<List<RequestModel>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('certificaterq')
+      .snapshots()
+      .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => RequestModel.fromMap(doc.data(), doc.id))
+            .toList()
+          ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+      });
+});
+
+/// Mutation: Delete a user profile and related Firestore records.
+final deleteUserProvider = FutureProvider.family<void, String>((ref, uid) async {
+  final repository = ref.watch(adminRepositoryProvider);
+  final result = await repository.deleteUser(uid).run();
+  return result.fold(
+    (error) => throw Exception(error),
+    (_) => null,
+  );
 });

@@ -32,6 +32,7 @@ import '../../features/committee/screens/polling_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/user_management_screen.dart';
 import '../../features/admin/screens/official_registration_screen.dart';
+import '../../features/admin/screens/certificate_management_screen.dart';
 import '../../features/official/screens/official_dashboard_screen.dart';
 import '../../features/official/screens/pending_requests_screen.dart';
 import '../../features/official/screens/request_review_screen.dart';
@@ -134,6 +135,8 @@ final appRouter = GoRouter(
 
     if (path == '/admin/dashboard' ||
         path == '/admin/users' ||
+        path == '/admin/create-user' ||
+        path == '/admin/certificates' ||
         path == '/admin/register-official') {
       final role = await _fetchCurrentUserRole();
       if (role != 'admin' && role != 'super_admin') {
@@ -338,6 +341,16 @@ final appRouter = GoRouter(
       path: '/admin/users',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const UserManagementScreen(),
+    ),
+    GoRoute(
+      path: '/admin/create-user',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CreateResidentScreen(),
+    ),
+    GoRoute(
+      path: '/admin/certificates',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CertificateManagementScreen(),
     ),
     GoRoute(
       path: '/admin/register-official',
