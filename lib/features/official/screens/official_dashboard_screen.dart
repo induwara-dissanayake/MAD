@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/dashboard_metrics.dart';
+import '../../../core/models/request_model.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/services/auth_service.dart';
 import '../repositories/official_repository.dart';
+
+final officialQueuePreviewProvider = StreamProvider<List<RequestModel>>((ref) {
+  return ref.watch(officialRepositoryProvider).getPendingRequests();
+});
 
 class OfficialDashboardScreen extends ConsumerWidget {
   const OfficialDashboardScreen({super.key});
@@ -14,98 +19,86 @@ class OfficialDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final metricsAsync = ref.watch(dashboardMetricsProvider);
+    final queueAsync = ref.watch(officialQueuePreviewProvider);
     final authService = ref.watch(authServiceProvider);
     final currentUser = authService.currentUser;
     final officerName = currentUser?.displayName?.trim().isNotEmpty == true
         ? currentUser!.displayName!
         : (currentUser?.email ?? 'GN Officer');
-    final nowLabel = DateFormat('EEEE, MMM d').format(DateTime.now());
+    final dayLabel = DateFormat('EEEE').format(DateTime.now());
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: _buildBottomNav(context),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async => ref.invalidate(dashboardMetricsProvider),
+          onRefresh: () async {
+            ref.invalidate(dashboardMetricsProvider);
+            ref.invalidate(officialQueuePreviewProvider);
+          },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                  child: _buildCommandHeader(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                  child: _buildTopBar(
                     officerName: officerName,
-                    dateLabel: nowLabel,
-                    onPendingTap: () => context.go('/official/requests/pending'),
+                    onNotificationsTap: () => context.push('/notifications'),
                   ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                  child: _buildSectionTitle('Service Snapshot'),
+                  padding: const EdgeInsets.fromLTRB(22, 2, 22, 0),
+                  child: _buildWelcome(dayLabel),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: _buildPendingHeader(),
                 ),
               ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: metricsAsync.when(
-                    data: (metrics) => _buildMetricsGrid(metrics),
-                    loading: () => _buildLoadingMetrics(),
-                    error: (error, stack) => _buildMetricError(),
+                  child: queueAsync.when(
+                    data: (items) => _buildPendingList(
+                      context,
+                      items.take(3).toList(),
+                    ),
+                    loading: _buildLoadingList,
+                    error: (_, __) => _buildQueueError(),
                   ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                  child: _buildSectionTitle('Action Center'),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                sliver: SliverGrid(
-                  delegate: SliverChildListDelegate([
-                    _buildActionCard(
-                      title: 'Pending Queue',
-                      subtitle: 'Review new citizen requests',
-                      icon: Icons.pending_actions_rounded,
-                      color: AppColors.primary,
-                      onTap: () => context.go('/official/requests/pending'),
-                    ),
-                    _buildActionCard(
-                      title: 'Notice Board',
-                      subtitle: 'Post announcements',
-                      icon: Icons.campaign_rounded,
-                      color: AppColors.info,
-                      onTap: () => context.go('/notices'),
-                    ),
-                    _buildActionCard(
-                      title: 'Incident Desk',
-                      subtitle: 'Monitor active incidents',
-                      icon: Icons.warning_amber_rounded,
-                      color: AppColors.warning,
-                      onTap: () => context.go('/incidents'),
-                    ),
-                    _buildActionCard(
-                      title: 'Profile',
-                      subtitle: 'Update official profile',
-                      icon: Icons.person_outline_rounded,
-                      color: AppColors.success,
-                      onTap: () => context.push('/profile'),
-                    ),
-                  ]),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 1.05,
+                  child: metricsAsync.when(
+                    data: (metrics) => _buildServiceMetrics(metrics),
+                    loading: () => _buildMetricSkeleton(),
+                    error: (_, __) => _buildMetricError(),
                   ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
-                  child: _buildWorkflowPanel(),
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                  child: _buildNoticeComposer(context),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
+                  child: _buildCommunityPulseHeader(context),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+                  child: _buildCommunityPulse(context),
                 ),
               ),
             ],
@@ -115,182 +108,258 @@ class OfficialDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCommandHeader({
+  Widget _buildTopBar({
     required String officerName,
-    required String dateLabel,
-    required VoidCallback onPendingTap,
+    required VoidCallback onNotificationsTap,
   }) {
-    return Stack(
+    return Row(
       children: [
         Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0A4B85), Color(0xFF0F6AA8), Color(0xFF127C9D)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.24),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
+            color: AppColors.surfaceGrey,
+            borderRadius: BorderRadius.circular(999),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.15),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.45),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.admin_panel_settings_rounded,
-                      color: Colors.white,
-                      size: 28,
+          alignment: Alignment.center,
+          child: const Icon(Icons.person, size: 18, color: AppColors.primary),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'VillageConnect',
+            style: AppTextStyles.h3.copyWith(
+              color: const Color(0xFF0E3E19),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: onNotificationsTap,
+          icon: const Icon(Icons.notifications_rounded, color: AppColors.primary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWelcome(String dayLabel) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Sector 124-B Admin',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.success,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Grama Niladhari',
+          style: AppTextStyles.h1.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '$dayLabel • Live request command desk',
+          style: AppTextStyles.small.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPendingHeader() {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Pending Requests',
+            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.info.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            'LIVE',
+            style: AppTextStyles.small.copyWith(
+              color: AppColors.info,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPendingList(BuildContext context, List<RequestModel> items) {
+    if (items.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.4)),
+        ),
+        child: Text(
+          'no pending request',
+          style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+        ),
+      );
+    }
+
+    return Column(
+      children: items
+          .map(
+            (request) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border(
+                    left: BorderSide(
+                      color: AppColors.primary,
+                      width: 3,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowLight.withValues(alpha: 0.04),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          'GN Officer Command Desk',
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.white.withValues(alpha: 0.86),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                request.fullName,
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                request.documentType,
+                                style: AppTextStyles.small.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 2),
                         Text(
-                          officerName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: Colors.white,
+                          _timeAgo(request.submittedAt),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => context.push(
+                              '/official/requests/${request.id}/review',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text('Review'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () => context.go('/official/requests/pending'),
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.surfaceGrey,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.more_horiz_rounded),
+                        ),
+                      ],
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      dateLabel,
-                      style: AppTextStyles.small.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Focus on pending certificates and public updates.',
-                style: AppTextStyles.body.copyWith(
-                  color: Colors.white.withValues(alpha: 0.92),
+                  ],
                 ),
               ),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 42,
-                child: ElevatedButton.icon(
-                  onPressed: onPendingTap,
-                  icon: const Icon(Icons.rule_folder_rounded),
-                  label: const Text('Review Pending Requests'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0A4B85),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          top: -20,
-          right: -10,
-          child: Container(
-            width: 92,
-            height: 92,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.08),
             ),
-          ),
-        ),
-      ],
+          )
+          .toList(),
     );
   }
 
-  Widget _buildMetricsGrid(DashboardMetrics metrics) {
+  Widget _buildLoadingList() {
+    return Container(
+      height: 90,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const CircularProgressIndicator(),
+    );
+  }
+
+  Widget _buildQueueError() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        'Failed to load queue. Pull to refresh.',
+        style: AppTextStyles.body.copyWith(color: AppColors.error),
+      ),
+    );
+  }
+
+  Widget _buildServiceMetrics(DashboardMetrics metrics) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                title: 'Pending',
-                value: metrics.totalPending.toString(),
-                icon: Icons.hourglass_bottom_rounded,
-                color: AppColors.warning,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildMetricTile(
-                title: 'Approved',
-                value: metrics.approvedThisMonth.toString(),
-                icon: Icons.check_circle_rounded,
-                color: AppColors.success,
-              ),
-            ),
-          ],
+        Text(
+          'Service Snapshot',
+          style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
-              child: _buildMetricTile(
-                title: 'Rejected',
-                value: metrics.rejectedThisMonth.toString(),
-                icon: Icons.cancel_rounded,
-                color: AppColors.error,
+              child: _metricPill(
+                icon: Icons.pending_actions_rounded,
+                title: 'Pending',
+                value: '${metrics.totalPending}',
+                color: AppColors.warning,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: _buildMetricTile(
-                title: 'Resolved',
-                value: (metrics.approvedThisMonth + metrics.rejectedThisMonth)
-                    .toString(),
-                icon: Icons.analytics_rounded,
-                color: AppColors.primary,
+              child: _metricPill(
+                icon: Icons.check_circle_rounded,
+                title: 'Approved',
+                value: '${metrics.approvedThisMonth}',
+                color: AppColors.success,
               ),
             ),
           ],
@@ -299,48 +368,98 @@ class OfficialDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetricTile({
+  Widget _metricPill({
+    required IconData icon,
     required String title,
     required String value,
-    required IconData icon,
     required Color color,
   }) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.45)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowLight.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 12),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 6),
           Text(
             value,
             style: AppTextStyles.h2.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 4),
           Text(
             title,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
+            style: AppTextStyles.small.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricSkeleton() {
+    return Container(
+      height: 98,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: const CircularProgressIndicator(),
+    );
+  }
+
+  Widget _buildNoticeComposer(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.campaign_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Post Notice',
+                style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            readOnly: true,
+            onTap: () => context.go('/notices'),
+            decoration: const InputDecoration(hintText: 'Notice Title'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            readOnly: true,
+            onTap: () => context.go('/notices'),
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Provide details for the community...',
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.go('/notices'),
+              icon: const Icon(Icons.send_rounded),
+              label: const Text('POST NOTICE'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
           ),
         ],
@@ -348,22 +467,197 @@ class OfficialDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+  Widget _buildCommunityPulseHeader(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Community Pulse',
+            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+        TextButton(
+          onPressed: () => context.go('/community'),
+          child: const Text('View All'),
+        ),
+      ],
     );
   }
 
-  Widget _buildLoadingMetrics() {
+  Widget _buildCommunityPulse(BuildContext context) {
+    return Column(
+      children: [
+        _communityPostCard(
+          author: 'Kamani Jayasuriya',
+          message: 'Organizing a cleaning session for the main road this Sunday. Who\'s in?',
+          time: 'Just now',
+          onApprove: () => context.go('/community'),
+          onRemove: () => context.go('/community'),
+        ),
+        const SizedBox(height: 12),
+        _communityPostCard(
+          author: 'Mr. Samarakoon',
+          message: 'Found a set of keys near the temple. Please contact if they are yours.',
+          time: '15m ago',
+          onApprove: () => context.go('/community'),
+          onRemove: () => context.go('/community'),
+        ),
+      ],
+    );
+  }
+
+  Widget _communityPostCard({
+    required String author,
+    required String message,
+    required String time,
+    required VoidCallback onApprove,
+    required VoidCallback onRemove,
+  }) {
     return Container(
-      height: 120,
-      alignment: Alignment.center,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.25)),
       ),
-      child: const CircularProgressIndicator(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surfaceGrey,
+                ),
+                child: const Icon(Icons.person, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  author,
+                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                time,
+                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: onApprove,
+                  icon: const Icon(Icons.check_circle_rounded, size: 16),
+                  label: const Text('Approve'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.successLight,
+                    foregroundColor: AppColors.success,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.delete_rounded, size: 16),
+                  label: const Text('Remove'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.card.withValues(alpha: 0.94),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowLight.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -3),
+            ),
+          ],
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _navItem(
+              icon: Icons.dashboard_rounded,
+              label: 'Dashboard',
+              active: true,
+              onTap: () => context.go('/official/dashboard'),
+            ),
+            _navItem(
+              icon: Icons.folder_shared_rounded,
+              label: 'Requests',
+              onTap: () => context.go('/official/requests/pending'),
+            ),
+            _navItem(
+              icon: Icons.campaign_rounded,
+              label: 'Notices',
+              onTap: () => context.go('/notices'),
+            ),
+            _navItem(
+              icon: Icons.person_rounded,
+              label: 'Profile',
+              onTap: () => context.push('/profile'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem({
+    required IconData icon,
+    required String label,
+    bool active = false,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: active
+              ? AppColors.primary.withValues(alpha: 0.16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: active ? AppColors.primary : AppColors.textMuted),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                color: active ? AppColors.primary : AppColors.textMuted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -383,120 +677,10 @@ class OfficialDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    required Color color,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.45)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const Spacer(),
-              Text(
-                title,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: AppTextStyles.small.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWorkflowPanel() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.45)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Daily Workflow',
-            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          _workflowItem('1', 'Review pending requests and verify documents.'),
-          _workflowItem('2', 'Approve, reject, or request more information.'),
-          _workflowItem('3', 'Post updates to notices and monitor incidents.'),
-        ],
-      ),
-    );
-  }
-
-  Widget _workflowItem(String step, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              step,
-              style: AppTextStyles.small.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.small.copyWith(
-                color: AppColors.textSecondary,
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 }
