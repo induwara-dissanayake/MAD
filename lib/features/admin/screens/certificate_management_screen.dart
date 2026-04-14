@@ -49,6 +49,16 @@ class _CertificateManagementScreenState
         backgroundColor: AppColors.card,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            context.go('/admin/dashboard');
+          },
+        ),
         title: Text(
           'Certificate Management',
           style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
@@ -386,7 +396,8 @@ class _CertificateManagementScreenState
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => context.go('/official/requests/${request.id}/review'),
+                onPressed: () =>
+                    context.push('/official/requests/${request.id}/review'),
                 icon: const Icon(Icons.rate_review_rounded),
                 label: const Text('Open Review'),
                 style: ElevatedButton.styleFrom(

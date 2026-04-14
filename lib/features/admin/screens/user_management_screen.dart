@@ -91,6 +91,16 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            context.go('/admin/dashboard');
+          },
+        ),
         title: const Text('User Management'),
         elevation: 0,
         actions: [

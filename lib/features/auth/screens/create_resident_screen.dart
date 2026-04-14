@@ -232,7 +232,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
             Icons.arrow_back_rounded,
             color: AppColors.textPrimary,
           ),
-          onPressed: () => context.pop(),
+          onPressed: _handleBack,
         ),
         title: Text(
           _creatorRole == 'gn_officer'
@@ -254,6 +254,25 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
         ],
       ),
     );
+  }
+
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+
+    if (_creatorRole == 'admin') {
+      context.go('/admin/dashboard');
+      return;
+    }
+
+    if (_creatorRole == 'gn_officer') {
+      context.go('/official/dashboard');
+      return;
+    }
+
+    context.go('/home');
   }
 
   Widget _buildAdminHeader() {

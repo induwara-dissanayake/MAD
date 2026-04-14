@@ -58,7 +58,7 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () => context.pop(),
+            onPressed: _handleBack,
           ),
         ),
         title: Text(
@@ -481,14 +481,14 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => context.pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: reasonController.text.trim().isEmpty
                   ? null
                   : () {
-                      context.pop();
+                      Navigator.of(dialogContext).pop();
                       _rejectRequest(reasonController.text.trim(), approverUid);
                     },
               style: ElevatedButton.styleFrom(
@@ -500,6 +500,14 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
         ),
       ),
     );
+  }
+
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go('/official/requests/pending');
   }
 
 }

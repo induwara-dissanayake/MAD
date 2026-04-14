@@ -287,7 +287,7 @@ class AdminDashboardScreen extends ConsumerWidget {
           subtitle: 'Review requests',
           icon: Icons.hourglass_bottom_rounded,
           color: AppColors.warning,
-          onTap: () => context.go('/official/requests/pending'),
+          onTap: () => context.push('/official/requests/pending'),
         ),
         _buildActionCard(
           context,

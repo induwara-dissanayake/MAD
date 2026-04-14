@@ -42,6 +42,8 @@ class RequestModel {
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
+      // Keep legacy key for backward compatibility with existing rules/data.
+      'citizenUid': userId,
       'documentType': documentType,
       'fullName': fullName,
       'nic': nic,
@@ -77,7 +79,7 @@ class RequestModel {
 
     return RequestModel(
       id: id,
-      userId: map['userId'] ?? '',
+      userId: (map['userId'] ?? map['citizenUid'] ?? '').toString(),
       documentType: map['documentType'] ?? '',
       fullName: map['fullName'] ?? '',
       nic: map['nic'] ?? '',

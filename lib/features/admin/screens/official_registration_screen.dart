@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/models/admin_user_model.dart';
@@ -392,6 +393,16 @@ They must change their password on first login.''';
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            context.go('/admin/dashboard');
+          },
+        ),
         title: const Text('Register GN Officer'),
         elevation: 0,
       ),

@@ -21,6 +21,7 @@ import '../../features/home/screens/app_shell.dart';
 import '../../features/home/screens/citizen_home_screen.dart';
 import '../../features/notices/screens/notice_board_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/incidents/screens/incident_detail_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
@@ -119,7 +120,7 @@ final appRouter = GoRouter(
     // Prevent unauthorized users from accessing restricted routes.
     if (path == '/incidents') {
       final role = await _fetchCurrentUserRole();
-      if (role != 'admin') {
+      if (role != 'admin' && role != 'gn_officer') {
         return _dashboardForRole(role);
       }
     }
@@ -154,7 +155,7 @@ final appRouter = GoRouter(
     // ── Catch all: redirect citizen/unauthorized users to their dashboard ──
     // If user tries to access any unprotected route while logged in
     if (path == '/home' || path == '/applications' ||
-        path == '/notices' || path == '/community' ||
+        path == '/community' ||
         path == '/fab-placeholder' || path == '/documents') {
       final role = await _fetchCurrentUserRole();
       // Allow citizens to access these routes
@@ -308,6 +309,11 @@ final appRouter = GoRouter(
       },
     ),
 
+    GoRoute(
+      path: '/incidents',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const IncidentDashboardScreen(),
+    ),
     GoRoute(
       path: '/incidents/detail',
       parentNavigatorKey: _rootNavigatorKey,

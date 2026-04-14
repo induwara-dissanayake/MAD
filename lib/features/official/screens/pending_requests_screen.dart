@@ -67,7 +67,7 @@ class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () => context.pop(),
+            onPressed: _handleBack,
           ),
         ),
         title: Text(
@@ -189,7 +189,7 @@ class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No non-approved requests',
+                          'no pending request',
                           style: AppTextStyles.h3.copyWith(
                             color: AppColors.textMuted,
                           ),
@@ -229,7 +229,7 @@ class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.go(
+          onTap: () => context.push(
             '/official/requests/${request.id}/review',
             extra: request,
           ),
@@ -345,5 +345,13 @@ class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
       'Identity Verification',
       'Land Ownership',
     ];
+  }
+
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go('/official/dashboard');
   }
 }
