@@ -71,9 +71,10 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       if (!mounted) return;
 
       final role = profile?.role ?? 'citizen';
+      final normalizedRole = role == 'super_admin' ? 'admin' : role;
       setState(() {
-        _creatorRole = role;
-        if (_creatorRole != 'gn_officer') {
+        _creatorRole = normalizedRole;
+        if (_creatorRole != 'gn_officer' && _creatorRole != 'admin') {
           _targetRole = 'citizen';
         }
       });
@@ -118,13 +119,19 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       final creatorProfile = await userService.getUserProfileOnce(
         currentAdminUid,
       );
-      final creatorRole = creatorProfile?.role ?? 'citizen';
-      if (creatorRole != 'admin_resident' && creatorRole != 'gn_officer') {
+      final creatorRoleRaw = creatorProfile?.role ?? 'citizen';
+      final creatorRole =
+          creatorRoleRaw == 'super_admin' ? 'admin' : creatorRoleRaw;
+      if (creatorRole != 'admin_resident' &&
+          creatorRole != 'gn_officer' &&
+          creatorRole != 'admin') {
         throw Exception(
           'You do not have permission to create new resident records.',
         );
       }
-      if (_targetRole == 'admin_resident' && creatorRole != 'gn_officer') {
+      if (_targetRole == 'admin_resident' &&
+          creatorRole != 'gn_officer' &&
+          creatorRole != 'admin') {
         throw Exception('Only GN Officer can create resident admin accounts.');
       }
 
@@ -225,12 +232,14 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
             Icons.arrow_back_rounded,
             color: AppColors.textPrimary,
           ),
-          onPressed: () => context.pop(),
+          onPressed: _handleBack,
         ),
         title: Text(
           _creatorRole == 'gn_officer'
               ? 'Register Citizen'
-              : 'Register New Resident',
+              : _creatorRole == 'admin'
+                  ? 'Create User'
+                  : 'Register New Resident',
           style: AppTextStyles.h3,
         ),
         centerTitle: true,
@@ -238,8 +247,115 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       body: Column(
         children: [
           if (_creatorRole == 'gn_officer') _buildGnOfficerHeader(),
+          if (_creatorRole == 'admin')
+            _buildAdminHeader(),
           const Divider(height: 1, color: AppColors.divider),
           Expanded(child: _isDone ? _buildSuccessView() : _buildForm()),
+        ],
+      ),
+    );
+  }
+
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+
+    if (_creatorRole == 'admin') {
+      context.go('/admin/dashboard');
+      return;
+    }
+
+    if (_creatorRole == 'gn_officer') {
+      context.go('/official/dashboard');
+      return;
+    }
+
+    context.go('/home');
+  }
+
+  Widget _buildAdminHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F766E), Color(0xFF134E4A)],
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.admin_panel_settings_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Create New User',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Admin management access',
+                      style: TextStyle(fontSize: 12, color: Colors.white54),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white70,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Use this form to create citizens, resident admins, or committee accounts. Login credentials will be generated automatically.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white70,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -390,19 +506,43 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
                 return null;
               },
             ),
-            if (_creatorRole == 'gn_officer') ...[
+            if (_creatorRole == 'gn_officer' ||
+                _creatorRole == 'admin') ...[
               const SizedBox(height: 18),
               Text('Account Role', style: AppTextStyles.label),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _targetRole,
-                items: const [
-                  DropdownMenuItem(value: 'citizen', child: Text('Citizen')),
-                  DropdownMenuItem(
-                    value: 'admin_resident',
-                    child: Text('Resident Admin'),
-                  ),
-                ],
+                initialValue: _targetRole,
+                items: (_creatorRole == 'admin'
+                        ? const [
+                            DropdownMenuItem(
+                              value: 'citizen',
+                              child: Text('Citizen'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'gn_officer',
+                              child: Text('GN Officer'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'admin_resident',
+                              child: Text('Resident Admin'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'committee',
+                              child: Text('Committee'),
+                            ),
+                          ]
+                        : const [
+                            DropdownMenuItem(
+                              value: 'citizen',
+                              child: Text('Citizen'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'admin_resident',
+                              child: Text('Resident Admin'),
+                            ),
+                          ])
+                    .toList(),
                 onChanged: _isLoading
                     ? null
                     : (value) {

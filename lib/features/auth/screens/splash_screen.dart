@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/router/route_paths.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -16,9 +17,8 @@ class SplashScreen extends ConsumerStatefulWidget {
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
-  late Animation<double> _slideAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -32,40 +32,33 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1500),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
-      ),
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
-      ),
-    );
-
-    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.3, 0.7, curve: Curves.easeOut),
+        curve: const Interval(0.0, 1.0, curve: Curves.easeOutCubic),
       ),
     );
 
     _controller.forward();
 
-    // Navigate after animation and check auth state
-    Future.delayed(const Duration(milliseconds: 2800), () {
+    // Navigate after animation completes
+    Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
         final user = ref.read(authServiceProvider).currentUser;
         if (user != null) {
-          context.go('/home');
+          // User is logged in - let router handle role-based redirect
+          context.go('/');
         } else {
-          context.go('/auth/language');
+          // Not logged in - go to language selection
+          context.go(RoutePaths.language);
         }
       }
     });
@@ -80,107 +73,86 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(gradient: AppColors.heroGradient),
-        child: SafeArea(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Spacer(flex: 3),
-                  // ── Logo ──────────────────────────────────────────────
-                  Opacity(
-                    opacity: _fadeAnimation.value,
-                    child: Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.25),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.account_balance_rounded,
-                          color: Colors.white,
-                          size: 48,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  // ── Title ─────────────────────────────────────────────
-                  Opacity(
-                    opacity: _fadeAnimation.value,
-                    child: Transform.translate(
-                      offset: Offset(0, _slideAnimation.value),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Village Connect',
-                            style: AppTextStyles.displayLarge.copyWith(
-                              color: Colors.white,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Connecting Citizens & Government',
-                            style: AppTextStyles.caption.copyWith(
-                              color: Colors.white.withOpacity(0.75),
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Spacer(flex: 3),
-                  // ── AI Bot indicator ──────────────────────────────────
-                  Opacity(
-                    opacity: _fadeAnimation.value,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      backgroundColor: AppColors.primary,
+      body: Stack(
+        children: [
+          // Subtly patterned background or gradient
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withRed(15).withGreen(110), // Slightly darker
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Premium Logo Container
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 88,
+                          height: 88,
                           decoration: BoxDecoration(
-                            color: AppColors.success,
-                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.success.withOpacity(0.5),
-                                blurRadius: 6,
-                                spreadRadius: 1,
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
                               ),
                             ],
                           ),
+                          child: const Icon(
+                            Icons.account_balance_rounded,
+                            color: AppColors.primary,
+                            size: 44,
+                          ),
                         ),
-                        const SizedBox(width: 8),
+                        
+                        const SizedBox(height: 32),
+                        
                         Text(
-                          'AI Assistant Ready',
-                          style: AppTextStyles.small.copyWith(
-                            color: Colors.white.withOpacity(0.6),
+                          'Village Connect',
+                          style: AppTextStyles.displaySmall.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        Text(
+                          'OFFICIAL CITIZEN PORTAL',
+                          style: AppTextStyles.overline.copyWith(
+                            color: Colors.white.withOpacity(0.7),
+                            letterSpacing: 2.0,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
-                ],
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
+          
+          // Bottom Status Removed per user request
+        ],
       ),
     );
   }

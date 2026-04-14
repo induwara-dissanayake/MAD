@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/locale_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/router/route_paths.dart';
 
 /// Language selector screen.
 /// Allows the user to choose from English, Sinhala, or Tamil before
@@ -26,11 +26,6 @@ class _LanguageSelectorScreenState
   /// Available languages with native label, English label, and locale code.
   static const List<_LanguageOption> _languages = [
     _LanguageOption(
-      nativeLabel: 'English',
-      englishLabel: 'English',
-      localeCode: 'en',
-    ),
-    _LanguageOption(
       nativeLabel: 'සිංහල',
       englishLabel: 'Sinhala',
       localeCode: 'si',
@@ -40,28 +35,20 @@ class _LanguageSelectorScreenState
       englishLabel: 'Tamil',
       localeCode: 'ta',
     ),
+    _LanguageOption(
+      nativeLabel: 'English',
+      englishLabel: 'English',
+      localeCode: 'en',
+    ),
   ];
-
-  // ------------------------------------------------------------------
-  // Navigation
-  // ------------------------------------------------------------------
 
   void _onContinue() {
     if (_selectedIndex == null) return;
 
     final selected = _languages[_selectedIndex!];
-
-    // Update the global locale — MaterialApp.router rebuilds automatically.
-    ref
-        .read(localeProvider.notifier)
-        .setLocaleByCode(selected.localeCode);
-
-    context.go('/auth/login');
+    ref.read(localeProvider.notifier).setLocaleByCode(selected.localeCode);
+    context.go(RoutePaths.login);
   }
-
-  // ------------------------------------------------------------------
-  // Build
-  // ------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -69,61 +56,55 @@ class _LanguageSelectorScreenState
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 32),
-
-              // Header icon
-              Center(
-                child: Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: AppColors.accentBlue,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.translate_rounded,
-                    size: 36,
-                    color: AppColors.primary,
-                  ),
+              const SizedBox(height: 60),
+              
+              // Minimalist Header
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.translate_rounded,
+                  size: 24,
+                  color: AppColors.primary,
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              // Title
+              
+              const SizedBox(height: 32),
+              
               Text(
-                'Choose Your Language',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.h1.copyWith(fontSize: 26),
+                'Choose Your\nPreferred Language',
+                style: AppTextStyles.displaySmall,
               ),
-
-              const SizedBox(height: 8),
-
-              // Subtitle
+              
+              const SizedBox(height: 12),
+              
               Text(
-                'Select the language you are most comfortable with',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.body.copyWith(
+                'Select a language to proceed with Village Connect',
+                style: AppTextStyles.bodyLarge.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
+              
+              const SizedBox(height: 48),
 
-              const SizedBox(height: 40),
-
-              // Language cards
+              // Language List
               Expanded(
                 child: ListView.separated(
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const BouncingScrollPhysics(),
                   itemCount: _languages.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final lang = _languages[index];
                     final bool isSelected = _selectedIndex == index;
-                    return _buildLanguageCard(
+                    return _buildLanguageItem(
                       lang: lang,
                       isSelected: isSelected,
                       onTap: () => setState(() => _selectedIndex = index),
@@ -132,27 +113,17 @@ class _LanguageSelectorScreenState
                 ),
               ),
 
-              // Continue button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _selectedIndex != null ? _onContinue : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.disabledBackground,
-                    foregroundColor: AppColors.textOnPrimary,
-                    disabledForegroundColor: AppColors.disabled,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
+              // Action
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _selectedIndex != null ? _onContinue : null,
+                    child: const Text('Continue'),
                   ),
-                  child: Text('Continue', style: AppTextStyles.button),
                 ),
               ),
-
-              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -160,94 +131,60 @@ class _LanguageSelectorScreenState
     );
   }
 
-  // ------------------------------------------------------------------
-  // Widgets
-  // ------------------------------------------------------------------
-
-  Widget _buildLanguageCard({
+  Widget _buildLanguageItem({
     required _LanguageOption lang,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: AppColors.card,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          constraints: const BoxConstraints(minHeight: 80),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-              width: isSelected ? 2 : 1,
-            ),
-            color: isSelected
-                ? AppColors.primary.withOpacity(0.04)
-                : AppColors.card,
-          ),
-          child: Row(
-            children: [
-              // Language labels
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      lang.nativeLabel,
-                      style: AppTextStyles.h3.copyWith(
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textPrimary,
-                      ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? AppColors.primary.withOpacity(0.06) 
+              : AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected 
+              ? Border.all(color: AppColors.primary, width: 1.5)
+              : Border.all(color: Colors.transparent, width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    lang.nativeLabel,
+                    style: AppTextStyles.h3.copyWith(
+                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
                     ),
-                    if (lang.nativeLabel != lang.englishLabel) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        lang.englishLabel,
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // Checkmark for selected state
-              AnimatedOpacity(
-                opacity: isSelected ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    size: 18,
-                    color: Colors.white,
+                  const SizedBox(height: 2),
+                  Text(
+                    lang.englishLabel,
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            if (isSelected)
+              const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+          ],
         ),
       ),
     );
   }
 }
-
-// ------------------------------------------------------------------
-// Helper model
-// ------------------------------------------------------------------
 
 class _LanguageOption {
   final String nativeLabel;

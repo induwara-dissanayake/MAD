@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.4.0](https://github.com/induwara-dissanayake/MAD/compare/v1.3.0...v1.4.0) (2026-04-14)
+
+
+### Features
+
+* Add Admin Repository and User Management Screens ([8a84952](https://github.com/induwara-dissanayake/MAD/commit/8a8495226b22ae6792a3c48583542af238affea7))
+* Add official dashboard and request management features ([263576b](https://github.com/induwara-dissanayake/MAD/commit/263576b57f514bee39cc0d1cf7fe5a49c28767be))
+* Enhance Admin Dashboard with Request and Notice Metrics, and improve user experience ([0c53d61](https://github.com/induwara-dissanayake/MAD/commit/0c53d61571138b5ebcdcd79460b9adc6e72e80cd))
+* Enhance official dashboard and request handling, including new metrics display and improved navigation ([ce01143](https://github.com/induwara-dissanayake/MAD/commit/ce01143e5b092afb890e8d5e053c15fd208a41f8))
+* Enhance Official Dashboard with Pending Requests and Community Pulse ([f22b3bc](https://github.com/induwara-dissanayake/MAD/commit/f22b3bc6d7339b6806003d6c1e9823350b488076))
+* Enhance user management and certificate handling features, including new screens and deletion functionality ([1ff8db0](https://github.com/induwara-dissanayake/MAD/commit/1ff8db0a751b15675b94aeb6f8dd2d84e4183ebc))
+* Implement certificate request handling and enhance notification features ([e52619f](https://github.com/induwara-dissanayake/MAD/commit/e52619fc428c674ffa140f783690b1fbe6093b45))
+* Refactor RequestReviewScreen to use Riverpod for state management and enhance functionality ([649759b](https://github.com/induwara-dissanayake/MAD/commit/649759b81d89e6bc6603842609a4a752804c8c81))
+* Update Firestore rules and request model for userId and citizenUid compatibility; enhance navigation in admin and official screens ([2bbb367](https://github.com/induwara-dissanayake/MAD/commit/2bbb367b5db8f320f81c5bc317a73255d51a4031))
+* Update routing and improve request handling in PendingRequestsScreen and RequestReviewScreen ([9efc075](https://github.com/induwara-dissanayake/MAD/commit/9efc07528974de1528c0e3ad692da8400c34634e))
+* Update user role handling and permissions, removing legacy super_admin references for clarity ([b614cf5](https://github.com/induwara-dissanayake/MAD/commit/b614cf5e7235e380cd780c7880aa83b9f45eeaea))
+
+
+### Bug Fixes
+
+* Remove Registered Users and Request Review screens to streamline the application structure and improve maintainability. ([b2dcaf9](https://github.com/induwara-dissanayake/MAD/commit/b2dcaf970c4749ec2cfe11cbcd75f043f6493b5c))
+
+## [1.3.0](https://github.com/induwara-dissanayake/MAD/compare/v1.2.0...v1.3.0) (2026-04-09)
+
+
+### Features
+
+* initialize project structure with splash screen, core theme, and incident dashboard features ([a9bdd7c](https://github.com/induwara-dissanayake/MAD/commit/a9bdd7c0c3258f69efcbb232b39c74445e84a309))
+
+
+### Bug Fixes
+
+* downgrade matcher and test_api versions in pubspec.lock ([bcc7ba9](https://github.com/induwara-dissanayake/MAD/commit/bcc7ba93f046425cfefae7f69a63b94cbb17c84d))
+* downgrade matcher and test_api versions in pubspec.lock ([fb3bf54](https://github.com/induwara-dissanayake/MAD/commit/fb3bf54d592a0127455920e283891e1458a5a6ab))
+
 ## [1.2.0](https://github.com/induwara-dissanayake/MAD/compare/v1.1.0...v1.2.0) (2026-04-05)
 
 

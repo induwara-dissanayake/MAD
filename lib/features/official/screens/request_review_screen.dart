@@ -1,44 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../shared/widgets/vc_card.dart';
+import '../../../shared/widgets/vc_status_badge.dart';
+import '../controllers/official_controller.dart';
 
-class RequestReviewScreen extends StatefulWidget {
-  const RequestReviewScreen({super.key});
+class RequestReviewScreen extends ConsumerStatefulWidget {
+  final String requestId;
+
+  const RequestReviewScreen({
+    super.key,
+    required this.requestId,
+  });
 
   @override
-  State<RequestReviewScreen> createState() => _RequestReviewScreenState();
+  ConsumerState<RequestReviewScreen> createState() =>
+      _RequestReviewScreenState();
 }
 
-class _RequestReviewScreenState extends State<RequestReviewScreen> {
-  final TextEditingController _remarksController = TextEditingController();
-
-  // Mock data for a character certificate request
-  final Map<String, String> _citizenInfo = {
-    'name': 'Nadeeka Silva',
-    'nic': '199512345678',
-    'phone': '+94 77 987 6543',
-    'address': '15/B, Lake View Road, Kaduwela, Colombo',
-    'initials': 'NS',
-  };
-
-  final Map<String, String> _applicationDetails = {
-    'documentType': 'Character Certificate',
-    'reason':
-        'Required for employment application at a government institution. Applicant is seeking a position as an administrative officer.',
-    'submittedDate': '22 February 2026',
-    'referenceNo': 'CC-2026-0142',
-  };
-
-  final List<_UploadedDocument> _documents = [
-    _UploadedDocument('NIC_Front.jpg', '1.2 MB', Icons.image_outlined),
-    _UploadedDocument('NIC_Back.jpg', '1.1 MB', Icons.image_outlined),
-    _UploadedDocument(
-      'Employment_Letter.pdf',
-      '245 KB',
-      Icons.picture_as_pdf_outlined,
-    ),
-  ];
+class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
+  final _remarksController = TextEditingController();
+  bool _isApproving = false;
+  bool _isRejecting = false;
 
   @override
   void dispose() {
@@ -48,208 +34,314 @@ class _RequestReviewScreenState extends State<RequestReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final requestAsync = ref.watch(requestDetailProvider(widget.requestId));
+    final authService = ref.watch(authServiceProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.card,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.textPrimary,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceGrey.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.textPrimary,
+                size: 20,
+              ),
+            ),
+            onPressed: _handleBack,
           ),
-          onPressed: () => context.pop(),
-          tooltip: 'Go back',
         ),
         title: Text(
           'Review Request',
-          style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
+          style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
         ),
-        centerTitle: false,
+        centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCitizenInfoCard(),
+      body: requestAsync.when(
+        data: (request) {
+          if (request == null) {
+            return Center(
+              child: Text(
+                'Request not found',
+                style: AppTextStyles.body,
+              ),
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Citizen Info Card
+                _buildCitizenCard(request),
+                const SizedBox(height: 24),
+
+                // Request Details Card
+                _buildRequestDetailsCard(request),
+                const SizedBox(height: 24),
+
+                // Form Data Section
+                if (request.formData != null &&
+                    request.formData!.isNotEmpty) ...[
+                  Text(
+                    'Application Information',
+                    style: AppTextStyles.h3.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  _buildApplicationDetailsCard(),
-                  const SizedBox(height: 24),
-                  _buildUploadedDocuments(),
-                  const SizedBox(height: 24),
-                  _buildRemarksField(),
+                  _buildFormDataSection(request.formData!),
                   const SizedBox(height: 24),
                 ],
-              ),
+
+                // Remarks Field
+                Text(
+                  'GN Officer Remarks',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _remarksController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Add remarks for this request (required for rejection)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceGrey.withValues(alpha: 0.3),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isApproving || _isRejecting
+                            ? null
+                            : () => _showRejectDialog(
+                                  context,
+                                  authService.currentUser?.uid,
+                                ),
+                        icon: const Icon(Icons.close_rounded),
+                        label: const Text('Reject'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: BorderSide(
+                            color: AppColors.error.withValues(alpha: 0.5),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        onPressed: _isApproving || _isRejecting
+                            ? null
+                            : () => _approveRequest(authService.currentUser?.uid),
+                        icon: _isApproving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.check_circle_rounded),
+                        label: Text(
+                          _isApproving ? 'Approving...' : 'Approve',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          );
+        },
+        loading: () => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: AppColors.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading request: $error',
+                style: AppTextStyles.body.copyWith(color: AppColors.error),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          _buildActionButtons(),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildCitizenInfoCard() {
-    return Container(
-      width: double.infinity,
+  Widget _buildCitizenCard(dynamic request) {
+    return VcCard(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Citizen Information',
-            style: AppTextStyles.bodySemiBold.copyWith(
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             children: [
               Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: Text(
-                    _citizenInfo['initials']!,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textOnPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 20,
-                    ),
-                  ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: AppColors.primary,
+                  size: 28,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _citizenInfo['name']!,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
+                      'Applicant',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 2),
                     Text(
-                      'NIC: ${_citizenInfo['nic']}',
-                      style: AppTextStyles.caption,
+                      request.fullName,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(color: AppColors.divider),
+          const SizedBox(height: 20),
+          _buildDetailRow('NIC Number', request.nic),
           const SizedBox(height: 12),
-          _buildInfoRow(Icons.phone_outlined, 'Phone', _citizenInfo['phone']!),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.location_on_outlined,
-            'Address',
-            _citizenInfo['address']!,
-          ),
+          _buildDetailRow('Address', request.address),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppColors.textMuted),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTextStyles.small.copyWith(color: AppColors.textMuted),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildApplicationDetailsCard() {
-    return Container(
-      width: double.infinity,
+  Widget _buildRequestDetailsCard(dynamic request) {
+    return VcCard(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Application Details',
-            style: AppTextStyles.bodySemiBold.copyWith(
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildDetailRow('Reference No.', _applicationDetails['referenceNo']!),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: AppColors.divider),
-          ),
-          _buildDetailRow(
-            'Document Type',
-            _applicationDetails['documentType']!,
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: AppColors.divider),
-          ),
-          _buildDetailRow('Submitted', _applicationDetails['submittedDate']!),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: AppColors.divider),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Reason',
-                style: AppTextStyles.small.copyWith(color: AppColors.textMuted),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Request Status',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  VcStatusBadge(
+                    label: request.status,
+                    type: statusTypeFromString(request.status),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                _applicationDetails['reason']!,
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textPrimary,
-                  height: 1.5,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Submitted',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatDateTime(request.submittedAt),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          _buildDetailRow('Document Type', request.documentType),
+          const SizedBox(height: 12),
+          _buildDetailRow('Reason', request.reason),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormDataSection(Map<String, String> formData) {
+    return VcCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...formData.entries.map((entry) {
+            if (entry.key != 'Full Name' &&
+                entry.key != 'NIC Number' &&
+                entry.key != 'Address') {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailRow(entry.key, entry.value),
+                  const SizedBox(height: 12),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }),
         ],
       ),
     );
@@ -257,133 +349,22 @@ class _RequestReviewScreenState extends State<RequestReviewScreen> {
 
   Widget _buildDetailRow(String label, String value) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
         ),
-        Flexible(
+        Expanded(
           child: Text(
             value,
-            style: AppTextStyles.bodyMedium,
-            textAlign: TextAlign.end,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUploadedDocuments() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Uploaded Documents', style: AppTextStyles.bodySemiBold),
-        const SizedBox(height: 12),
-        ...List.generate(_documents.length, (index) {
-          final doc = _documents[index];
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < _documents.length - 1 ? 8 : 0,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Viewing ${doc.name}'),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.accentBlue,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(doc.icon, color: AppColors.info, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              doc.name,
-                              style: AppTextStyles.bodyMedium,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(doc.size, style: AppTextStyles.small),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.secondarySurface,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.visibility_outlined,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildRemarksField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('GN Remarks', style: AppTextStyles.bodySemiBold),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: TextField(
-            controller: _remarksController,
-            maxLines: 3,
-            style: AppTextStyles.body,
-            decoration: InputDecoration(
-              hintText: 'Enter your remarks here...',
-              hintStyle: AppTextStyles.body.copyWith(
-                color: AppColors.textMuted,
-              ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.all(16),
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -391,140 +372,108 @@ class _RequestReviewScreenState extends State<RequestReviewScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () => _showDigitalSignatureDialog(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: AppColors.textOnPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.verified_user_rounded, size: 20),
-                label: Text(
-                  'Digitally Sign & Approve',
-                  style: AppTextStyles.buttonSmall.copyWith(
-                    color: AppColors.textOnPrimary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: () => _showConfirmationDialog('reject'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(
-                          color: AppColors.error,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Reject',
-                        style: AppTextStyles.buttonSmall.copyWith(
-                          color: AppColors.error,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: () => _showConfirmationDialog('request info'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.warning,
-                        side: const BorderSide(
-                          color: AppColors.warning,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Request Info',
-                        style: AppTextStyles.buttonSmall.copyWith(
-                          color: AppColors.warning,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  String _formatDateTime(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  void _showDigitalSignatureDialog() {
-    final pinController = TextEditingController();
+  Future<void> _approveRequest(String? userId) async {
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not authenticated')),
+      );
+      return;
+    }
+
+    setState(() => _isApproving = true);
+
+    try {
+      await ref.read(approveRequestProvider(
+        (
+          requestId: widget.requestId,
+          approvedBy: userId,
+          remarks: _remarksController.text.trim(),
+        ),
+      ).future);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request approved')),
+        );
+        context.go('/official/requests/pending');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error approving request: $e')),
+        );
+        setState(() => _isApproving = false);
+      }
+    }
+  }
+
+  Future<void> _rejectRequest(String reason, String? approverUid) async {
+    if (approverUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not authenticated')),
+      );
+      return;
+    }
+
+    setState(() => _isRejecting = true);
+
+    try {
+      await ref.read(rejectRequestProvider(
+        (
+          requestId: widget.requestId,
+          rejectionReason: reason,
+          approverUid: approverUid,
+        ),
+      ).future);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request rejected')),
+        );
+        context.go('/official/requests/pending');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error rejecting request: $e')),
+        );
+        setState(() => _isRejecting = false);
+      }
+    }
+  }
+
+  void _showRejectDialog(BuildContext context, String? approverUid) {
+    final reasonController = TextEditingController();
+
     showDialog(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(
+            'Reject Request',
+            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
           ),
-          title: const Text('Digital Signature Required'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Please enter your secure 4-digit PIN to digitally sign and approve this request.',
+              Text(
+                'Please provide a rejection reason:',
+                style: AppTextStyles.body,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               TextField(
-                controller: pinController,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 4,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.h2.copyWith(letterSpacing: 8),
+                controller: reasonController,
+                maxLines: 3,
+                onChanged: (_) => setDialogState(() {}),
                 decoration: InputDecoration(
-                  counterText: '',
-                  hintText: 'PIN',
-                  hintStyle: AppTextStyles.h3.copyWith(
-                    color: AppColors.textMuted,
-                    letterSpacing: 2,
-                  ),
+                  hintText: 'Reason for rejection',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
@@ -532,156 +481,33 @@ class _RequestReviewScreenState extends State<RequestReviewScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => dialogContext.pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                if (pinController.text == '1234') {
-                  dialogContext.pop();
-                  _onActionConfirmed('Approved with Digital Signature');
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Invalid PIN. Please try again.'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Sign & Approve'),
+              onPressed: reasonController.text.trim().isEmpty
+                  ? null
+                  : () {
+                      Navigator.of(dialogContext).pop();
+                      _rejectRequest(reasonController.text.trim(), approverUid);
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+              ),
+              child: const Text('Reject'),
             ),
           ],
-        );
-      },
-    );
-  }
-
-  void _showConfirmationDialog(String action) {
-    final actionLabel = action[0].toUpperCase() + action.substring(1);
-    Color actionColor;
-    IconData actionIcon;
-
-    switch (action) {
-      case 'reject':
-        actionColor = AppColors.error;
-        actionIcon = Icons.cancel_outlined;
-        break;
-      default:
-        actionColor = AppColors.warning;
-        actionIcon = Icons.info_outline_rounded;
-    }
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: actionColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(actionIcon, color: actionColor, size: 32),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Are you sure you want to $action this application?',
-                style: AppTextStyles.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Ref: ${_applicationDetails['referenceNo']}',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          actions: [
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      onPressed: () => dialogContext.pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.border),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: AppTextStyles.buttonSmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        dialogContext.pop();
-                        _onActionConfirmed(actionLabel);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: actionColor,
-                        foregroundColor: AppColors.textOnPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        actionLabel,
-                        style: AppTextStyles.buttonSmall.copyWith(
-                          color: AppColors.textOnPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _onActionConfirmed(String action) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Application ${action.toLowerCase()}d successfully'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       ),
     );
-    context.pop();
   }
-}
 
-class _UploadedDocument {
-  final String name;
-  final String size;
-  final IconData icon;
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go('/official/requests/pending');
+  }
 
-  const _UploadedDocument(this.name, this.size, this.icon);
 }
