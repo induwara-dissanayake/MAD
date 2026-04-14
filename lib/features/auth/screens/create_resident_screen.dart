@@ -501,6 +501,10 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
                               child: Text('Citizen'),
                             ),
                             DropdownMenuItem(
+                              value: 'gn_officer',
+                              child: Text('GN Officer'),
+                            ),
+                            DropdownMenuItem(
                               value: 'admin_resident',
                               child: Text('Resident Admin'),
                             ),

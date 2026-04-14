@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/request_model.dart';
 import '../../../core/models/dashboard_metrics.dart';
-import '../../../core/models/pagination_state.dart';
 
 final officialRepositoryProvider = Provider<OfficialRepository>((ref) {
   return OfficialRepository(FirebaseFirestore.instance);
@@ -18,29 +17,18 @@ class OfficialRepository {
 
   OfficialRepository(this._firestore);
 
-  /// Get paginated pending requests with cursor-based pagination
-  /// Returns a stream of lists where each emission contains up to [pageSize] requests
-  Stream<List<RequestModel>> getPendingRequests({
-    DocumentSnapshot? lastDocument,
-    String? filterDocumentType,
-  }) {
-    Query query = _firestore
+  /// Get non-approved requests ordered by latest submission first.
+  /// Filtering by status is done in code to avoid Firestore composite index issues.
+  Stream<List<RequestModel>> getPendingRequests() {
+    return _firestore
         .collection('requests')
-        .where('status', isEqualTo: 'Pending')
-        .orderBy('submittedAt', descending: true);
-
-    // Apply cursor-based pagination
-    if (lastDocument != null) {
-      query = query.startAfterDocument(lastDocument);
-    }
-
-    // Limit results
-    query = query.limit(pageSize + 1); // +1 to check if there are more
-
-    return query.snapshots().map((snapshot) {
-      final requests = snapshot.docs.map((doc) {
-        return RequestModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      }).toList();
+        .orderBy('submittedAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      final requests = snapshot.docs
+          .map((doc) => RequestModel.fromMap(doc.data(), doc.id))
+          .where((request) => request.status != 'Approved')
+          .toList();
 
       return requests;
     });
@@ -93,35 +81,43 @@ class OfficialRepository {
   }
 
   /// Get dashboard metrics (pending, approved this month, rejected this month)
+  /// Avoids composite queries by filtering dates in code
   Stream<DashboardMetrics> getDashboardMetrics() {
     return _firestore
         .collection('requests')
-        .where('status', isEqualTo: 'Pending')
         .snapshots()
         .asyncMap((snapshot) async {
-      final totalPending = snapshot.docs.length;
-
       // Get current month start
       final now = DateTime.now();
       final monthStart = DateTime(now.year, now.month, 1);
 
-      // Count approved this month
-      final approvedSnapshot = await _firestore
-          .collection('requests')
-          .where('status', isEqualTo: 'Approved')
-          .where('processedAt', isGreaterThanOrEqualTo: monthStart)
-          .get();
+      int totalPending = 0;
+      int approvedThisMonth = 0;
+      int rejectedThisMonth = 0;
 
-      final approvedThisMonth = approvedSnapshot.docs.length;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final status = data['status'];
+        final processedAt = data['processedAt'];
 
-      // Count rejected this month
-      final rejectedSnapshot = await _firestore
-          .collection('requests')
-          .where('status', isEqualTo: 'Rejected')
-          .where('processedAt', isGreaterThanOrEqualTo: monthStart)
-          .get();
-
-      final rejectedThisMonth = rejectedSnapshot.docs.length;
+        if (status == 'Pending') {
+          totalPending++;
+        } else if (status == 'Approved') {
+          if (processedAt != null) {
+            final date = processedAt.toDate();
+            if (date.isAfter(monthStart)) {
+              approvedThisMonth++;
+            }
+          }
+        } else if (status == 'Rejected') {
+          if (processedAt != null) {
+            final date = processedAt.toDate();
+            if (date.isAfter(monthStart)) {
+              rejectedThisMonth++;
+            }
+          }
+        }
+      }
 
       return DashboardMetrics(
         totalPending: totalPending,

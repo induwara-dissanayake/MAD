@@ -71,7 +71,7 @@ class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
           ),
         ),
         title: Text(
-          'Pending Requests',
+          'Request Queue',
           style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
         ),
         centerTitle: true,
@@ -129,7 +129,7 @@ class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
                 const SizedBox(height: 12),
                 // Filter Dropdown
                 DropdownButtonFormField<String?>(
-                  value: _selectedDocType,
+                  initialValue: _selectedDocType,
                   onChanged: (value) {
                     setState(() => _selectedDocType = value);
                     ref
@@ -189,7 +189,7 @@ class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No pending requests',
+                          'No non-approved requests',
                           style: AppTextStyles.h3.copyWith(
                             color: AppColors.textMuted,
                           ),

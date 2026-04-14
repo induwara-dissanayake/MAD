@@ -1,4 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/request_model.dart';
 import '../../../core/models/pagination_state.dart';
@@ -6,6 +7,11 @@ import '../repositories/official_repository.dart';
 
 class PendingRequestsNotifier extends StateNotifier<PaginationState> {
   final OfficialRepository repository;
+  StreamSubscription<List<RequestModel>>? _subscription;
+  List<RequestModel> _allRequests = [];
+  String _searchQuery = '';
+  String? _selectedDocumentType;
+  int _currentPage = 1;
 
   PendingRequestsNotifier(this.repository) : super(PaginationState.initial()) {
     _loadInitialPage();
@@ -15,17 +21,11 @@ class PendingRequestsNotifier extends StateNotifier<PaginationState> {
     try {
       state = state.copyWith(isLoading: true, error: null);
 
-      repository.getPendingRequests().listen((requests) {
-        final hasMore = requests.length > OfficialRepository.pageSize;
-        final documents = hasMore
-            ? requests.sublist(0, OfficialRepository.pageSize)
-            : requests;
-
-        state = state.copyWith(
-          documents: documents,
-          hasMore: hasMore,
-          isLoading: false,
-        );
+      await _subscription?.cancel();
+      _subscription = repository.getPendingRequests().listen((requests) {
+        _allRequests = requests;
+        _currentPage = 1;
+        _updateVisibleDocuments();
       });
     } catch (e) {
       state = state.copyWith(
@@ -39,31 +39,8 @@ class PendingRequestsNotifier extends StateNotifier<PaginationState> {
     if (state.isLoading || !state.hasMore) return;
 
     try {
-      state = state.copyWith(isLoading: true, error: null);
-
-      final lastDoc = await repository.getLastDocumentSnapshot(state.documents);
-      if (lastDoc == null) {
-        state = state.copyWith(isLoading: false, hasMore: false);
-        return;
-      }
-
-      repository.getPendingRequests(lastDocument: lastDoc).listen((requests) {
-        if (requests.isEmpty) {
-          state = state.copyWith(isLoading: false, hasMore: false);
-          return;
-        }
-
-        final hasMore = requests.length > OfficialRepository.pageSize;
-        final newDocuments = hasMore
-            ? requests.sublist(0, OfficialRepository.pageSize)
-            : requests;
-
-        state = state.copyWith(
-          documents: [...state.documents, ...newDocuments],
-          hasMore: hasMore,
-          isLoading: false,
-        );
-      });
+      _currentPage += 1;
+      _updateVisibleDocuments();
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -73,41 +50,55 @@ class PendingRequestsNotifier extends StateNotifier<PaginationState> {
   }
 
   void filterByDocumentType(String? documentType) {
-    if (documentType == null || documentType.isEmpty) {
-      _loadInitialPage();
-      return;
-    }
-
-    final filtered = state.documents
-        .where(
-          (req) =>
-              req.documentType.toLowerCase() ==
-              documentType.toLowerCase(),
-        )
-        .toList();
-
-    state = state.copyWith(documents: filtered);
+    _selectedDocumentType =
+        (documentType == null || documentType.isEmpty) ? null : documentType;
+    _currentPage = 1;
+    _updateVisibleDocuments();
   }
 
   void searchByName(String query) {
-    if (query.isEmpty) {
-      _loadInitialPage();
-      return;
-    }
-
-    final filtered = state.documents
-        .where(
-          (req) =>
-              req.fullName.toLowerCase().contains(query.toLowerCase()) ||
-              req.nic.contains(query),
-        )
-        .toList();
-
-    state = state.copyWith(documents: filtered);
+    _searchQuery = query.trim();
+    _currentPage = 1;
+    _updateVisibleDocuments();
   }
 
   void clearFilters() {
-    _loadInitialPage();
+    _searchQuery = '';
+    _selectedDocumentType = null;
+    _currentPage = 1;
+    _updateVisibleDocuments();
+  }
+
+  void _updateVisibleDocuments() {
+    final query = _searchQuery.toLowerCase();
+
+    final filtered = _allRequests.where((req) {
+      final matchesType = _selectedDocumentType == null ||
+          req.documentType.toLowerCase() == _selectedDocumentType!.toLowerCase();
+
+      final matchesSearch = query.isEmpty ||
+          req.fullName.toLowerCase().contains(query) ||
+          req.nic.toLowerCase().contains(query);
+
+      return matchesType && matchesSearch;
+    }).toList();
+
+    final visibleCount = (_currentPage * OfficialRepository.pageSize)
+        .clamp(0, filtered.length);
+    final documents = filtered.take(visibleCount).toList();
+
+    state = state.copyWith(
+      documents: documents,
+      hasMore: visibleCount < filtered.length,
+      isLoading: false,
+      error: null,
+    );
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
 
