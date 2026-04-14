@@ -1,388 +1,357 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/models/request_model.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/vc_card.dart';
+import '../../../shared/widgets/vc_status_badge.dart';
+import '../controllers/pending_requests_controller.dart';
 
-class PendingRequestsScreen extends StatefulWidget {
+class PendingRequestsScreen extends ConsumerStatefulWidget {
   const PendingRequestsScreen({super.key});
 
   @override
-  State<PendingRequestsScreen> createState() => _PendingRequestsScreenState();
+  ConsumerState<PendingRequestsScreen> createState() =>
+      _PendingRequestsScreenState();
 }
 
-class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
-  String _selectedFilter = 'All';
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+class _PendingRequestsScreenState extends ConsumerState<PendingRequestsScreen> {
+  final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+  String? _selectedDocType;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    // Auto-load next page when scrolled to 80% of list
+    if (_scrollController.position.pixels >
+        _scrollController.position.maxScrollExtent * 0.8) {
+      ref.read(pendingRequestsNotifierProvider.notifier).loadNextPage();
+    }
+  }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  final List<String> _filters = [
-    'All',
-    'Character Cert',
-    'Residence Cert',
-    'Income Cert',
-  ];
-
-  final List<_RequestItem> _requests = [
-    _RequestItem(
-      citizenName: 'Nadeeka Silva',
-      documentType: 'Character Certificate',
-      submittedDate: '22 Feb 2026',
-      nic: '199512345678',
-      initials: 'NS',
-    ),
-    _RequestItem(
-      citizenName: 'Ruwan Jayasinghe',
-      documentType: 'Residence Certificate',
-      submittedDate: '21 Feb 2026',
-      nic: '198823456789',
-      initials: 'RJ',
-    ),
-    _RequestItem(
-      citizenName: 'Malini Kumari',
-      documentType: 'Income Certificate',
-      submittedDate: '20 Feb 2026',
-      nic: '197634567890',
-      initials: 'MK',
-    ),
-    _RequestItem(
-      citizenName: 'Sunil Bandara',
-      documentType: 'Character Certificate',
-      submittedDate: '19 Feb 2026',
-      nic: '200045678901',
-      initials: 'SB',
-    ),
-    _RequestItem(
-      citizenName: 'Priya Fernando',
-      documentType: 'Residence Certificate',
-      submittedDate: '18 Feb 2026',
-      nic: '199256789012',
-      initials: 'PF',
-    ),
-    _RequestItem(
-      citizenName: 'Amara Wijesinghe',
-      documentType: 'Character Certificate',
-      submittedDate: '17 Feb 2026',
-      nic: '198567890123',
-      initials: 'AW',
-    ),
-    _RequestItem(
-      citizenName: 'Dinesh Rajapaksa',
-      documentType: 'Income Certificate',
-      submittedDate: '16 Feb 2026',
-      nic: '199378901234',
-      initials: 'DR',
-    ),
-    _RequestItem(
-      citizenName: 'Kamala Herath',
-      documentType: 'Residence Certificate',
-      submittedDate: '15 Feb 2026',
-      nic: '198189012345',
-      initials: 'KH',
-    ),
-  ];
-
-  List<_RequestItem> get _filteredRequests {
-    List<_RequestItem> results;
-    if (_selectedFilter == 'All') {
-      results = _requests;
-    } else {
-      final typeMap = {
-        'Character Cert': 'Character Certificate',
-        'Residence Cert': 'Residence Certificate',
-        'Income Cert': 'Income Certificate',
-      };
-      final targetType = typeMap[_selectedFilter] ?? '';
-      results = _requests.where((r) => r.documentType == targetType).toList();
-    }
-
-    final query = _searchQuery.toLowerCase();
-    if (query.isNotEmpty) {
-      results = results
-          .where(
-            (r) =>
-                r.citizenName.toLowerCase().contains(query) ||
-                r.nic.toLowerCase().contains(query),
-          )
-          .toList();
-    }
-
-    return results;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final paginationState = ref.watch(pendingRequestsNotifierProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.card,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.textPrimary,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceGrey.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.textPrimary,
+                size: 20,
+              ),
+            ),
+            onPressed: _handleBack,
           ),
-          onPressed: () => context.pop(),
-          tooltip: 'Go back',
         ),
         title: Text(
-          'Pending Requests',
-          style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
+          'Request Queue',
+          style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
         ),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.filter_list_rounded,
-              color: AppColors.textPrimary,
-            ),
-            onPressed: () {
-              // Filter action
-            },
-            tooltip: 'Filter requests',
-          ),
-        ],
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          _buildSearchBar(),
-          _buildFilterChips(),
-          _buildResultsCount(),
-          Expanded(child: _buildRequestsList()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
-        style: AppTextStyles.body,
-        decoration: InputDecoration(
-          hintText: 'Search by name or NIC...',
-          hintStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-          filled: true,
-          fillColor: AppColors.card,
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textMuted,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResultsCount() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      child: Text(
-        '${_filteredRequests.length} result${_filteredRequests.length == 1 ? "" : "s"}',
-        style: AppTextStyles.caption,
-      ),
-    );
-  }
-
-  Widget _buildFilterChips() {
-    return SizedBox(
-      height: 56,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        itemCount: _filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final filter = _filters[index];
-          final isSelected = _selectedFilter == filter;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedFilter = filter;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                ),
-              ),
-              child: Text(
-                filter,
-                style: AppTextStyles.captionMedium.copyWith(
-                  color: isSelected
-                      ? AppColors.textOnPrimary
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildRequestsList() {
-    final filtered = _filteredRequests;
-
-    if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 56,
-              color: AppColors.textMuted.withOpacity(0.5),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No matching requests',
-              style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Try adjusting your search or filter',
-              style: AppTextStyles.caption,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      itemCount: filtered.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        return _buildRequestCard(filtered[index]);
-      },
-    );
-  }
-
-  Widget _buildRequestCard(_RequestItem request) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          // Search and Filter Bar
           Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.secondarySurface,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Text(
-                request.initials,
-                style: AppTextStyles.captionMedium.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+            padding: const EdgeInsets.all(16),
+            color: AppColors.card,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(request.citizenName, style: AppTextStyles.bodySemiBold),
-                const SizedBox(height: 4),
-                Text(request.documentType, style: AppTextStyles.caption),
-                const SizedBox(height: 2),
-                Text(
-                  'Submitted: ${request.submittedDate}',
-                  style: AppTextStyles.small,
+                // Search Field
+                TextField(
+                  controller: _searchController,
+                  onChanged: (query) {
+                    if (query.isEmpty) {
+                      ref
+                          .read(pendingRequestsNotifierProvider.notifier)
+                          .clearFilters();
+                    } else {
+                      ref
+                          .read(pendingRequestsNotifierProvider.notifier)
+                          .searchByName(query);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search by name or NIC',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceGrey.withValues(alpha: 0.3),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'NIC: ${request.nic}',
-                  style: AppTextStyles.small.copyWith(
-                    color: AppColors.textMuted,
+                const SizedBox(height: 12),
+                // Filter Dropdown
+                DropdownButtonFormField<String?>(
+                  initialValue: _selectedDocType,
+                  onChanged: (value) {
+                    setState(() => _selectedDocType = value);
+                    ref
+                        .read(pendingRequestsNotifierProvider.notifier)
+                        .filterByDocumentType(value);
+                  },
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('All Document Types'),
+                    ),
+                    ..._getDocumentTypes()
+                        .map(
+                          (type) => DropdownMenuItem<String?>(
+                            value: type,
+                            child: Text(type),
+                          ),
+                        )
+                        .toList(),
+                  ],
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.filter_list_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceGrey.withValues(alpha: 0.3),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                context.push('/official/review');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.textOnPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-              ),
-              child: Text(
-                'Review',
-                style: AppTextStyles.buttonSmall.copyWith(
-                  color: AppColors.textOnPrimary,
-                ),
-              ),
-            ),
+          // Requests List
+          Expanded(
+            child: paginationState.documents.isEmpty && !paginationState.isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inbox_rounded,
+                          size: 64,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'no pending request',
+                          style: AppTextStyles.h3.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: paginationState.documents.length +
+                        (paginationState.isLoading ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == paginationState.documents.length) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child:
+                                const CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+
+                      final request = paginationState.documents[index];
+                      return _buildRequestCard(context, request);
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
-}
 
-class _RequestItem {
-  final String citizenName;
-  final String documentType;
-  final String submittedDate;
-  final String nic;
-  final String initials;
+  Widget _buildRequestCard(BuildContext context, RequestModel request) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push(
+            '/official/requests/${request.id}/review',
+            extra: request,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          child: VcCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            request.fullName,
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'NIC: ${request.nic}',
+                            style: AppTextStyles.small.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    VcStatusBadge(
+                      label: request.status,
+                      type: statusTypeFromString(request.status),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Document Type',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            request.documentType,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Submitted',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            _formatDate(request.submittedAt),
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-  const _RequestItem({
-    required this.citizenName,
-    required this.documentType,
-    required this.submittedDate,
-    required this.nic,
-    required this.initials,
-  });
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}h ago';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays}d ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  List<String> _getDocumentTypes() {
+    return [
+      'Character Certificate',
+      'Residence Certificate',
+      'Income Certificate',
+      'Birth Certificate',
+      'Identity Verification',
+      'Land Ownership',
+    ];
+  }
+
+  void _handleBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go('/official/dashboard');
+  }
 }

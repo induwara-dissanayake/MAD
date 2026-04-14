@@ -49,13 +49,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller.forward();
 
-    // Navigate after animation and check auth state
+    // Navigate after animation completes
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
         final user = ref.read(authServiceProvider).currentUser;
         if (user != null) {
-          context.go(RoutePaths.home);
+          // User is logged in - let router handle role-based redirect
+          context.go('/');
         } else {
+          // Not logged in - go to language selection
           context.go(RoutePaths.language);
         }
       }

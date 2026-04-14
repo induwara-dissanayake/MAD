@@ -14,6 +14,10 @@ class RequestModel {
   final String? certificateUrl;
   final Map<String, String>? formData;
   final List<String>? requiredFields;
+  final DateTime? processedAt;
+  final String? processedBy;
+  final Map<String, String>? infoRequestDetails;
+  final String? remarks;
 
   RequestModel({
     required this.id,
@@ -29,11 +33,17 @@ class RequestModel {
     this.certificateUrl,
     this.formData,
     this.requiredFields,
+    this.processedAt,
+    this.processedBy,
+    this.infoRequestDetails,
+    this.remarks,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
+      // Keep legacy key for backward compatibility with existing rules/data.
+      'citizenUid': userId,
       'documentType': documentType,
       'fullName': fullName,
       'nic': nic,
@@ -45,6 +55,10 @@ class RequestModel {
       'certificateUrl': certificateUrl,
       'formData': formData,
       'requiredFields': requiredFields,
+      'processedAt': processedAt != null ? Timestamp.fromDate(processedAt!) : null,
+      'processedBy': processedBy,
+      'infoRequestDetails': infoRequestDetails,
+      'remarks': remarks,
     };
   }
 
@@ -56,9 +70,16 @@ class RequestModel {
       date = DateTime.tryParse(map['submittedAt']);
     }
 
+    DateTime? processedDate;
+    if (map['processedAt'] is Timestamp) {
+      processedDate = (map['processedAt'] as Timestamp).toDate();
+    } else if (map['processedAt'] is String) {
+      processedDate = DateTime.tryParse(map['processedAt']);
+    }
+
     return RequestModel(
       id: id,
-      userId: map['userId'] ?? '',
+      userId: (map['userId'] ?? map['citizenUid'] ?? '').toString(),
       documentType: map['documentType'] ?? '',
       fullName: map['fullName'] ?? '',
       nic: map['nic'] ?? '',
@@ -74,6 +95,12 @@ class RequestModel {
       requiredFields: (map['requiredFields'] as List?)
           ?.map((e) => '$e')
           .toList(),
+      processedAt: processedDate,
+      processedBy: map['processedBy'],
+      infoRequestDetails: (map['infoRequestDetails'] as Map?)?.map(
+        (key, value) => MapEntry('$key', '$value'),
+      ),
+      remarks: map['remarks'],
     );
   }
 }

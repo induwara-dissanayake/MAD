@@ -20,40 +20,35 @@ import '../../features/help/screens/help_screen.dart';
 import '../../features/home/screens/app_shell.dart';
 import '../../features/home/screens/citizen_home_screen.dart';
 import '../../features/notices/screens/notice_board_screen.dart';
-import '../../features/notices/screens/notice_detail_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
-import '../../features/official/screens/mass_broadcast_screen.dart';
-import '../../features/official/screens/official_dashboard_screen.dart';
-import '../../features/official/screens/pending_requests_screen.dart';
-import '../../features/official/screens/post_notice_screen.dart';
-import '../../features/official/screens/request_review_screen.dart';
-import '../../features/official/screens/community_moderation_screen.dart';
-import '../../features/official/screens/notice_history_screen.dart';
-import '../../features/official/screens/gn_profile_screen.dart';
-import '../../features/official/screens/registered_users_screen.dart';
+import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/incidents/screens/incident_detail_screen.dart';
 import '../../features/profile/screens/change_password_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/change_personal_information.dart';
 import '../../features/profile/screens/edit_family_member_screen.dart';
-import '../../features/emergency/screens/emergency_alert_screen.dart';
-import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/committee/screens/committee_task_screen.dart';
 import '../../features/committee/screens/meeting_scheduler_screen.dart';
 import '../../features/committee/screens/polling_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/user_management_screen.dart';
+import '../../features/admin/screens/official_registration_screen.dart';
+import '../../features/admin/screens/certificate_management_screen.dart';
+import '../../features/official/screens/official_dashboard_screen.dart';
+import '../../features/official/screens/pending_requests_screen.dart';
+import '../../features/official/screens/request_review_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Returns the correct dashboard path for a given Firestore role string.
 String _dashboardForRole(String role) {
   switch (role) {
-    case 'gn_officer':
-      return '/official/dashboard';
     case 'committee':
       return '/committee/tasks';
     case 'admin':
       return '/admin/dashboard';
+    case 'gn_officer':
+      return '/official/dashboard';
     default:
       return '/home';
   }
@@ -69,7 +64,8 @@ Future<String> _fetchCurrentUserRole() async {
         .collection('users')
         .doc(uid)
         .get();
-    return doc.data()?['role'] as String? ?? 'citizen';
+    final role = doc.data()?['role'] as String? ?? 'citizen';
+    return role == 'super_admin' ? 'admin' : role;
   } catch (_) {
     return 'citizen';
   }
@@ -121,20 +117,10 @@ final appRouter = GoRouter(
     }
 
     // ── Role-gate specific dashboards ─────────────────────────────────────
-    // Prevent a citizen from directly navigating to officer/admin routes
-    // (e.g. by typing the path or following a deep-link).
-    if (path == '/official/dashboard' ||
-        path == '/official/pending' ||
-        path == '/official/review' ||
-        path == '/official/post-notice' ||
-        path == '/official/broadcast' ||
-        path == '/official/moderation' ||
-        path == '/official/notices' ||
-        path == '/official/profile' ||
-        path == '/official/registered-users' ||
-        path == '/incidents') {
+    // Prevent unauthorized users from accessing restricted routes.
+    if (path == '/incidents') {
       final role = await _fetchCurrentUserRole();
-      if (role != 'gn_officer' && role != 'admin') {
+      if (role != 'admin' && role != 'gn_officer') {
         return _dashboardForRole(role);
       }
     }
@@ -148,9 +134,32 @@ final appRouter = GoRouter(
       }
     }
 
-    if (path == '/admin/dashboard') {
+    if (path == '/admin/dashboard' ||
+        path == '/admin/users' ||
+        path == '/admin/create-user' ||
+        path == '/admin/certificates' ||
+        path == '/admin/register-official') {
       final role = await _fetchCurrentUserRole();
       if (role != 'admin') {
+        return _dashboardForRole(role);
+      }
+    }
+
+    if (path.startsWith('/official')) {
+      final role = await _fetchCurrentUserRole();
+      if (role != 'gn_officer' && role != 'admin') {
+        return _dashboardForRole(role);
+      }
+    }
+
+    // ── Catch all: redirect citizen/unauthorized users to their dashboard ──
+    // If user tries to access any unprotected route while logged in
+    if (path == '/home' || path == '/applications' ||
+        path == '/community' ||
+        path == '/fab-placeholder' || path == '/documents') {
+      final role = await _fetchCurrentUserRole();
+      // Allow citizens to access these routes
+      if (role != 'citizen') {
         return _dashboardForRole(role);
       }
     }
@@ -275,60 +284,6 @@ final appRouter = GoRouter(
       builder: (context, state) => const AddCommunityPostScreen(),
     ),
 
-    // ── GN Officer routes ────────────────────────────────────────────────
-    GoRoute(
-      path: '/official/dashboard',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const OfficialDashboardScreen(),
-    ),
-    GoRoute(
-      path: '/official/pending',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const PendingRequestsScreen(),
-    ),
-    GoRoute(
-      path: '/official/review',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const RequestReviewScreen(),
-    ),
-    GoRoute(
-      path: '/official/post-notice',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const PostNoticeScreen(),
-    ),
-    GoRoute(
-      path: '/official/broadcast',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const MassBroadcastScreen(),
-    ),
-
-    // ── GN Officer routes (additions) ─────────────────────────────────────
-    GoRoute(
-      path: '/official/moderation',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const CommunityModerationScreen(),
-    ),
-    GoRoute(
-      path: '/official/notices',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const NoticeHistoryScreen(),
-    ),
-    GoRoute(
-      path: '/official/profile',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const GnProfileScreen(),
-    ),
-    GoRoute(
-      path: '/official/registered-users',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const RegisteredUsersScreen(),
-    ),
-    GoRoute(
-      path: '/incidents/detail',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const IncidentDetailScreen(),
-    ),
-
     // ── Profile ──────────────────────────────────────────────────────────
     GoRoute(
       path: '/profile',
@@ -354,26 +309,15 @@ final appRouter = GoRouter(
       },
     ),
 
-    // ── Notice detail ────────────────────────────────────────────────────
-    GoRoute(
-      path: '/notice-detail',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final notice = state.extra as Map<String, String>;
-        return NoticeDetailScreen(notice: notice);
-      },
-    ),
-
-    // ── Emergency & incidents ────────────────────────────────────────────
-    GoRoute(
-      path: '/emergency/alert',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const EmergencyAlertScreen(),
-    ),
     GoRoute(
       path: '/incidents',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const IncidentDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/incidents/detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const IncidentDetailScreen(),
     ),
 
     // ── Village Committee routes ──────────────────────────────────────────
@@ -398,6 +342,46 @@ final appRouter = GoRouter(
       path: '/admin/dashboard',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/admin/users',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const UserManagementScreen(),
+    ),
+    GoRoute(
+      path: '/admin/create-user',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CreateResidentScreen(),
+    ),
+    GoRoute(
+      path: '/admin/certificates',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CertificateManagementScreen(),
+    ),
+    GoRoute(
+      path: '/admin/register-official',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const OfficialRegistrationScreen(),
+    ),
+
+    // ── GN Officer ──────────────────────────────────────────────────────
+    GoRoute(
+      path: '/official/dashboard',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const OfficialDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/official/requests/pending',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const PendingRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/official/requests/:requestId/review',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final requestId = state.pathParameters['requestId'] ?? '';
+        return RequestReviewScreen(requestId: requestId);
+      },
     ),
   ],
 );

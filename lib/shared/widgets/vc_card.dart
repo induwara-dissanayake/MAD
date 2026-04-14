@@ -2,6 +2,58 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
+/// Generic card widget for consistent styling across the app
+class VcCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  final EdgeInsets margin;
+  final Color? backgroundColor;
+  final VoidCallback? onTap;
+
+  const VcCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.margin = EdgeInsets.zero,
+    this.backgroundColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowLight.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: card,
+        ),
+      );
+    }
+
+    return card;
+  }
+}
+
 class VcDashboardCard extends StatelessWidget {
   final String title;
   final String? subtitle;

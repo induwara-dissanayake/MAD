@@ -31,16 +31,6 @@ class RoutePaths {
   static const String changePassword = '/profile/change-password';
   static const String editPersonalInformation = '/profile/edit-personal-information';
 
-  // GN Officer
-  static const String officialDashboard = '/official/dashboard';
-  static const String officialPending = '/official/pending';
-  static const String officialReview = '/official/review';
-  static const String officialPostNotice = '/official/post-notice';
-  static const String officialBroadcast = '/official/broadcast';
-  static const String officialModeration = '/official/moderation';
-  static const String officialNoticeHistory = '/official/notices';
-  static const String officialProfile = '/official/profile';
-  static const String officialRegisteredUsers = '/official/registered-users';
 
   // Committee
   static const String committeeTasks = '/committee/tasks';
@@ -49,4 +39,9 @@ class RoutePaths {
 
   // Admin
   static const String adminDashboard = '/admin/dashboard';
+
+  // GN Officer
+  static const String officialDashboard = '/official/dashboard';
+  static const String officialPendingRequests = '/official/requests/pending';
+  static const String officialRequestReview = '/official/requests/:requestId/review';
 }
