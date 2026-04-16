@@ -173,7 +173,7 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                         Switch(
                           value: true,
                           onChanged: (_) {},
-                          activeColor: AppColors.primary,
+                          activeThumbColor: AppColors.primary,
                         ),
                       ],
                     ),

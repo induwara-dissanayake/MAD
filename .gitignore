@@ -48,3 +48,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 nul
+implementationplan.md
+Tasks.md
+PRD.md
+GN_OFFICER_IMPLEMENTATION_GUIDE.md
+IMPLEMENTATION_COMPLETE.md
+IMPLEMENTATION_VERIFIED.md

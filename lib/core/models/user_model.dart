@@ -56,12 +56,14 @@ class UserModel {
   final String address;
   final String village;
   final String district;
-  final String role; // citizen | admin | gn_officer | committee
+  final String
+  role; // citizen | admin_resident | admin | gn_officer | committee
   final MemberType memberType;
   final String? relationship;
   final bool hasSystemAccess;
   final String? createdByUid; // UID of the resident/admin who created this user
   final DateTime createdAt;
+  final String? photoURL;
 
   UserModel({
     required this.uid,
@@ -78,6 +80,7 @@ class UserModel {
     this.hasSystemAccess = true,
     this.createdByUid,
     required this.createdAt,
+    this.photoURL,
   });
 
   Map<String, dynamic> toMap() {
@@ -95,6 +98,7 @@ class UserModel {
       'hasSystemAccess': hasSystemAccess,
       'createdByUid': createdByUid,
       'createdAt': Timestamp.fromDate(createdAt),
+      'photoURL': photoURL,
     };
   }
 
@@ -121,6 +125,7 @@ class UserModel {
       hasSystemAccess: map['hasSystemAccess'] as bool? ?? true,
       createdByUid: map['createdByUid'] as String?,
       createdAt: date ?? DateTime.now(),
+      photoURL: map['photoURL'] as String?,
     );
   }
 }

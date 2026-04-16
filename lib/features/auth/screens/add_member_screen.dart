@@ -140,6 +140,19 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
         throw Exception('Your profile is not available.');
       }
 
+      final creatorRole = creator.role;
+      if (creatorRole != 'citizen' &&
+          creatorRole != 'admin_resident' &&
+          creatorRole != 'gn_officer') {
+        throw Exception('You do not have permission to add members.');
+      }
+
+      if (creatorRole == 'citizen' && _selectedType == MemberType.newResident) {
+        throw Exception(
+          'Citizens can only add family members or rental members.',
+        );
+      }
+
       final inheritedVillage = creator.village;
       final inheritedDistrict = creator.district;
       if (inheritedVillage.isEmpty || inheritedDistrict.isEmpty) {
@@ -283,16 +296,108 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           ),
           onPressed: () => context.pop(),
         ),
-        title: Text('Add Member', style: AppTextStyles.h3),
+        title: Text(
+          _creatorProfile?.role == 'gn_officer'
+              ? 'Add Committee Member'
+              : 'Add Member',
+          style: AppTextStyles.h3,
+        ),
         centerTitle: true,
       ),
       body: Column(
         children: [
+          if (_creatorProfile?.role == 'gn_officer') _buildGnOfficerHeader(),
           const Divider(height: 1, color: AppColors.divider),
           Expanded(
             child: _isLoadingProfile
                 ? const Center(child: CircularProgressIndicator())
                 : (_isDone ? _buildSuccessView() : _buildForm()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGnOfficerHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.group_add_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Add Committee Member',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'GN Division 521 — Kaduwela',
+                      style: TextStyle(fontSize: 12, color: Colors.white54),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white70,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Add a family or household member to the citizen registry. Optionally create system access for them.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white70,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -376,7 +481,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
               label: 'Contact Number',
               controller: _phoneController,
               hint: _createSystemAccess
-                  ? '+94 77 123 4567'
+                  ? '077 123 4567'
                   : 'Optional contact number',
               icon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
@@ -848,6 +953,10 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   }
 
   Widget _buildWarningBox() {
+    if (_createSystemAccess) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -866,9 +975,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              _createSystemAccess
-                  ? 'ℹ️ Login credentials will be created without signing you out.'
-                  : 'ℹ️ This member will be recorded for household/government records without app access.',
+              'ℹ️ This member will be recorded for household/government records without app access.',
               style: AppTextStyles.small.copyWith(color: AppColors.warning),
             ),
           ),
@@ -916,7 +1023,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
+            activeThumbColor: AppColors.primary,
           ),
         ],
       ),

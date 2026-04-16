@@ -12,7 +12,8 @@ class RequestTrackingScreen extends ConsumerStatefulWidget {
   const RequestTrackingScreen({super.key});
 
   @override
-  ConsumerState<RequestTrackingScreen> createState() => _RequestTrackingScreenState();
+  ConsumerState<RequestTrackingScreen> createState() =>
+      _RequestTrackingScreenState();
 }
 
 class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
@@ -56,7 +57,13 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                 size: 20,
               ),
             ),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/applications');
+              }
+            },
           ),
         ),
         title: Text(
@@ -128,8 +135,12 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                     child: Text(
                       filter,
                       style: AppTextStyles.captionMedium.copyWith(
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -260,29 +271,38 @@ class _RequestTrackingScreenState extends ConsumerState<RequestTrackingScreen> {
                       style: AppTextStyles.bodyMedium.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          request.id.isNotEmpty ? request.id.substring(0, 8) : '...',
+                          request.id.isNotEmpty
+                              ? request.id.substring(0, 8)
+                              : '...',
                           style: AppTextStyles.small.copyWith(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
                         Icon(
                           Icons.circle,
                           size: 4,
                           color: AppColors.textMuted.withOpacity(0.5),
                         ),
-                        const SizedBox(width: 8),
                         Text(
                           DateFormat.yMMMd().format(request.submittedAt),
                           style: AppTextStyles.small.copyWith(
                             color: AppColors.textSecondary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
