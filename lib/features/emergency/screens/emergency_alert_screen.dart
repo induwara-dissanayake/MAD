@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -295,7 +294,7 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
                         value: _useCurrentLocation,
                         onChanged: (v) =>
                             setState(() => _useCurrentLocation = v),
-                        activeColor: AppColors.primary,
+                        activeThumbColor: AppColors.primary,
                       ),
                     ],
                   ),

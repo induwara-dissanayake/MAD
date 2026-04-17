@@ -11,187 +11,139 @@ class OfficialDashboardScreen extends StatefulWidget {
       _OfficialDashboardScreenState();
 }
 
-class _OfficialDashboardScreenState extends State<OfficialDashboardScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final Map<String, bool> _expandedCategories = {
-    'Document Review': true,
-    'Community Management': false,
-    'User Management': false,
-    'System Admin': false,
-  };
+class _OfficialDashboardScreenState extends State<OfficialDashboardScreen> {
+  static const Color _brandGreen = Color(0xFF1D6F2B);
+  static const Color _brandGreenDark = Color(0xFF124D1D);
+  static const Color _brandGreenSoft = Color(0xFFEAF6E7);
+  static const Color _warmSand = Color(0xFFF2E5D8);
+  static const Color _warmSandBorder = Color(0xFFDCC9B8);
+  static const Color _warmSandText = Color(0xFF8A4E1C);
+  static const Color _softSurface = Color(0xFFF8F7F3);
+  static const Color _tealMap = Color(0xFF169B94);
+  static const Color _tealMapDark = Color(0xFF0E5D5A);
 
-  final List<_StatCard> _stats = [
-    _StatCard('Pending', '12', AppColors.accentYellow, AppColors.warning),
-    _StatCard('In Review', '5', AppColors.accentBlue, AppColors.info),
-    _StatCard('Approved Today', '8', AppColors.accentGreen, AppColors.success),
-    _StatCard('Rejected', '2', AppColors.accentRed, AppColors.error),
-  ];
+  final TextEditingController _broadcastController = TextEditingController();
 
-  final List<_PendingRequest> _recentRequests = [
+  final List<_PendingRequest> _pendingRequests = [
+    _PendingRequest(
+      citizenName: 'K. Perera',
+      documentType: 'Address Verification',
+      submittedDate: '22 Feb 2026',
+      initials: 'KP',
+      needsSignature: true,
+    ),
+    _PendingRequest(
+      citizenName: 'S. Silva',
+      documentType: 'Land Deed Attestation',
+      submittedDate: '21 Feb 2026',
+      initials: 'SS',
+      needsSignature: true,
+    ),
     _PendingRequest(
       citizenName: 'Nadeeka Silva',
       documentType: 'Character Certificate',
-      submittedDate: '22 Feb 2026',
-      initials: 'NS',
-    ),
-    _PendingRequest(
-      citizenName: 'Ruwan Jayasinghe',
-      documentType: 'Residence Certificate',
-      submittedDate: '21 Feb 2026',
-      initials: 'RJ',
-    ),
-    _PendingRequest(
-      citizenName: 'Malini Kumari',
-      documentType: 'Income Certificate',
       submittedDate: '20 Feb 2026',
-      initials: 'MK',
+      initials: 'NS',
+      needsSignature: false,
     ),
   ];
 
-  final List<_Incident> _incidents = [
-    _Incident(
-      title: 'Fallen Tree Blocking Road',
-      location: 'Main St, Kaduwela',
-      date: 'Today, 10:30 AM',
-      priority: 'High',
-      priorityColor: AppColors.error,
-    ),
-    _Incident(
-      title: 'Water Pipe Burst',
-      location: 'Temple Road',
-      date: 'Yesterday, 4:15 PM',
-      priority: 'Medium',
-      priorityColor: AppColors.warning,
-    ),
-    _Incident(
-      title: 'Street Lamp Malfunction',
-      location: '2nd Lane, Malabe',
-      date: '20 Feb 2026',
-      priority: 'Low',
-      priorityColor: AppColors.success,
-    ),
-    _Incident(
-      title: 'Garbage Collection Issue',
-      location: 'Housing Scheme',
-      date: '19 Feb 2026',
-      priority: 'Medium',
-      priorityColor: AppColors.warning,
+  final List<_CommunityPost> _awaitingModeration = [
+    _CommunityPost(
+      username: 'Amara Jayasekara',
+      userHandle: 'Community Forum',
+      timeAgo: '2 hours ago',
+      content:
+          '"Has anyone seen the water supply schedule for next week? The main pipe near the temple seems to be leaking. Should we organise a village cleaning day?"',
     ),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _broadcastController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _softSurface,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBarArea(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  // Tab 1: Overview
-                  SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 20),
-                          _buildStatsRow(),
-                          const SizedBox(height: 28),
-                          _buildQuickActions(),
-                          const SizedBox(height: 28),
-                          _buildRecentPendingRequests(),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Tab 2: Incidents
-                  _buildIncidentDashboard(),
-                ],
-              ),
-            ),
-          ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 92),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with Village Connect branding
+              _buildHeaderSection(),
+              // Status Alert Cards
+              _buildStatusCards(),
+              // Broadcast Section
+              _buildBroadcastSection(),
+              // Pending Requests Section
+              _buildPendingRequestsSection(),
+              // Awaiting Moderation Section
+              _buildAwaitingModerationSection(),
+              // Activity Overview
+              _buildActivityOverviewSection(),
+              // Citizen Sentiment Card
+              _buildCitizenSentimentCard(),
+              // Village Map Section
+              _buildVillageMapSection(),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  Widget _buildAppBarArea() {
+  Widget _buildHeaderSection() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
-        gradient: AppColors.heroGradient,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_brandGreen, _brandGreenDark],
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Village Connect Logo Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back,',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textOnPrimary.withOpacity(0.85),
-                        fontWeight: FontWeight.w500,
-                      ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Village Connect',
+                    style: AppTextStyles.h2.copyWith(
+                      color: AppColors.textOnPrimary,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Nimal Fernando',
-                      style: AppTextStyles.h2.copyWith(
-                        color: AppColors.textOnPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               GestureDetector(
                 onTap: () => context.push('/official/profile'),
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: AppColors.textOnPrimary.withOpacity(0.15),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.textOnPrimary.withOpacity(0.2),
-                      width: 2,
-                    ),
                   ),
                   child: Center(
                     child: Icon(
-                      Icons.person_rounded,
-                      color: AppColors.textOnPrimary.withOpacity(0.9),
-                      size: 24,
+                      Icons.notifications_none_rounded,
+                      color: AppColors.textOnPrimary,
+                      size: 22,
                     ),
                   ),
                 ),
@@ -199,663 +151,835 @@ class _OfficialDashboardScreenState extends State<OfficialDashboardScreen>
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.textOnPrimary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                color: AppColors.textOnPrimary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicatorPadding: const EdgeInsets.all(4),
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textOnPrimary.withOpacity(0.7),
-              labelStyle: AppTextStyles.label.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              unselectedLabelStyle: AppTextStyles.label.copyWith(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-              tabs: const [
-                Tab(text: 'Overview'),
-                Tab(text: 'Incidents'),
-              ],
+          // Official Portal Info
+          Text(
+            'OFFICIAL PORTAL',
+            style: AppTextStyles.small.copyWith(
+              color: AppColors.textOnPrimary.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+              letterSpacing: 1.0,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
+          Text(
+            'Grama Niladhari - Division 412B',
+            style: AppTextStyles.h1.copyWith(
+              color: AppColors.textOnPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 24,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Kelani Village Administration',
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.textOnPrimary.withOpacity(0.85),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatsRow() {
-    return SizedBox(
-      height: 110,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _stats.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final stat = _stats[index];
-          return Container(
-            width: 150,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: stat.backgroundColor,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: stat.textColor.withOpacity(0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: stat.textColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      _getStatIcon(index),
-                      size: 18,
-                      color: stat.textColor,
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      stat.count,
-                      style: AppTextStyles.h1.copyWith(
-                        color: stat.textColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      stat.label,
-                      style: AppTextStyles.small.copyWith(
-                        color: stat.textColor.withOpacity(0.75),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  IconData _getStatIcon(int index) {
-    switch (index) {
-      case 0:
-        return Icons.schedule_outlined;
-      case 1:
-        return Icons.preview_outlined;
-      case 2:
-        return Icons.check_circle_outline;
-      case 3:
-        return Icons.cancel_outlined;
-      default:
-        return Icons.info_outline;
-    }
-  }
-
-  Widget _buildQuickActions() {
-    final actionCategories = {
-      'Document Review': [
-        ('Review Requests', Icons.rate_review_outlined, AppColors.primaryLight, '/official/pending'),
-        ('Manage Notices', Icons.article_outlined, AppColors.infoLight, '/official/notices'),
-        ('Registered Users', Icons.people_alt_rounded, AppColors.primaryLight, '/official/registered-users'),
-      ],
-      'Community Management': [
-        ('Post Notice', Icons.campaign_outlined, AppColors.warningLight, '/official/post-notice'),
-        ('Broadcast Message', Icons.cell_tower_rounded, AppColors.infoLight, '/official/broadcast'),
-        ('Community Moderation', Icons.how_to_reg_outlined, AppColors.warningLight, '/official/moderation'),
-        ('Committee Tasks', Icons.task_alt_rounded, AppColors.successLight, '/committee/tasks'),
-        ('Community Polls', Icons.poll_rounded, AppColors.primaryLight, '/committee/polls'),
-      ],
-      'User Management': [
-        ('Register Citizen', Icons.person_add_outlined, AppColors.successLight, '/auth/create-resident'),
-        ('Register Committee Member', Icons.group_add_rounded, AppColors.infoLight, '/auth/add-member'),
-      ],
-      'System Admin': [
-        ('Incident Dashboard', Icons.report_rounded, AppColors.errorLight, '/incidents'),
-        ('Admin Panel', Icons.admin_panel_settings_rounded, Color(0xFFF3E5F5), '/admin/dashboard'),
-      ],
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Quick Access', style: AppTextStyles.h3),
-        const SizedBox(height: 14),
-        ...actionCategories.entries.map((entry) {
-          final category = entry.key;
-          final actions = entry.value;
-          final isExpanded = _expandedCategories[category] ?? false;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+  Widget _buildStatusCards() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Row(
+        children: [
+          // Emergencies Card
+          Expanded(
             child: Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
+                color: const Color(0xFFFFEBEE),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.error.withOpacity(0.2)),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.shadow,
+                    color: AppColors.error.withOpacity(0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _expandedCategories[category] = !isExpanded;
-                        });
-                      },
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              category,
-                              style: AppTextStyles.bodySemiBold,
-                            ),
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: AppColors.secondarySurface,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  isExpanded
-                                      ? Icons.expand_less_rounded
-                                      : Icons.expand_more_rounded,
-                                  size: 20,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.error,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.warning_rounded,
+                        color: AppColors.textOnPrimary,
+                        size: 22,
                       ),
                     ),
                   ),
-                  if (isExpanded)
-                    Column(
-                      children: [
-                        Container(
-                          height: 1,
-                          color: AppColors.border,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: GridView.count(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 1.0,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            children: actions.map((action) {
-                              return _buildCategoryActionTile(
-                                title: action.$1,
-                                icon: action.$2,
-                                backgroundColor: action.$3,
-                                onTap: () => context.push(action.$4),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 12),
+                  Text(
+                    '2',
+                    style: AppTextStyles.h1.copyWith(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 28,
                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'NEW EMERGENCIES',
+                    style: AppTextStyles.small.copyWith(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Immediate action required',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.error.withOpacity(0.7),
+                    ),
+                  ),
                 ],
               ),
             ),
-          );
-        }).toList(),
-      ],
+          ),
+          const SizedBox(width: 12),
+          // Pending Requests Card
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _warmSand,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _warmSandBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: _warmSandBorder.withOpacity(0.18),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _warmSandText,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.schedule_rounded,
+                        color: AppColors.textOnPrimary,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '5',
+                    style: AppTextStyles.h1.copyWith(
+                      color: _warmSandText,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'PENDING REQUESTS',
+                    style: AppTextStyles.small.copyWith(
+                      color: _warmSandText,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Awaiting your signature',
+                    style: AppTextStyles.caption.copyWith(
+                      color: _warmSandText.withOpacity(0.72),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryActionTile({
-    required String title,
-    required IconData icon,
-    required Color backgroundColor,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border.withOpacity(0.3)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadowLight,
-                blurRadius: 4,
-                offset: const Offset(0, 1),
+  Widget _buildBroadcastSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.campaign_rounded,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _broadcastController,
+                  decoration: InputDecoration(
+                    hintText: 'Broadcast a message...',
+                    hintStyle: AppTextStyles.body.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  maxLines: 1,
+                  style: AppTextStyles.body,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: GestureDetector(
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Broadcast: ${_broadcastController.text}',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    _broadcastController.clear();
+                  },
+                  child: Icon(
+                    Icons.send_rounded,
+                    color: AppColors.textOnPrimary,
+                    size: 18,
+                  ),
+                ),
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingRequestsSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+              Text('Pending Requests', style: AppTextStyles.h3),
+              GestureDetector(
+                onTap: () => context.push('/official/pending'),
                 child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  'View All',
                   style: AppTextStyles.captionMedium.copyWith(
+                    color: _brandGreen,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          ..._pendingRequests
+              .take(2)
+              .map((request) => _buildPendingRequestCard(request))
+              .toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingRequestCard(_PendingRequest request) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowLight,
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [_brandGreen, _brandGreenDark],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.description_rounded,
+                  color: AppColors.textOnPrimary,
+                  size: 22,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    request.documentType,
+                    style: AppTextStyles.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Requested by: ${request.citizenName}',
+                    style: AppTextStyles.small,
+                  ),
+                ],
+              ),
+            ),
+            if (request.needsSignature)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _warmSand,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'NEEDS SIGNATURE',
+                  style: AppTextStyles.small.copyWith(
+                    color: _warmSandText,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildRecentPendingRequests() {
+  Widget _buildAwaitingModerationSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Awaiting Moderation', style: AppTextStyles.h3),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _brandGreenSoft,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Moderation Queue',
+                  style: AppTextStyles.small.copyWith(
+                    color: _brandGreen,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._awaitingModeration
+              .map((post) => _buildModerationCard(post))
+              .toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModerationCard(_CommunityPost post) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowLight,
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _brandGreenSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.person_rounded,
+                      color: _brandGreen,
+                      size: 22,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(post.username, style: AppTextStyles.bodyMedium),
+                      Row(
+                        children: [
+                          Text(
+                            post.userHandle,
+                            style: AppTextStyles.small.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '• ${post.timeAgo}',
+                            style: AppTextStyles.small.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _softSurface,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                post.content,
+                style: AppTextStyles.body,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => context.push('/official/moderation'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.success.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Approve',
+                            style: AppTextStyles.buttonSmall.copyWith(
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => context.push('/official/moderation'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.error.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Reject',
+                            style: AppTextStyles.buttonSmall.copyWith(
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityOverviewSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Activity Overview', style: AppTextStyles.h3),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadowLight,
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildActivityMetric('Active Requests', '12', 0.6, _brandGreen),
+                const SizedBox(height: 16),
+                _buildActivityMetric(
+                  'Resolved Today',
+                  '08',
+                  0.4,
+                  AppColors.success,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityMetric(
+    String label,
+    String value,
+    double progress,
+    Color color,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Recent Pending Requests', style: AppTextStyles.h3),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  context.push('/official/pending');
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    children: [
-                      Text(
-                        'View All',
-                        style: AppTextStyles.captionMedium.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 12,
-                        color: AppColors.primary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            Text(label, style: AppTextStyles.body),
+            Text(value, style: AppTextStyles.h3.copyWith(color: color)),
           ],
         ),
-        const SizedBox(height: 12),
-        ...List.generate(_recentRequests.length, (index) {
-          final request = _recentRequests[index];
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: index < _recentRequests.length - 1 ? 10 : 0,
-            ),
-            child: _buildRequestCard(request),
-          );
-        }),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 6,
+            backgroundColor: color.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildRequestCard(_PendingRequest request) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowLight,
-            blurRadius: 6,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
-              ),
-              borderRadius: BorderRadius.circular(10),
+  Widget _buildCitizenSentimentCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadowLight,
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
-            child: Center(
-              child: Text(
-                request.initials,
-                style: AppTextStyles.captionMedium.copyWith(
-                  color: AppColors.textOnPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(request.citizenName, style: AppTextStyles.bodyMedium),
-                const SizedBox(height: 4),
-                Text(
-                  request.documentType,
-                  style: AppTextStyles.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: _warmSand,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.sentiment_satisfied_rounded,
+                      color: _warmSandText,
+                      size: 18,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 12,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      request.submittedDate,
-                      style: AppTextStyles.small,
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                Text(
+                  'CITIZEN SENTIMENT',
+                  style: AppTextStyles.small.copyWith(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+            const SizedBox(height: 12),
+            Text(
+              '92% Positive engagement this month\nin Division 412B.',
+              style: AppTextStyles.body,
+              maxLines: 2,
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  context.push('/official/pending');
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Review',
-                        style: AppTextStyles.buttonSmall.copyWith(
-                          color: AppColors.primary,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 12,
-                        color: AppColors.primary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildIncidentDashboard() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _incidents.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final incident = _incidents[index];
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: incident.priorityColor.withOpacity(0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+  Widget _buildVillageMapSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'VILLAGE MAP',
+            style: AppTextStyles.small.copyWith(
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: incident.priorityColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: incident.priorityColor.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: incident.priorityColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${incident.priority} Priority',
-                                style: AppTextStyles.small.copyWith(
-                                  color: incident.priorityColor,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.secondarySurface,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.more_vert_rounded,
-                            color: AppColors.textMuted,
-                            size: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      incident.title,
-                      style: AppTextStyles.bodySemiBold,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 16,
-                          color: AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            incident.location,
-                            style: AppTextStyles.caption,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.access_time_rounded,
-                          size: 16,
-                          color: AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          incident.date,
-                          style: AppTextStyles.caption,
-                        ),
-                      ],
-                    ),
-                  ],
+          const SizedBox(height: 8),
+          Text('Zone 4 - High Frequency Area', style: AppTextStyles.bodyMedium),
+          const SizedBox(height: 12),
+          Container(
+            height: 150,
+            decoration: BoxDecoration(
+              color: _tealMap,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadowLight,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-              Container(
-                height: 1,
-                color: AppColors.divider,
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 40,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('View Incident Details'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(10),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                children: [
+                  Container(
+                    color: _tealMapDark,
+                    child: Center(
+                      child: Icon(
+                        Icons.map_rounded,
+                        size: 60,
+                        color: _brandGreen.withOpacity(0.28),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: GestureDetector(
+                      onTap: () => context.push('/official/pending'),
                       child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
-                          color: incident.priorityColor.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: incident.priorityColor.withOpacity(0.2),
-                          ),
+                          color: AppColors.textOnPrimary,
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              'View Details',
-                              style: AppTextStyles.buttonSmall.copyWith(
-                                color: incident.priorityColor,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
                             Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 12,
-                              color: incident.priorityColor,
+                              Icons.public_rounded,
+                              size: 16,
+                              color: _tealMap,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Open GIS Portal',
+                              style: AppTextStyles.buttonSmall.copyWith(
+                                color: _tealMap,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
-}
 
-class _StatCard {
-  final String label;
-  final String count;
-  final Color backgroundColor;
-  final Color textColor;
+  Widget _buildBottomNavigationBar() {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow.withOpacity(0.08),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
+            ),
+          ],
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(
+              icon: Icons.home_rounded,
+              label: 'Home',
+              isSelected: true,
+              onTap: () => context.go('/official/dashboard'),
+            ),
+            _buildNavItem(
+              icon: Icons.description_rounded,
+              label: 'Requests',
+              onTap: () => context.go('/official/pending'),
+            ),
+            _buildNavItem(
+              icon: Icons.groups_rounded,
+              label: 'Moderation',
+              onTap: () => context.go('/official/moderation'),
+            ),
+            _buildNavItem(
+              icon: Icons.person_rounded,
+              label: 'Profile',
+              onTap: () => context.go('/official/profile'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-  const _StatCard(this.label, this.count, this.backgroundColor, this.textColor);
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isSelected = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 14 : 10,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? _brandGreenSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: isSelected ? _brandGreen : Colors.black54,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: AppTextStyles.small.copyWith(
+                color: isSelected ? _brandGreen : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _PendingRequest {
@@ -863,27 +987,27 @@ class _PendingRequest {
   final String documentType;
   final String submittedDate;
   final String initials;
+  final bool needsSignature;
 
   const _PendingRequest({
     required this.citizenName,
     required this.documentType,
     required this.submittedDate,
     required this.initials,
+    this.needsSignature = false,
   });
 }
 
-class _Incident {
-  final String title;
-  final String location;
-  final String date;
-  final String priority;
-  final Color priorityColor;
+class _CommunityPost {
+  final String username;
+  final String userHandle;
+  final String timeAgo;
+  final String content;
 
-  const _Incident({
-    required this.title,
-    required this.location,
-    required this.date,
-    required this.priority,
-    required this.priorityColor,
+  const _CommunityPost({
+    required this.username,
+    required this.userHandle,
+    required this.timeAgo,
+    required this.content,
   });
 }
