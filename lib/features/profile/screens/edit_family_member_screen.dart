@@ -189,6 +189,7 @@ class _EditFamilyMemberScreenState
       if (!mounted) return;
       _showSnack(_mapAuthError(e.code), isError: true);
     } catch (e) {
+      print('Update error: $e');
       if (!mounted) return;
       _showSnack(e.toString(), isError: true);
     } finally {

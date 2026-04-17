@@ -305,12 +305,20 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
             child: Column(
               children: [
                 _buildSecondaryItem(
+                  icon: Icons.description_rounded,
+                  title: 'Request Certificate',
+                  subtitle: 'Fill and submit certificate forms',
+                  color: AppColors.success,
+                  onTap: () => context.push('/applications'),
+                  isFirst: true,
+                ),
+                const Divider(height: 1, indent: 72, color: AppColors.divider),
+                _buildSecondaryItem(
                   icon: Icons.track_changes_rounded,
                   title: l.trackApplication,
                   subtitle: l.viewStatusOfRequests,
                   color: AppColors.info,
                   onTap: () => context.push('/documents/tracking'),
-                  isFirst: true,
                 ),
                 const Divider(height: 1, indent: 72, color: AppColors.divider),
                 _buildSecondaryItem(
