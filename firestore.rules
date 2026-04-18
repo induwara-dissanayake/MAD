@@ -219,6 +219,13 @@ service cloud.firestore {
                        request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead']);
     }
 
+    // ── Community Chats ──────────────────────────────────────────
+    match /community_chats/{chatId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if isOwner(resource.data.senderId) || isAdminOrOfficer();
+    }
+
+    // ── Default deny ─────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════════════════
     // Notices Collection (Public Notices)
     // ═══════════════════════════════════════════════════════════════════════════
