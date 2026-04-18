@@ -23,6 +23,17 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
+    /// Check ownership against common user-id field variants used in documents.
+    function isRequestOwner(data) {
+      return isAuthenticated() &&
+             (
+               isOwner(data.get('userId', '')) ||
+               isOwner(data.get('citizenUid', '')) ||
+               isOwner(data.get('uid', '')) ||
+               isOwner(data.get('ownerUid', ''))
+             );
+    }
+
     /// Check if user's account is active
     function isAccountActive() {
       let accountStatus = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus;
@@ -162,21 +173,13 @@ service cloud.firestore {
     match /requests/{requestId} {
 
       // Citizens: Can read their own requests
-      allow read: if isAuthenticated() &&
-                    (
-                      isOwner(resource.data.userId) ||
-                      isOwner(resource.data.citizenUid)
-                    );
+      allow read: if isRequestOwner(resource.data);
 
       // GN officers and admin permissions can read all requests
       allow read: if isOfficialOrAdmin();
 
       // Citizens: Can create requests
-      allow create: if isAuthenticated() &&
-                      (
-                        isOwner(request.resource.data.get('userId', request.auth.uid)) ||
-                        isOwner(request.resource.data.get('citizenUid', request.auth.uid))
-                      );
+      allow create: if isRequestOwner(request.resource.data);
 
       // GN officers and admin permissions can update request status
       allow update: if isOfficialOrAdmin();
@@ -190,7 +193,7 @@ service cloud.firestore {
 
       // Citizens can read their own reviewed certificate records
       allow read: if isAuthenticated() &&
-                    (isOfficialOrAdmin() || isOwner(resource.data.userId));
+                    (isOfficialOrAdmin() || isRequestOwner(resource.data));
 
       // GN officers and admin permissions can create reviewed records
       allow create: if isOfficialOrAdmin();
@@ -221,8 +224,8 @@ service cloud.firestore {
 
     // ── Community Chats ──────────────────────────────────────────
     match /community_chats/{chatId} {
-      allow read, create: if isSignedIn();
-      allow update, delete: if isOwner(resource.data.senderId) || isAdminOrOfficer();
+      allow read, create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.senderId) || isOfficialOrAdmin();
     }
 
     // ── Default deny ─────────────────────────────────────────────

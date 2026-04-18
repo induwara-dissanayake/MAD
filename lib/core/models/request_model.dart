@@ -18,6 +18,8 @@ class RequestModel {
   final String? processedBy;
   final Map<String, String>? infoRequestDetails;
   final String? remarks;
+  final DateTime? appointmentStartAt;
+  final DateTime? appointmentEndAt;
 
   RequestModel({
     required this.id,
@@ -37,6 +39,8 @@ class RequestModel {
     this.processedBy,
     this.infoRequestDetails,
     this.remarks,
+    this.appointmentStartAt,
+    this.appointmentEndAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -55,10 +59,18 @@ class RequestModel {
       'certificateUrl': certificateUrl,
       'formData': formData,
       'requiredFields': requiredFields,
-      'processedAt': processedAt != null ? Timestamp.fromDate(processedAt!) : null,
+      'processedAt': processedAt != null
+          ? Timestamp.fromDate(processedAt!)
+          : null,
       'processedBy': processedBy,
       'infoRequestDetails': infoRequestDetails,
       'remarks': remarks,
+      'appointmentStartAt': appointmentStartAt != null
+          ? Timestamp.fromDate(appointmentStartAt!)
+          : null,
+      'appointmentEndAt': appointmentEndAt != null
+          ? Timestamp.fromDate(appointmentEndAt!)
+          : null,
     };
   }
 
@@ -75,6 +87,20 @@ class RequestModel {
       processedDate = (map['processedAt'] as Timestamp).toDate();
     } else if (map['processedAt'] is String) {
       processedDate = DateTime.tryParse(map['processedAt']);
+    }
+
+    DateTime? appointmentStartDate;
+    if (map['appointmentStartAt'] is Timestamp) {
+      appointmentStartDate = (map['appointmentStartAt'] as Timestamp).toDate();
+    } else if (map['appointmentStartAt'] is String) {
+      appointmentStartDate = DateTime.tryParse(map['appointmentStartAt']);
+    }
+
+    DateTime? appointmentEndDate;
+    if (map['appointmentEndAt'] is Timestamp) {
+      appointmentEndDate = (map['appointmentEndAt'] as Timestamp).toDate();
+    } else if (map['appointmentEndAt'] is String) {
+      appointmentEndDate = DateTime.tryParse(map['appointmentEndAt']);
     }
 
     return RequestModel(
@@ -101,6 +127,8 @@ class RequestModel {
         (key, value) => MapEntry('$key', '$value'),
       ),
       remarks: map['remarks'],
+      appointmentStartAt: appointmentStartDate,
+      appointmentEndAt: appointmentEndDate,
     );
   }
 }
