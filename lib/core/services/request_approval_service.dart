@@ -3,8 +3,7 @@ import 'notification_service.dart';
 import 'email_service.dart';
 import '../../features/documents/repositories/document_repository.dart';
 
-final requestApprovalServiceProvider =
-    Provider<RequestApprovalService>((ref) {
+final requestApprovalServiceProvider = Provider<RequestApprovalService>((ref) {
   return RequestApprovalService(
     ref.watch(documentRepositoryProvider),
     ref.watch(notificationServiceProvider),
@@ -27,6 +26,8 @@ class RequestApprovalService {
   Future<void> approveRequest({
     required String requestId,
     required String approverUid,
+    required DateTime appointmentStartAt,
+    required DateTime appointmentEndAt,
     String? remarks,
     String? citizenEmail,
   }) async {
@@ -35,6 +36,8 @@ class RequestApprovalService {
       await _documentRepository.approveRequest(
         requestId: requestId,
         approvedBy: approverUid,
+        appointmentStartAt: appointmentStartAt,
+        appointmentEndAt: appointmentEndAt,
         remarks: remarks,
       );
 
@@ -46,6 +49,8 @@ class RequestApprovalService {
           status: 'Approved',
           reviewedBy: approverUid,
           remarks: remarks,
+          appointmentStartAt: appointmentStartAt,
+          appointmentEndAt: appointmentEndAt,
         );
 
         // Send in-app notification to citizen
@@ -54,7 +59,7 @@ class RequestApprovalService {
           type: 'approval',
           title: 'Request Approved!',
           message:
-              'Your ${request.documentType} request has been approved. You can now collect the document from the GN office.',
+              'Your ${request.documentType} request has been approved. Please visit the GN office between ${_formatAppointmentWindow(appointmentStartAt, appointmentEndAt)} with original documents.',
           requestId: requestId,
         );
 
@@ -64,6 +69,8 @@ class RequestApprovalService {
             citizenEmail: citizenEmail,
             documentType: request.documentType,
             remarks: remarks,
+            appointmentStartAt: appointmentStartAt,
+            appointmentEndAt: appointmentEndAt,
           );
         }
       }
@@ -174,5 +181,30 @@ class RequestApprovalService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  String _formatAppointmentWindow(DateTime start, DateTime end) {
+    final sameDay =
+        start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+
+    final date = '${start.day}/${start.month}/${start.year}';
+    final startTime = _formatTime(start);
+    final endTime = _formatTime(end);
+
+    if (sameDay) {
+      return '$date, $startTime - $endTime';
+    }
+
+    final endDate = '${end.day}/${end.month}/${end.year}';
+    return '$date $startTime - $endDate $endTime';
+  }
+
+  String _formatTime(DateTime dt) {
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $period';
   }
 }

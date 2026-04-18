@@ -152,14 +152,15 @@ final appRouter = GoRouter(
       }
     }
 
-    // ── Catch all: redirect citizen/unauthorized users to their dashboard ──
-    // If user tries to access any unprotected route while logged in
-    if (path == '/home' || path == '/applications' ||
+    // ── Catch all: redirect unauthorized users away from citizen shell routes ──
+    if (path == '/home' ||
+        path == '/applications' ||
         path == '/community' ||
-        path == '/fab-placeholder' || path == '/documents') {
+        path == '/fab-placeholder' ||
+        path == '/documents') {
       final role = await _fetchCurrentUserRole();
-      // Allow citizens to access these routes
-      if (role != 'citizen') {
+      // Allow citizen-facing roles to access these routes.
+      if (role != 'citizen' && role != 'admin_resident') {
         return _dashboardForRole(role);
       }
     }
