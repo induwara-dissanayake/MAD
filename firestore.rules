@@ -228,6 +228,24 @@ service cloud.firestore {
       allow update, delete: if isOwner(resource.data.senderId) || isOfficialOrAdmin();
     }
 
+    // ── Community Jobs ──────────────────────────────────────────
+    match /community_jobs/{jobId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isOwner(resource.data.postedBy) || isOfficialOrAdmin();
+    }
+
+    // ── Community Complaints ──────────────────────────────────────────
+    match /community_complaints/{complaintId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isOwner(resource.data.postedBy) || isOfficialOrAdmin();
+    }
+
+    // ── Community Lost & Found ──────────────────────────────────────────
+    match /community_lost_found/{itemId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isOwner(resource.data.postedBy) || isOfficialOrAdmin();
+    }
+
     // ── Default deny ─────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════════════════
     // Notices Collection (Public Notices)

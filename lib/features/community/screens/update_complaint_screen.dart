@@ -1,20 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-class AddComplaintScreen extends StatefulWidget {
-  const AddComplaintScreen({super.key});
+class UpdateComplaintScreen extends StatefulWidget {
+  final String docId;
+  final String initialTitle;
+  final String initialDescription;
+  final String initialLocation;
+
+  const UpdateComplaintScreen({
+    super.key,
+    required this.docId,
+    required this.initialTitle,
+    required this.initialDescription,
+    required this.initialLocation,
+  });
 
   @override
-  State<AddComplaintScreen> createState() => _AddComplaintScreenState();
+  State<UpdateComplaintScreen> createState() => _UpdateComplaintScreenState();
 }
 
-class _AddComplaintScreenState extends State<AddComplaintScreen> {
+class _UpdateComplaintScreenState extends State<UpdateComplaintScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _locationController;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.initialTitle);
+    _descriptionController = TextEditingController(text: widget.initialDescription);
+    _locationController = TextEditingController(text: widget.initialLocation);
+  }
 
   @override
   void dispose() {
@@ -24,7 +42,7 @@ class _AddComplaintScreenState extends State<AddComplaintScreen> {
     super.dispose();
   }
 
-  Future<void> _submitComplaint() async {
+  Future<void> _updateComplaint() async {
     if (!_formKey.currentState!.validate()) return;
     
     setState(() {
@@ -32,28 +50,22 @@ class _AddComplaintScreenState extends State<AddComplaintScreen> {
     });
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      
-      await FirebaseFirestore.instance.collection('community_complaints').add({
+      await FirebaseFirestore.instance.collection('community_complaints').doc(widget.docId).update({
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'location': _locationController.text.trim(),
-        'votes': 0,
-        'status': 'Pending',
-        'timestamp': FieldValue.serverTimestamp(),
-        'postedBy': user?.uid ?? 'unknown',
       });
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Complaint reported successfully!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Complaint updated successfully!'), backgroundColor: Colors.green),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error reporting complaint: $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text("Error updating complaint: $e"), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -91,7 +103,7 @@ class _AddComplaintScreenState extends State<AddComplaintScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Report Issue"),
+        title: const Text("Update Complaint"),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -115,8 +127,8 @@ class _AddComplaintScreenState extends State<AddComplaintScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: _submitComplaint,
-                      child: const Text("Submit Complaint", style: TextStyle(fontSize: 16)),
+                      onPressed: _updateComplaint,
+                      child: const Text("Update Complaint", style: TextStyle(fontSize: 16)),
                     )
                   ],
                 ),
