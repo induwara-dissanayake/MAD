@@ -356,6 +356,46 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
         key.contains('issue');
   }
 
+  bool _isDateField(String label) {
+    final key = label.toLowerCase();
+    return key.contains('date');
+  }
+
+  String _formatDateForInput(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year/$month/$day';
+  }
+
+  Future<void> _pickDateForField(TextEditingController controller) async {
+    DateTime initialDate = DateTime.now();
+    final raw = controller.text.trim();
+    if (raw.isNotEmpty) {
+      final parsed = DateTime.tryParse(raw.replaceAll('/', '-'));
+      if (parsed != null) {
+        initialDate = parsed;
+      }
+    }
+
+    if (initialDate.isAfter(DateTime.now())) {
+      initialDate = DateTime.now();
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked == null) return;
+
+    controller.text = _formatDateForInput(picked);
+    if (!mounted) return;
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
@@ -792,6 +832,7 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
             ),
             const SizedBox(height: 32),
             ...fieldLabels.map((label) {
+              final isDateField = _isDateField(label);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 24),
                 child: _buildFormField(
@@ -801,6 +842,10 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
                   icon: _iconForField(label),
                   keyboardType: _keyboardTypeForField(label),
                   maxLines: _isMultilineField(label) ? 3 : 1,
+                  readOnly: isDateField,
+                  onTap: isDateField
+                      ? () => _pickDateForField(_controllerForField(label))
+                      : null,
                   validator: (v) =>
                       v == null || v.trim().isEmpty ? 'Required' : null,
                 ),
@@ -1187,6 +1232,8 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    bool readOnly = false,
+    VoidCallback? onTap,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -1201,6 +1248,8 @@ class _DocumentRequestScreenState extends ConsumerState<DocumentRequestScreen> {
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
+          readOnly: readOnly,
+          onTap: onTap,
           validator: validator,
           onChanged: (_) => setState(() {}),
           style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w500),

@@ -11,10 +11,7 @@ import '../controllers/official_controller.dart';
 class RequestReviewScreen extends ConsumerStatefulWidget {
   final String requestId;
 
-  const RequestReviewScreen({
-    super.key,
-    required this.requestId,
-  });
+  const RequestReviewScreen({super.key, required this.requestId});
 
   @override
   ConsumerState<RequestReviewScreen> createState() =>
@@ -71,10 +68,7 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
         data: (request) {
           if (request == null) {
             return Center(
-              child: Text(
-                'Request not found',
-                style: AppTextStyles.body,
-              ),
+              child: Text('Request not found', style: AppTextStyles.body),
             );
           }
 
@@ -117,7 +111,8 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
                   controller: _remarksController,
                   maxLines: 4,
                   decoration: InputDecoration(
-                    hintText: 'Add remarks for this request (required for rejection)',
+                    hintText:
+                        'Add remarks for this request (required for rejection)',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -135,9 +130,9 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
                         onPressed: _isApproving || _isRejecting
                             ? null
                             : () => _showRejectDialog(
-                                  context,
-                                  authService.currentUser?.uid,
-                                ),
+                                context,
+                                authService.currentUser?.uid,
+                              ),
                         icon: const Icon(Icons.close_rounded),
                         label: const Text('Reject'),
                         style: OutlinedButton.styleFrom(
@@ -158,7 +153,9 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _isApproving || _isRejecting
                             ? null
-                            : () => _approveRequest(authService.currentUser?.uid),
+                            : () => _onApprovePressed(
+                                authService.currentUser?.uid,
+                              ),
                         icon: _isApproving
                             ? const SizedBox(
                                 width: 20,
@@ -171,9 +168,7 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
                                 ),
                               )
                             : const Icon(Icons.check_circle_rounded),
-                        label: Text(
-                          _isApproving ? 'Approving...' : 'Approve',
-                        ),
+                        label: Text(_isApproving ? 'Approving...' : 'Approve'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -189,9 +184,7 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -376,71 +369,234 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
     return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _approveRequest(String? userId) async {
+  Future<void> _onApprovePressed(String? userId) async {
+    final schedule = await _showApprovalScheduleDialog(context);
+    if (schedule == null) return;
+
+    if (schedule.end.isBefore(schedule.start) ||
+        schedule.end.isAtSameMomentAs(schedule.start)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('End time must be later than start time'),
+          ),
+        );
+      }
+      return;
+    }
+
+    await _approveRequest(
+      userId,
+      appointmentStartAt: schedule.start,
+      appointmentEndAt: schedule.end,
+    );
+  }
+
+  Future<void> _approveRequest(
+    String? userId, {
+    required DateTime appointmentStartAt,
+    required DateTime appointmentEndAt,
+  }) async {
     if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not authenticated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('User not authenticated')));
       return;
     }
 
     setState(() => _isApproving = true);
 
     try {
-      await ref.read(approveRequestProvider(
-        (
+      await ref.read(
+        approveRequestProvider((
           requestId: widget.requestId,
           approvedBy: userId,
           remarks: _remarksController.text.trim(),
-        ),
-      ).future);
+          appointmentStartAt: appointmentStartAt,
+          appointmentEndAt: appointmentEndAt,
+        )).future,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Request approved')),
+          SnackBar(
+            content: Text(
+              'Request approved. Meeting slot set: ${_formatScheduleForUi(appointmentStartAt, appointmentEndAt)}',
+            ),
+          ),
         );
         context.go('/official/requests/pending');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error approving request: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error approving request: $e')));
         setState(() => _isApproving = false);
       }
     }
   }
 
+  Future<({DateTime start, DateTime end})?> _showApprovalScheduleDialog(
+    BuildContext context,
+  ) async {
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
+    TimeOfDay endTime = const TimeOfDay(hour: 10, minute: 0);
+
+    return showDialog<({DateTime start, DateTime end})>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> pickDate() async {
+            final now = DateTime.now();
+            final picked = await showDatePicker(
+              context: dialogContext,
+              initialDate: selectedDate,
+              firstDate: DateTime(now.year, now.month, now.day),
+              lastDate: DateTime(now.year + 2),
+            );
+            if (picked != null) {
+              setDialogState(() => selectedDate = picked);
+            }
+          }
+
+          Future<void> pickStartTime() async {
+            final picked = await showTimePicker(
+              context: dialogContext,
+              initialTime: startTime,
+            );
+            if (picked != null) {
+              setDialogState(() => startTime = picked);
+            }
+          }
+
+          Future<void> pickEndTime() async {
+            final picked = await showTimePicker(
+              context: dialogContext,
+              initialTime: endTime,
+            );
+            if (picked != null) {
+              setDialogState(() => endTime = picked);
+            }
+          }
+
+          final start = _combineDateAndTime(selectedDate, startTime);
+          final end = _combineDateAndTime(selectedDate, endTime);
+          final isValid = end.isAfter(start);
+
+          return AlertDialog(
+            title: Text(
+              'Set Appointment Window',
+              style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select date and time period for resident to visit with original documents.',
+                  style: AppTextStyles.body,
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.calendar_month_rounded),
+                  title: const Text('Date'),
+                  subtitle: Text(
+                    '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                  ),
+                  onTap: pickDate,
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.schedule_rounded),
+                  title: const Text('Start Time'),
+                  subtitle: Text(startTime.format(dialogContext)),
+                  onTap: pickStartTime,
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.timer_off_rounded),
+                  title: const Text('End Time'),
+                  subtitle: Text(endTime.format(dialogContext)),
+                  onTap: pickEndTime,
+                ),
+                if (!isValid)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'End time must be later than start time.',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isValid
+                    ? () => Navigator.of(
+                        dialogContext,
+                      ).pop((start: start, end: end))
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                ),
+                child: const Text('Set & Approve'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  DateTime _combineDateAndTime(DateTime date, TimeOfDay time) {
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  String _formatScheduleForUi(DateTime start, DateTime end) {
+    final startTime = TimeOfDay.fromDateTime(start).format(context);
+    final endTime = TimeOfDay.fromDateTime(end).format(context);
+    return '${start.day}/${start.month}/${start.year} ($startTime - $endTime)';
+  }
+
   Future<void> _rejectRequest(String reason, String? approverUid) async {
     if (approverUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not authenticated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('User not authenticated')));
       return;
     }
 
     setState(() => _isRejecting = true);
 
     try {
-      await ref.read(rejectRequestProvider(
-        (
+      await ref.read(
+        rejectRequestProvider((
           requestId: widget.requestId,
           rejectionReason: reason,
           approverUid: approverUid,
-        ),
-      ).future);
+        )).future,
+      );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Request rejected')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Request rejected')));
         context.go('/official/requests/pending');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error rejecting request: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error rejecting request: $e')));
         setState(() => _isRejecting = false);
       }
     }
@@ -491,9 +647,7 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
                       Navigator.of(dialogContext).pop();
                       _rejectRequest(reasonController.text.trim(), approverUid);
                     },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
               child: const Text('Reject'),
             ),
           ],
@@ -509,5 +663,4 @@ class _RequestReviewScreenState extends ConsumerState<RequestReviewScreen> {
     }
     context.go('/official/requests/pending');
   }
-
 }

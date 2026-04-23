@@ -23,6 +23,17 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
+    /// Check ownership against common user-id field variants used in documents.
+    function isRequestOwner(data) {
+      return isAuthenticated() &&
+             (
+               isOwner(data.get('userId', '')) ||
+               isOwner(data.get('citizenUid', '')) ||
+               isOwner(data.get('uid', '')) ||
+               isOwner(data.get('ownerUid', ''))
+             );
+    }
+
     /// Check if user's account is active
     function isAccountActive() {
       let accountStatus = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus;
@@ -37,6 +48,55 @@ service cloud.firestore {
              (userRole == 'gn_officer' || userRole == 'admin' || userRole == 'super_admin');
     }
 
+    /// Check if current user is allowed to manage household members.
+    function canManageHouseholdMembers() {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return isAuthenticated() &&
+             (userRole == 'citizen' ||
+              userRole == 'admin_resident' ||
+              userRole == 'gn_officer' ||
+              userRole == 'admin' ||
+              userRole == 'super_admin');
+    }
+
+    /// Validate that a new user document is a household member profile.
+    function isValidHouseholdMemberCreate() {
+      return request.resource.data.get('createdByUid', '') == request.auth.uid &&
+             request.resource.data.get('role', '') == 'citizen' &&
+             (request.resource.data.get('memberType', '') == 'family_member' ||
+              request.resource.data.get('memberType', '') == 'rental') &&
+             request.resource.data.keys().hasAll([
+               'fullName',
+               'nic',
+               'phone',
+               'email',
+               'address',
+               'village',
+               'district',
+               'role',
+               'memberType',
+               'hasSystemAccess',
+               'createdByUid',
+               'createdAt'
+             ]);
+    }
+
+    /// Check if requester is creator of target household member document.
+    function isCreatorOfHouseholdMember() {
+      return isAuthenticated() &&
+             resource.data.get('createdByUid', '') == request.auth.uid &&
+             resource.data.get('role', '') == 'citizen' &&
+             (resource.data.get('memberType', '') == 'family_member' ||
+              resource.data.get('memberType', '') == 'rental');
+    }
+
+    /// Ensure creator cannot rewrite ownership/type/role while updating member.
+    function isSafeHouseholdMemberUpdate() {
+      return request.resource.data.get('createdByUid', '') == resource.data.get('createdByUid', '') &&
+             request.resource.data.get('memberType', '') == resource.data.get('memberType', '') &&
+             request.resource.data.get('role', '') == resource.data.get('role', '');
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Users Collection Security Rules
     // ═══════════════════════════════════════════════════════════════════════════
@@ -48,6 +108,9 @@ service cloud.firestore {
 
       // Citizens/regular users: Can only read their own profile
       allow read: if isOwner(userId) && isAuthenticated();
+
+      // Household owner can read member profiles they created.
+      allow read: if isCreatorOfHouseholdMember();
 
       // Admin permissions: Can update role and accountStatus fields
       // This is the primary use case for user management
@@ -72,6 +135,11 @@ service cloud.firestore {
       allow update: if isOwner(userId) && isAuthenticated() &&
                       request.resource.data.keys().hasOnly(['lastLogin']);
 
+      // Household owner can update member profiles they created.
+      allow update: if canManageHouseholdMembers() &&
+              isCreatorOfHouseholdMember() &&
+              isSafeHouseholdMemberUpdate();
+
       // Admins and officer-style creators can create new user documents
       allow create: if isAuthenticated() && isAccountActive() &&
                       (
@@ -88,8 +156,14 @@ service cloud.firestore {
                         'createdAt'
                       ]);
 
+      // Citizens/admin-residents can create family/rental members under their household.
+      allow create: if canManageHouseholdMembers() && isValidHouseholdMemberCreate();
+
       // Prevent deletion of user documents (soft delete only via accountStatus)
       allow delete: if isAdmin() && isAccountActive() && request.auth.uid != userId;
+
+      // Household owner can remove member profiles they created.
+      allow delete: if canManageHouseholdMembers() && isCreatorOfHouseholdMember();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -99,21 +173,13 @@ service cloud.firestore {
     match /requests/{requestId} {
 
       // Citizens: Can read their own requests
-      allow read: if isAuthenticated() &&
-                    (
-                      isOwner(resource.data.userId) ||
-                      isOwner(resource.data.citizenUid)
-                    );
+      allow read: if isRequestOwner(resource.data);
 
       // GN officers and admin permissions can read all requests
       allow read: if isOfficialOrAdmin();
 
       // Citizens: Can create requests
-      allow create: if isAuthenticated() &&
-                      (
-                        isOwner(request.resource.data.get('userId', request.auth.uid)) ||
-                        isOwner(request.resource.data.get('citizenUid', request.auth.uid))
-                      );
+      allow create: if isRequestOwner(request.resource.data);
 
       // GN officers and admin permissions can update request status
       allow update: if isOfficialOrAdmin();
@@ -127,7 +193,7 @@ service cloud.firestore {
 
       // Citizens can read their own reviewed certificate records
       allow read: if isAuthenticated() &&
-                    (isOfficialOrAdmin() || isOwner(resource.data.userId));
+                    (isOfficialOrAdmin() || isRequestOwner(resource.data));
 
       // GN officers and admin permissions can create reviewed records
       allow create: if isOfficialOrAdmin();
@@ -158,8 +224,8 @@ service cloud.firestore {
 
     // ── Community Chats ──────────────────────────────────────────
     match /community_chats/{chatId} {
-      allow read, create: if isSignedIn();
-      allow update, delete: if isOwner(resource.data.senderId) || isAdminOrOfficer();
+      allow read, create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.senderId) || isOfficialOrAdmin();
     }
 
     // ── Default deny ─────────────────────────────────────────────

@@ -39,7 +39,7 @@ class RequestDetailScreen extends ConsumerWidget {
 
   String _getGnRemarks(RequestModel request) {
     if (request.status == 'Approved') {
-      return 'All documents verified. The applicant has been residing in this area for over 15 years. Character is satisfactory.';
+      return request.remarks ?? '';
     }
     if (request.status == 'Rejected') {
       return request.rejectionReason ??
@@ -77,6 +77,9 @@ class RequestDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final requestAsync = ref.watch(requestDetailProvider(trackingId));
+    final reviewedRequestAsync = ref.watch(
+      reviewedRequestDetailProvider(trackingId),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -94,40 +97,137 @@ class RequestDetailScreen extends ConsumerWidget {
         title: Text('Request Details', style: AppTextStyles.h3),
         centerTitle: true,
       ),
-      body: requestAsync.when(
-        data: (request) {
-          if (request == null) {
-            return const Center(child: Text('Request not found'));
-          }
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                const Divider(height: 1, color: AppColors.divider),
-                _buildStatusHeader(request),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTimeline(request),
-                      const SizedBox(height: 24),
-                      _buildDetailsCard(request),
-                      if (_getGnRemarks(request).isNotEmpty) ...[
-                        const SizedBox(height: 20),
-                        _buildRemarksCard(request),
-                      ],
-                      const SizedBox(height: 24),
-                      _buildActionButtons(context, request),
-                    ],
-                  ),
-                ),
-              ],
+      body: _buildBodyWithFallback(requestAsync, reviewedRequestAsync, context),
+    );
+  }
+
+  Widget _buildBodyWithFallback(
+    AsyncValue<RequestModel?> requestAsync,
+    AsyncValue<RequestModel?> reviewedRequestAsync,
+    BuildContext context,
+  ) {
+    final request =
+        requestAsync.valueOrNull ?? reviewedRequestAsync.valueOrNull;
+
+    if (request != null) {
+      return SingleChildScrollView(
+        child: Column(
+          children: [
+            const Divider(height: 1, color: AppColors.divider),
+            _buildStatusHeader(request),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTimeline(request),
+                  const SizedBox(height: 24),
+                  _buildDetailsCard(request),
+                  if (request.status == 'Approved' &&
+                      request.appointmentStartAt != null &&
+                      request.appointmentEndAt != null) ...[
+                    const SizedBox(height: 20),
+                    _buildAppointmentCard(request),
+                  ],
+                  if (_getGnRemarks(request).isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    _buildRemarksCard(request),
+                  ],
+                  const SizedBox(height: 24),
+                  _buildActionButtons(context, request),
+                ],
+              ),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+          ],
+        ),
+      );
+    }
+
+    if (requestAsync.isLoading || reviewedRequestAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final hasPermissionError =
+        ('${requestAsync.error}'.contains('permission-denied') ||
+        '${reviewedRequestAsync.error}'.contains('permission-denied'));
+
+    if (hasPermissionError) {
+      return const Center(
+        child: Text(
+          'Access denied. Please sign in with the request owner account.',
+        ),
+      );
+    }
+
+    return Center(
+      child: Text(
+        requestAsync.hasError
+            ? 'Error: ${requestAsync.error}'
+            : reviewedRequestAsync.hasError
+            ? 'Error: ${reviewedRequestAsync.error}'
+            : 'Request not found',
       ),
+    );
+  }
+
+  Widget _buildAppointmentCard(RequestModel request) {
+    final start = request.appointmentStartAt!;
+    final end = request.appointmentEndAt!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Appointment Window', style: AppTextStyles.bodySemiBold),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.info.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.info.withOpacity(0.24)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.event_available_rounded,
+                color: AppColors.info,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DateFormat.yMMMMd().format(start),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${DateFormat.jm().format(start)} - ${DateFormat.jm().format(end)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Please visit the GN office during this time period and bring original documents.',
+                      style: AppTextStyles.small.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
