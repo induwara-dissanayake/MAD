@@ -85,83 +85,7 @@ class _CommunityHomeScreenState
     return Scaffold(
       backgroundColor: bgColor,
 
-      // 🔥 PREMIUM DRAWER
-      drawer: Drawer(
-        backgroundColor: const Color(0xFFF5F5F5),
-        child: SafeArea(
-          child: Column(
-            children: [
 
-              Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: primaryGreen,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: const [
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, color: Colors.grey),
-                    ),
-                    SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Kaduwela Village",
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
-                        Text("Community App",
-                            style: TextStyle(color: Colors.white70)),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  children: [
-
-                    drawerItem(Icons.home, "Home", true, () {
-                      Navigator.pop(context);
-                    }),
-
-                    drawerItem(Icons.chat, "Chat", false, () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const ChatScreen(name: "Community Chat")));
-                    }),
-
-                    drawerItem(Icons.report, "Complaints", false, () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const ComplaintsScreen()));
-                    }),
-
-                    drawerItem(Icons.work, "Jobs", false, () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const JobsServicesScreen()));
-                    }),
-
-                    drawerItem(Icons.search, "Lost", false, () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const LostFoundScreen()));
-                    }),
-
-                    const Divider(),
-
-                    drawerItem(Icons.settings, "Settings", false, () {}),
-                    drawerItem(Icons.info, "About", false, () {}),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
 
       appBar: AppBar(
         title: const Text("Kaduwela Village"),
@@ -211,34 +135,6 @@ class _CommunityHomeScreenState
     );
   }
 
-  // ---------------- DRAWER ITEM ----------------
-  Widget drawerItem(
-      IconData icon, String title, bool selected, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: selected
-            ? primaryGreen.withOpacity(0.15)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: selected ? primaryGreen : Colors.grey[700],
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: selected ? primaryGreen : Colors.black87,
-            fontWeight:
-                selected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
 
   // ---------------- COMMUNITY ACTIONS ----------------
   Widget buildCommunityActions() {
