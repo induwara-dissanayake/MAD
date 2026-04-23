@@ -240,6 +240,12 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.postedBy) || isOfficialOrAdmin();
     }
 
+    // ── Community Lost & Found ──────────────────────────────────────────
+    match /community_lost_found/{itemId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isOwner(resource.data.postedBy) || isOfficialOrAdmin();
+    }
+
     // ── Default deny ─────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════════════════
     // Notices Collection (Public Notices)
