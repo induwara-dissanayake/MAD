@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'chat_screen.dart';
 import 'complaints_screen.dart';
 import 'jobs_services_screen.dart';
@@ -80,12 +82,96 @@ class _CommunityHomeScreenState
   final lightGreen = const Color(0xFF388E3C);
   final bgColor = const Color(0xFFF5F5F5);
 
+  List<Map<String, dynamic>> _recentUpdates = [];
+  bool _isLoadingUpdates = true;
+  StreamSubscription? _complaintsSub;
+  StreamSubscription? _jobsSub;
+  StreamSubscription? _lostFoundSub;
+
+  List<Map<String, dynamic>> _latestComplaints = [];
+  List<Map<String, dynamic>> _latestJobs = [];
+  List<Map<String, dynamic>> _latestLostFound = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToUpdates();
+  }
+
+  void _listenToUpdates() {
+    final firestore = FirebaseFirestore.instance;
+
+    _complaintsSub = firestore.collection('community_complaints')
+        .orderBy('timestamp', descending: true)
+        .limit(3)
+        .snapshots()
+        .listen((snapshot) {
+      _latestComplaints = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['source'] = 'complaint';
+        return data;
+      }).toList();
+      _updateMergedList();
+    });
+
+    _jobsSub = firestore.collection('community_jobs')
+        .orderBy('timestamp', descending: true)
+        .limit(3)
+        .snapshots()
+        .listen((snapshot) {
+      _latestJobs = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['source'] = 'job';
+        return data;
+      }).toList();
+      _updateMergedList();
+    });
+
+    _lostFoundSub = firestore.collection('community_lost_found')
+        .orderBy('timestamp', descending: true)
+        .limit(3)
+        .snapshots()
+        .listen((snapshot) {
+      _latestLostFound = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['source'] = 'lost_found';
+        return data;
+      }).toList();
+      _updateMergedList();
+    });
+  }
+
+  void _updateMergedList() {
+    final all = [..._latestComplaints, ..._latestJobs, ..._latestLostFound];
+    all.sort((a, b) {
+      final ta = a['timestamp'] as Timestamp?;
+      final tb = b['timestamp'] as Timestamp?;
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta); // Descending
+    });
+
+    if (mounted) {
+      setState(() {
+        _recentUpdates = all.take(3).toList();
+        _isLoadingUpdates = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _complaintsSub?.cancel();
+    _jobsSub?.cancel();
+    _lostFoundSub?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bgColor,
-
-
 
       appBar: AppBar(
         title: const Text("Kaduwela Village"),
@@ -134,7 +220,6 @@ class _CommunityHomeScreenState
       ),
     );
   }
-
 
   // ---------------- COMMUNITY ACTIONS ----------------
   Widget buildCommunityActions() {
@@ -195,21 +280,53 @@ class _CommunityHomeScreenState
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
-        children: [const Text(
-          "RECENT UPDATES",
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFEC6A00),
-            letterSpacing: 1,
+        children: [
+          const Text(
+            "RECENT UPDATES",
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFEC6A00),
+              letterSpacing: 1,
+            ),
           ),
-        ),
-          buildAlertItem(Icons.work, "Electrician needed",
-              "Urgent requirement", Colors.orange),
-          buildAlertItem(Icons.search, "Wallet found",
-              "Near school area", Colors.green),
-          buildAlertItem(Icons.event, "Meeting Sunday",
-              "Community discussion", Colors.red),
+          const SizedBox(height: 12),
+          if (_isLoadingUpdates)
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_recentUpdates.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text("No recent updates.", style: TextStyle(color: Colors.grey)),
+            )
+          else
+            ..._recentUpdates.map((item) {
+              String title = "";
+              String subtitle = "";
+              IconData icon = Icons.info;
+              Color color = Colors.grey;
+
+              if (item['source'] == 'complaint') {
+                title = item['title'] ?? 'Complaint';
+                subtitle = item['location'] ?? '';
+                icon = Icons.report;
+                color = Colors.red;
+              } else if (item['source'] == 'job') {
+                title = item['title'] ?? 'Job';
+                subtitle = item['company'] ?? '';
+                icon = Icons.work;
+                color = Colors.orange;
+              } else if (item['source'] == 'lost_found') {
+                title = item['title'] ?? 'Lost/Found';
+                subtitle = item['type'] ?? '';
+                icon = Icons.search;
+                color = item['type'] == 'Lost' ? Colors.red : Colors.blue;
+              }
+
+              return buildAlertItem(icon, title, subtitle, color);
+            }).toList(),
         ],
       ),
     );
