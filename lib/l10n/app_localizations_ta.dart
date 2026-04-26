@@ -284,4 +284,19 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get citizen => 'குடிமகன்';
+
+  @override
+  String get homeAlertsAndUpdates => 'Alerts & updates';
+
+  @override
+  String get homeNotificationsSubtitle => 'Appointments, community, and more';
+
+  @override
+  String homeNotificationsSubtitleUnread(int count) {
+    return '$count unread';
+  }
+
+  @override
+  String get notificationsEmptyBody =>
+      'Certificate updates, community messages, and complaint status changes will appear here.';
 }

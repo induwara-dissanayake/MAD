@@ -89,5 +89,15 @@
   "reportIncidentDesc": "ඔබේ ප්‍රදේශයේ ගැටළු ග්‍රාම නිලධාරී කාර්යාලයට වාර්තා කරන්න",
   "inReview": "සමාලෝචනය කෙරෙමින්",
   "total": "මුළු",
-  "citizen": "පුරවැසි"
+  "citizen": "පුරවැසි",
+
+  "homeAlertsAndUpdates": "අභියාචනා සහ යැපුම්",
+  "homeNotificationsSubtitle": "නියැම්, ප්‍රජාව, තව",
+  "homeNotificationsSubtitleUnread": "{count} කියවී නොමැති",
+  "@homeNotificationsSubtitleUnread": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "notificationsEmptyBody": "සහතික යාවත්කාල, ප්‍රජා පණිවිඩ, සහ පැමිණිලි තත්ත්ව වෙනස්කම් මෙහි පෙනේ."
 }

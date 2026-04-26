@@ -97,6 +97,16 @@ service cloud.firestore {
              request.resource.data.get('role', '') == resource.data.get('role', '');
     }
 
+    function isGnOfficer() {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return isAuthenticated() && userRole == 'gn_officer';
+    }
+
+    /// GN can read other users in the same village (notification fan-out query).
+    function isSameVillageAsRequester() {
+      return resource.data.get('village', '') == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('village', '');
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Users Collection Security Rules
     // ═══════════════════════════════════════════════════════════════════════════
@@ -105,6 +115,9 @@ service cloud.firestore {
 
       // Admin permissions: Can read any user document for management purposes
       allow read: if isAdmin();
+
+      // GN officer: can read user profiles in their own village (e.g. village notification broadcast)
+      allow read: if isGnOfficer() && isSameVillageAsRequester();
 
       // Citizens/regular users: Can only read their own profile
       allow read: if isOwner(userId) && isAuthenticated();
@@ -220,6 +233,10 @@ service cloud.firestore {
       allow update: if isAuthenticated() &&
                        isOwner(resource.data.userId) &&
                        request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead']);
+
+      // Owner can delete their own notifications; admins may delete (moderation)
+      allow delete: if isAuthenticated() &&
+                      (isOwner(resource.data.userId) || (isAdmin() && isAccountActive()));
     }
 
     // ── Community Chats ──────────────────────────────────────────

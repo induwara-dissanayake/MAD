@@ -19,6 +19,13 @@ final userNotificationsProvider = StreamProvider<List<NotificationModel>>((ref) 
   );
 });
 
+final unreadNotificationCountProvider = Provider<int>((ref) {
+  return ref.watch(userNotificationsProvider).maybeWhen(
+    data: (list) => list.where((n) => !n.isRead).length,
+    orElse: () => 0,
+  );
+});
+
 class NotificationService {
   final FirebaseFirestore _firestore;
 
@@ -27,35 +34,45 @@ class NotificationService {
   /// Send a notification to a user by creating a doc in the notifications collection
   Future<void> sendNotification({
     required String userId,
-    required String type, // 'approval', 'rejection', 'info_request'
+    required String type,
     required String title,
     required String message,
     String? requestId,
+    String? relatedId,
+    String? actionRoute,
+    Map<String, dynamic>? actionExtra,
   }) async {
+    final extra = actionExtra == null
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(actionExtra);
     await _firestore.collection('notifications').add({
       'userId': userId,
       'type': type,
       'title': title,
       'message': message,
       'requestId': requestId,
+      'relatedId': relatedId,
+      'actionRoute': actionRoute,
+      'actionExtra': extra,
       'isRead': false,
       'createdAt': Timestamp.now(),
     });
   }
 
-  /// Retrieve all notifications for a user as a stream for real-time updates
+  /// Real-time list for this user, newest first (sorted client-side to avoid
+  /// requiring a composite index before indexes are deployed).
   Stream<List<NotificationModel>> getNotifications(String userId) {
     return _firestore
         .collection('notifications')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          final notifications = snapshot.docs.map((doc) {
-            return NotificationModel.fromMap(doc.data(), doc.id);
-          }).toList();
-          return notifications;
-        });
+      final list = snapshot.docs
+          .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   /// Mark a notification as read
@@ -67,19 +84,26 @@ class NotificationService {
   }
 
   Future<void> markAllAsRead(String userId) async {
-    final unreadSnapshot = await _firestore
+    final all = await _firestore
         .collection('notifications')
         .where('userId', isEqualTo: userId)
-        .where('isRead', isEqualTo: false)
         .get();
 
-    if (unreadSnapshot.docs.isEmpty) return;
+    final toMark = all.docs.where((d) => d.data()['isRead'] != true).toList();
+    if (toMark.isEmpty) return;
 
-    final batch = _firestore.batch();
-    for (final doc in unreadSnapshot.docs) {
-      batch.update(doc.reference, {'isRead': true});
+    const chunk = 500;
+    for (var i = 0; i < toMark.length; i += chunk) {
+      final slice = toMark.sublist(
+        i,
+        i + chunk > toMark.length ? toMark.length : i + chunk,
+      );
+      final batch = _firestore.batch();
+      for (final doc in slice) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      await batch.commit();
     }
-    await batch.commit();
   }
 
   /// Delete a notification

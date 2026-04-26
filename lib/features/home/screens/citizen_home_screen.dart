@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../core/localization/localization_extensions.dart';
 import '../../../core/models/request_model.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -41,6 +42,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
           builder: (context, connectivitySnap) {
             final isOffline = _isOffline(connectivitySnap.data);
             final l = context.l10n;
+            final unreadCount = ref.watch(unreadNotificationCountProvider);
             return Scaffold(
               backgroundColor: AppColors.background,
               body: Column(
@@ -84,13 +86,19 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildHeroGreeting(context, user, profile, isOffline),
+                          _buildHeroGreeting(
+                            context,
+                            user,
+                            profile,
+                            isOffline,
+                            unreadCount,
+                          ),
                           const SizedBox(height: 24),
                           _buildEmergencyButton(context),
                           const SizedBox(height: 24),
                           _buildHouseholdSection(context, user, l),
                           const SizedBox(height: 32),
-                          _buildSecondaryActions(context, l),
+                          _buildSecondaryActions(context, l, unreadCount),
                           const SizedBox(height: 32),
                           _buildRecentActivity(context, const AsyncData([]), l),
                           const SizedBox(height: 48),
@@ -113,6 +121,7 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
     User? user,
     UserModel? profile,
     bool isOffline,
+    int unreadCount,
   ) {
     final l = context.l10n;
     final topPadding = isOffline ? 0.0 : MediaQuery.of(context).padding.top;
@@ -171,31 +180,76 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                 onTap: () => context.push('/profile'),
                 child: Hero(
                   tag: 'profile_avatar',
-                  child: Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.8),
-                        width: 2,
-                      ),
-                      image: DecorationImage(
-                        image: user?.photoURL != null
-                            ? NetworkImage(user!.photoURL!) as ImageProvider
-                            : const AssetImage(
-                                'assets/images/default_avatar.jpg',
-                              ),
-                        fit: BoxFit.cover,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.8),
+                            width: 2,
+                          ),
+                          image: DecorationImage(
+                            image: user?.photoURL != null
+                                ? NetworkImage(user!.photoURL!) as ImageProvider
+                                : const AssetImage(
+                                    'assets/images/default_avatar.jpg',
+                                  ),
+                            fit: BoxFit.cover,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: unreadCount > 9
+                                ? const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  )
+                                : const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              shape: unreadCount > 9
+                                  ? BoxShape.rectangle
+                                  : BoxShape.circle,
+                              borderRadius: unreadCount > 9
+                                  ? BorderRadius.circular(10)
+                                  : null,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Center(
+                              child: Text(
+                                unreadCount > 99 ? '99+' : '$unreadCount',
+                                style: AppTextStyles.small.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: unreadCount > 9 ? 10 : 11,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -278,7 +332,11 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
   }
 
   // ── Secondary Actions ─────────────────────────────────────────────────
-  Widget _buildSecondaryActions(BuildContext context, dynamic l) {
+  Widget _buildSecondaryActions(
+    BuildContext context,
+    dynamic l,
+    int unreadCount,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -319,6 +377,18 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                   subtitle: l.viewStatusOfRequests,
                   color: AppColors.info,
                   onTap: () => context.push('/documents/tracking'),
+                ),
+                const Divider(height: 1, indent: 72, color: AppColors.divider),
+                _buildSecondaryItem(
+                  icon: Icons.notifications_active_rounded,
+                  title: l.homeAlertsAndUpdates,
+                  subtitle: unreadCount > 0
+                      ? l.homeNotificationsSubtitleUnread(unreadCount)
+                      : l.homeNotificationsSubtitle,
+                  color: AppColors.warning,
+                  onTap: () => context.push('/notifications'),
+                  showUnreadIndicator: unreadCount > 0,
+                  unreadCount: unreadCount,
                 ),
                 const Divider(height: 1, indent: 72, color: AppColors.divider),
                 _buildSecondaryItem(
@@ -429,6 +499,8 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
     required VoidCallback onTap,
     bool isFirst = false,
     bool isLast = false,
+    bool showUnreadIndicator = false,
+    int unreadCount = 0,
   }) {
     return Material(
       color: Colors.transparent,
@@ -472,6 +544,36 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
                   ],
                 ),
               ),
+              if (showUnreadIndicator) ...[
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: unreadCount > 9 ? 6 : 5,
+                    vertical: 2,
+                  ),
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(99),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.error.withOpacity(0.35),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                  alignment: Alignment.center,
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: AppTextStyles.small.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: unreadCount > 9 ? 10 : 11,
+                    ),
+                  ),
+                ),
+              ],
               Icon(
                 Icons.chevron_right_rounded,
                 color: AppColors.textMuted,

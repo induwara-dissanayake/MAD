@@ -61,6 +61,12 @@ class RequestApprovalService {
           message:
               'Your ${request.documentType} request has been approved. Please visit the GN office between ${_formatAppointmentWindow(appointmentStartAt, appointmentEndAt)} with original documents.',
           requestId: requestId,
+          actionRoute: '/documents/detail',
+          actionExtra: {
+            'trackingId': requestId,
+            'documentType': request.documentType,
+            'status': 'Approved',
+          },
         );
 
         // Send mock email to citizen
@@ -115,6 +121,12 @@ class RequestApprovalService {
           message:
               'Your ${request.documentType} request has been rejected. Reason: $rejectionReason',
           requestId: requestId,
+          actionRoute: '/documents/detail',
+          actionExtra: {
+            'trackingId': requestId,
+            'documentType': request.documentType,
+            'status': 'Rejected',
+          },
         );
 
         // Send mock email to citizen
@@ -167,6 +179,12 @@ class RequestApprovalService {
           message:
               'Please provide additional information for your ${request.documentType} request.',
           requestId: requestId,
+          actionRoute: '/documents/detail',
+          actionExtra: {
+            'trackingId': requestId,
+            'documentType': request.documentType,
+            'status': 'More Info Required',
+          },
         );
 
         // Send mock email to citizen

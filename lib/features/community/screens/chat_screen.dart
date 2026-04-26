@@ -1,21 +1,26 @@
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'dart:async' show Timer, TimeoutException;
 
-class ChatScreen extends StatefulWidget {
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../core/services/community_broadcast_notification_service.dart';
+import '../../../core/services/user_service.dart';
+
+class ChatScreen extends ConsumerStatefulWidget {
   final String name;
   const ChatScreen({super.key, required this.name});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -27,6 +32,10 @@ class _ChatScreenState extends State<ChatScreen> {
   // Reply state
   Map<String, dynamic>? _replyingTo;
 
+  bool? _isOfficial;
+  bool _roleResolved = false;
+  bool _announceToVillage = false;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +44,24 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() { _showEmojiPicker = false; });
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_roleResolved) return;
+    _roleResolved = true;
+    _loadOfficialRole();
+  }
+
+  Future<void> _loadOfficialRole() async {
+    final u = FirebaseAuth.instance.currentUser;
+    if (u == null) {
+      if (mounted) setState(() => _isOfficial = false);
+      return;
+    }
+    final ok = await ref.read(userServiceProvider).isOfficialOrAdminUser(u.uid);
+    if (mounted) setState(() => _isOfficial = ok);
   }
 
   @override
@@ -91,6 +118,12 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = controller.text.trim();
     if (text.isEmpty && imageUrl == null && fileUrl == null) return;
 
+    final canAnnounce = _isOfficial == true;
+    final shouldBroadcast = _announceToVillage && canAnnounce;
+    if (_announceToVillage) {
+      setState(() => _announceToVillage = false);
+    }
+
     controller.clear();
     final replySnapshot = _replyingTo;
     setState(() { _replyingTo = null; });
@@ -112,8 +145,28 @@ class _ChatScreenState extends State<ChatScreen> {
         payload['replyToText'] = replySnapshot['text'] ?? '';
         payload['replyToSender'] = replySnapshot['senderName'] ?? 'Unknown';
       }
+      if (shouldBroadcast) payload['isImportant'] = true;
 
       await FirebaseFirestore.instance.collection('community_chats').add(payload);
+
+      if (shouldBroadcast && user != null) {
+        final profile = await ref.read(userServiceProvider).getUserProfileOnce(user.uid);
+        final village = profile?.village ?? '';
+        String? preview;
+        if (text.isNotEmpty) {
+          preview = text;
+        } else if (imageUrl != null) {
+          preview = 'An image was shared in ${widget.name}.';
+        } else if (fileUrl != null) {
+          preview = 'A file was shared in ${widget.name}.';
+        }
+        await ref.read(communityBroadcastNotificationServiceProvider).broadcastImportantMessage(
+              village: village,
+              senderUserId: user.uid,
+              roomName: widget.name,
+              messagePreview: preview,
+            );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -425,6 +478,22 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   IconButton(icon: const Icon(Icons.close, size: 18, color: Colors.black54), onPressed: _cancelReply),
                 ],
+              ),
+            ),
+
+          if (_isOfficial == true)
+            Material(
+              color: const Color(0xFFE8F5E9),
+              child: SwitchListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                title: const Text(
+                  'Important: notify all residents in my village',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+                value: _announceToVillage,
+                activeThumbColor: const Color(0xFF2E7D32),
+                onChanged: (v) => setState(() => _announceToVillage = v),
               ),
             ),
 

@@ -1,17 +1,21 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+
+import '../../../core/services/notification_service.dart';
 import 'add_complaint_screen.dart';
 import 'update_complaint_screen.dart';
 
-class ComplaintsScreen extends StatefulWidget {
+class ComplaintsScreen extends ConsumerStatefulWidget {
   const ComplaintsScreen({super.key});
 
   @override
-  State<ComplaintsScreen> createState() => _ComplaintsScreenState();
+  ConsumerState<ComplaintsScreen> createState() => _ComplaintsScreenState();
 }
 
-class _ComplaintsScreenState extends State<ComplaintsScreen> {
+class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
   String _filterStatus = 'All';
 
   static const _statusConfig = {
@@ -36,7 +40,13 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
         .update({'votes': currentVotes + 1});
   }
 
-  void _updateStatus(BuildContext context, String docId, String currentStatus) {
+  void _updateStatus(
+    BuildContext context,
+    String docId,
+    String currentStatus,
+    String? postedBy,
+    String complaintTitle,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -61,9 +71,33 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               final bg    = entry.value['bg']    as Color;
               final icon  = entry.value['icon']  as IconData;
               return GestureDetector(
-                onTap: () {
-                  FirebaseFirestore.instance.collection('community_complaints').doc(docId).update({'status': entry.key});
+                onTap: () async {
+                  await FirebaseFirestore.instance
+                      .collection('community_complaints')
+                      .doc(docId)
+                      .update({'status': entry.key});
+                  if (!context.mounted) return;
                   Navigator.pop(context);
+
+                  final actorUid = FirebaseAuth.instance.currentUser?.uid;
+                  final owner = postedBy;
+                  if (owner != null &&
+                      owner.isNotEmpty &&
+                      owner != 'unknown' &&
+                      owner != actorUid) {
+                    await ref.read(notificationServiceProvider).sendNotification(
+                          userId: owner,
+                          type: 'complaint_update',
+                          title: 'Complaint status updated',
+                          message:
+                              'Your complaint "${complaintTitle.isNotEmpty ? complaintTitle : 'Report'}" is now ${entry.key}.',
+                          relatedId: docId,
+                          actionRoute: '/community',
+                          actionExtra: {'complaintId': docId},
+                        );
+                  }
+
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Row(children: [Icon(icon, color: Colors.white, size: 16), const SizedBox(width: 8), Text('Status → "${entry.key}"')]),
                     backgroundColor: color,
@@ -310,7 +344,15 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     Expanded(child: Text(item['title'] ?? 'No Title', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)))),
                                     const SizedBox(width: 8),
-                                    GestureDetector(onTap: () => _updateStatus(context, docId, status), child: _buildStatusBadge(status)),
+                                    GestureDetector(
+                                        onTap: () => _updateStatus(
+                                          context,
+                                          docId,
+                                          status,
+                                          item['postedBy'] as String?,
+                                          item['title'] as String? ?? '',
+                                        ),
+                                        child: _buildStatusBadge(status)),
                                   ]),
                                   const SizedBox(height: 8),
 
@@ -352,7 +394,16 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                                     ),
                                     // Buttons
                                     Row(children: [
-                                      _actionBtn(Icons.swap_horiz_rounded, const Color(0xFF6366F1), () => _updateStatus(context, docId, status)),
+                                      _actionBtn(
+                                          Icons.swap_horiz_rounded,
+                                          const Color(0xFF6366F1),
+                                          () => _updateStatus(
+                                            context,
+                                            docId,
+                                            status,
+                                            item['postedBy'] as String?,
+                                            item['title'] as String? ?? '',
+                                          )),
                                       const SizedBox(width: 6),
                                       _actionBtn(Icons.edit_outlined, const Color(0xFF16A34A), () {
                                         Navigator.push(context, MaterialPageRoute(builder: (_) => UpdateComplaintScreen(

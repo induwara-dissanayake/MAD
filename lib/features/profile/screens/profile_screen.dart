@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -236,7 +237,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: 28),
                 _buildSectionLabel('Quick Access'),
                 const SizedBox(height: 10),
-                _buildShortcutsSection(context),
+                _buildShortcutsSection(
+                  context,
+                  ref.watch(unreadNotificationCountProvider),
+                ),
                 const SizedBox(height: 28),
                 _buildSectionLabel('Preferences'),
                 const SizedBox(height: 10),
@@ -958,13 +962,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // ── Shortcuts ─────────────────────────────────────────────────────────
-  Widget _buildShortcutsSection(BuildContext context) {
+  Widget _buildShortcutsSection(BuildContext context, int unreadCount) {
     return _buildTileGroup([
       _buildNavTile(
         icon: Icons.notifications_none_rounded,
         title: 'Alerts',
         isFirst: true,
         onTap: () => context.push('/notifications'),
+        unreadCount: unreadCount,
       ),
       _buildNavTile(
         icon: Icons.help_outline_rounded,
@@ -1028,6 +1033,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String title,
     required VoidCallback onTap,
     String? trailing,
+    int unreadCount = 0,
     bool isFirst = false,
     bool isLast = false,
   }) {
@@ -1076,6 +1082,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
+                  ],
+                  if (unreadCount > 0) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : '$unreadCount',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFFFFFFF),
+                        ),
+                      ),
+                    ),
                   ],
                   Icon(
                     Icons.chevron_right_rounded,
