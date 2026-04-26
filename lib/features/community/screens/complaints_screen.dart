@@ -192,14 +192,14 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
             floating: false,
             pinned: true,
             forceElevated: innerBoxIsScrolled,
-            backgroundColor: const Color(0xFF16A34A),
+            backgroundColor: const Color(0xFF2E7D32),
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF15803D), Color(0xFF22C55E)],
+                    colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -229,7 +229,7 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
               preferredSize: const Size.fromHeight(48),
               child: Container(
                 height: 48,
-                color: const Color(0xFF15803D),
+                color: const Color(0xFF1B5E20),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: ListView(
                   scrollDirection: Axis.horizontal,
@@ -267,7 +267,7 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
           stream: FirebaseFirestore.instance.collection('community_complaints').orderBy('timestamp', descending: true).snapshots(),
           builder: (context, snapshot) {
             if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: Color(0xFF16A34A)));
+            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
 
             final allDocs = snapshot.data?.docs ?? [];
             final docs = _filterStatus == 'All'
@@ -384,11 +384,11 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
                                       onTap: () => _vote(docId, item['votes'] ?? 0),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                        decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(10)),
+                                        decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(10)),
                                         child: Row(children: [
-                                          const Icon(Icons.thumb_up_alt_rounded, size: 15, color: Color(0xFF16A34A)),
+                                          const Icon(Icons.thumb_up_alt_rounded, size: 15, color: Color(0xFF2E7D32)),
                                           const SizedBox(width: 5),
-                                          Text('${item['votes'] ?? 0} Votes', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
+                                          Text('${item['votes'] ?? 0} Votes', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32))),
                                         ]),
                                       ),
                                     ),
@@ -405,7 +405,7 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
                                             item['title'] as String? ?? '',
                                           )),
                                       const SizedBox(width: 6),
-                                      _actionBtn(Icons.edit_outlined, const Color(0xFF16A34A), () {
+                                      _actionBtn(Icons.edit_outlined, const Color(0xFF2E7D32), () {
                                         Navigator.push(context, MaterialPageRoute(builder: (_) => UpdateComplaintScreen(
                                           docId: docId,
                                           initialTitle: item['title'] ?? '',
@@ -431,7 +431,7 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF16A34A),
+        backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_circle_outline),
         label: const Text('Report Issue', style: TextStyle(fontWeight: FontWeight.bold)),

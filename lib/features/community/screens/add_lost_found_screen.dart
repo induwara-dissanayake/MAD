@@ -32,7 +32,7 @@ class _AddLostFoundScreenState extends State<AddLostFoundScreen> {
     super.dispose();
   }
 
-  Color get _primaryColor => _type == 'Lost' ? const Color(0xFFEF4444) : const Color(0xFF16A34A);
+  Color get _primaryColor => _type == 'Lost' ? const Color(0xFFEF4444) : const Color(0xFF388E3C);
 
   Future<void> _pickImage() async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -49,8 +49,8 @@ class _AddLostFoundScreenState extends State<AddLostFoundScreen> {
             const Text('Add Photo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              _sourceOption(Icons.photo_library_rounded, 'Gallery', const Color(0xFF16A34A), ImageSource.gallery),
-              _sourceOption(Icons.camera_alt_rounded,    'Camera',  const Color(0xFF16A34A), ImageSource.camera),
+              _sourceOption(Icons.photo_library_rounded, 'Gallery', const Color(0xFF2E7D32), ImageSource.gallery),
+              _sourceOption(Icons.camera_alt_rounded,    'Camera',  const Color(0xFF2E7D32), ImageSource.camera),
             ]),
             const SizedBox(height: 16),
           ],
