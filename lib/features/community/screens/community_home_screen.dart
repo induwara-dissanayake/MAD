@@ -179,11 +179,6 @@ class _CommunityHomeScreenState
         centerTitle: true,
       ),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: primaryGreen,
-        onPressed: () {},
-        child: const Icon(Icons.add),
-      ),
 
       body: ListView(
         padding: const EdgeInsets.all(12),

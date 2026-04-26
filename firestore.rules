@@ -228,6 +228,13 @@ service cloud.firestore {
       allow update, delete: if isOwner(resource.data.senderId) || isOfficialOrAdmin();
     }
 
+    // ── Community Chat Presence ──────────────────────────────────
+    match /community_chat_presence/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isAuthenticated();
+    }
+
+
     // ── Community Jobs ──────────────────────────────────────────
     match /community_jobs/{jobId} {
       allow read, create, update: if isAuthenticated();
