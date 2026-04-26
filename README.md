@@ -20,7 +20,7 @@ The app digitizes village-level administrative services and improves communicati
 * Official GN notice board
 * Lost & Found and community job posts
 * Request status tracking
-* Help / Chatbot for user guidance
+* Help / Chatbot for user guidance (powered by [OpenRouter](https://openrouter.ai); API key and model are set in `lib/core/config/openrouter_secrets.dart`)
 
 ---
 
