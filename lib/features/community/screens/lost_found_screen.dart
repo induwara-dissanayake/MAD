@@ -16,7 +16,7 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
 
   static const _typeColors = {
     'Lost':     Color(0xFFEF4444),
-    'Found':    Color(0xFF16A34A),
+    'Found':    Color(0xFF388E3C),
     'Resolved': Color(0xFF10B981),
   };
 
@@ -151,14 +151,14 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
             floating: false,
             pinned: true,
             forceElevated: innerBoxIsScrolled,
-            backgroundColor: const Color(0xFF16A34A),
+            backgroundColor: const Color(0xFF2E7D32),
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF14532D), Color(0xFF22C55E)],
+                    colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -185,15 +185,15 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
               preferredSize: const Size.fromHeight(48),
               child: Container(
                 height: 48,
-                color: const Color(0xFF14532D),
+                color: const Color(0xFF1B5E20),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
-                    _filterChip('All',      const Color(0xFF16A34A)),
+                    _filterChip('All',      const Color(0xFF2E7D32)),
                     _filterChip('Lost',     const Color(0xFFEF4444)),
-                    _filterChip('Found',    const Color(0xFF16A34A)),
+                    _filterChip('Found',    const Color(0xFF388E3C)),
                     _filterChip('Resolved', const Color(0xFF10B981)),
                   ],
                 ),
@@ -233,7 +233,7 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
                 Row(children: [
                   _statCard('Lost',     lostCount,     const Color(0xFFEF4444), Icons.help_outline_rounded),
                   const SizedBox(width: 8),
-                  _statCard('Found',    foundCount,    const Color(0xFF16A34A), Icons.inventory_2_outlined),
+                  _statCard('Found',    foundCount,    const Color(0xFF388E3C), Icons.inventory_2_outlined),
                   const SizedBox(width: 8),
                   _statCard('Resolved', resolvedCount, const Color(0xFF10B981), Icons.verified_rounded),
                 ]),
@@ -448,7 +448,7 @@ class _LostFoundScreenState extends State<LostFoundScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF16A34A),
+        backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_circle_outline),
         label: const Text('Post Item', style: TextStyle(fontWeight: FontWeight.bold)),
