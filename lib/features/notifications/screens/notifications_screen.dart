@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/localization/localization_extensions.dart';
 import '../../../core/models/notification_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
@@ -12,13 +14,20 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   String _selectedFilter = 'All';
 
-  final List<String> _filters = const ['All', 'Unread', 'Approved', 'Rejected', 'Info'];
+  static const _filters = [
+    'All',
+    'Unread',
+    'Applications',
+    'Community',
+    'Complaint',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +41,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Notifications',
+          context.l10n.notifications,
           style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -99,7 +108,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           color: isSelected ? AppColors.primary : AppColors.card,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isSelected ? AppColors.primary : AppColors.border,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.border,
                           ),
                         ),
                         child: Text(
@@ -108,7 +119,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             color: isSelected
                                 ? AppColors.textOnPrimary
                                 : AppColors.textSecondary,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -119,7 +131,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               const SizedBox(height: 12),
               Expanded(
                 child: filtered.isEmpty
-                    ? _buildEmptyState()
+                    ? _buildEmptyState(context)
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                         itemCount: filtered.length,
@@ -140,22 +152,31 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  List<NotificationModel> _filterNotifications(List<NotificationModel> notifications) {
+  List<NotificationModel> _filterNotifications(
+    List<NotificationModel> notifications,
+  ) {
+    bool isApplicationType(String t) =>
+        t == 'approval' || t == 'rejection' || t == 'info_request';
+
     switch (_selectedFilter) {
       case 'Unread':
         return notifications.where((n) => !n.isRead).toList();
-      case 'Approved':
-        return notifications.where((n) => n.type == 'approval').toList();
-      case 'Rejected':
-        return notifications.where((n) => n.type == 'rejection').toList();
-      case 'Info':
-        return notifications.where((n) => n.type == 'info_request').toList();
+      case 'Applications':
+        return notifications.where((n) => isApplicationType(n.type)).toList();
+      case 'Community':
+        return notifications
+            .where((n) => n.type == 'community_important')
+            .toList();
+      case 'Complaint':
+        return notifications
+            .where((n) => n.type == 'complaint_update')
+            .toList();
       default:
         return notifications;
     }
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -163,7 +184,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           Container(
             width: 72,
             height: 72,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.surfaceGrey,
               shape: BoxShape.circle,
             ),
@@ -181,38 +202,110 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            'Certificate approvals and rejections will appear here.',
-            style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              context.l10n.notificationsEmptyBody,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textMuted,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _onNotificationTap(NotificationModel notification) async {
+    if (!notification.isRead) {
+      await ref.read(notificationServiceProvider).markAsRead(notification.id);
+    }
+    if (!mounted) return;
+
+    final opened = _tryNavigateFromNotification(context, notification);
+    if (opened) return;
+
+    final semanticColor = _colorForType(notification.type);
+    final timestamp =
+        DateFormat('MMM d, yyyy • h:mm a').format(notification.createdAt);
+    if (!mounted) return;
+    _showNotificationDetail(notification, timestamp, semanticColor);
+  }
+
+  /// Returns true if a route was pushed (detail sheet is skipped).
+  bool _tryNavigateFromNotification(
+    BuildContext context,
+    NotificationModel n,
+  ) {
+    final route = n.actionRoute;
+    final extra = n.actionExtra;
+
+    if (route == '/documents/detail') {
+      final trackingId = extra['trackingId'] as String? ?? n.requestId ?? '';
+      if (trackingId.isEmpty) return false;
+      final documentType = extra['documentType'] as String? ?? '';
+      final status = extra['status'] as String? ?? '';
+      context.push(
+        '/documents/detail',
+        extra: {
+          'trackingId': trackingId,
+          'documentType': documentType,
+          'status': status,
+        },
+      );
+      return true;
+    }
+
+    if (route == '/community/chat') {
+      final room = extra['roomName'] as String? ?? 'Community Chat';
+      context.push('/community/chat', extra: <String, dynamic>{'name': room});
+      return true;
+    }
+
+    if (n.type == 'complaint_update' || (route == '/community' && n.relatedId != null)) {
+      context.push('/community');
+      return true;
+    }
+
+    if (n.requestId != null && n.requestId!.isNotEmpty) {
+      final documentType = extra['documentType'] as String? ?? '';
+      final status = extra['status'] as String? ?? '';
+      context.push(
+        '/documents/detail',
+        extra: {
+          'trackingId': n.requestId!,
+          'documentType': documentType,
+          'status': status,
+        },
+      );
+      return true;
+    }
+
+    return false;
+  }
+
   Widget _buildNotificationCard(NotificationModel notification) {
     final semanticColor = _colorForType(notification.type);
-    final timestamp = DateFormat('MMM d, yyyy • h:mm a').format(notification.createdAt);
+    final timestamp =
+        DateFormat('MMM d, yyyy • h:mm a').format(notification.createdAt);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () async {
-          if (!notification.isRead) {
-            await ref.read(notificationServiceProvider).markAsRead(notification.id);
-          }
-          if (!mounted) return;
-          _showNotificationDetail(notification, timestamp, semanticColor);
-        },
+        onTap: () => _onNotificationTap(notification),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: notification.isRead ? AppColors.card : AppColors.primaryLight.withValues(alpha: 0.35),
+            color: notification.isRead
+                ? AppColors.card
+                : AppColors.primaryLight.withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: notification.isRead ? AppColors.border.withValues(alpha: 0.45) : semanticColor.withValues(alpha: 0.25),
+              color: notification.isRead
+                  ? AppColors.border.withValues(alpha: 0.45)
+                  : semanticColor.withValues(alpha: 0.25),
             ),
           ),
           child: Row(
@@ -225,7 +318,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   color: semanticColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(_iconForType(notification.type), color: semanticColor, size: 22),
+                child: Icon(
+                  _iconForType(notification.type),
+                  color: semanticColor,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -266,7 +363,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: semanticColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
@@ -280,7 +380,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Icon(
+                        const Icon(
                           Icons.access_time_rounded,
                           size: 13,
                           color: AppColors.textMuted,
@@ -332,19 +432,23 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: semanticColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _labelForType(notification.type),
-                      style: AppTextStyles.captionMedium.copyWith(color: semanticColor),
+                      style: AppTextStyles.captionMedium
+                          .copyWith(color: semanticColor),
                     ),
                   ),
                   const Spacer(),
                   Icon(
-                    notification.isRead ? Icons.mark_email_read_rounded : Icons.mark_email_unread_rounded,
+                    notification.isRead
+                        ? Icons.mark_email_read_rounded
+                        : Icons.mark_email_unread_rounded,
                     size: 16,
                     color: AppColors.textMuted,
                   ),
@@ -378,7 +482,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   ),
                   child: Text(
                     'Close',
-                    style: AppTextStyles.button.copyWith(fontWeight: FontWeight.w700),
+                    style: AppTextStyles.button
+                        .copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -397,6 +502,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return AppColors.error;
       case 'info_request':
         return AppColors.warning;
+      case 'complaint_update':
+        return AppColors.info;
+      case 'community_important':
+        return AppColors.accentPurple;
+      case 'notice':
+        return AppColors.primary;
       default:
         return AppColors.primary;
     }
@@ -410,6 +521,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return Icons.cancel_rounded;
       case 'info_request':
         return Icons.info_rounded;
+      case 'complaint_update':
+        return Icons.flag_rounded;
+      case 'community_important':
+        return Icons.campaign_rounded;
+      case 'notice':
+        return Icons.campaign_outlined;
       default:
         return Icons.notifications_rounded;
     }
@@ -422,7 +539,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       case 'rejection':
         return 'Rejected';
       case 'info_request':
-        return 'Info Needed';
+        return 'Info needed';
+      case 'complaint_update':
+        return 'Complaint';
+      case 'community_important':
+        return 'Community';
+      case 'notice':
+        return 'Notice';
       default:
         return 'Update';
     }

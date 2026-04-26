@@ -98,4 +98,22 @@ class UserService {
               snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList(),
         );
   }
+
+  /// All user document IDs in a village (for notification fan-out).
+  Future<List<String>> getUserUidsInVillage(String village) async {
+    if (village.isEmpty) return [];
+    final q = await _usersCollection
+        .where('village', isEqualTo: village)
+        .get();
+    return q.docs.map((d) => d.id).toList();
+  }
+
+  /// GN officer, app admin, or super_admin — matches [firestore.rules] `isOfficialOrAdmin` intent.
+  Future<bool> isOfficialOrAdminUser(String uid) async {
+    final m = await getUserProfileOnce(uid);
+    if (m == null) return false;
+    final r = m.role;
+    if (r == 'super_admin') return true;
+    return r == 'gn_officer' || r == 'admin';
+  }
 }

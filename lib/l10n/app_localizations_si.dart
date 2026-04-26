@@ -284,4 +284,19 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get citizen => 'පුරවැසි';
+
+  @override
+  String get homeAlertsAndUpdates => 'අභියාචනා සහ යැපුම්';
+
+  @override
+  String get homeNotificationsSubtitle => 'නියැම්, ප්‍රජාව, තව';
+
+  @override
+  String homeNotificationsSubtitleUnread(int count) {
+    return '$count කියවී නොමැති';
+  }
+
+  @override
+  String get notificationsEmptyBody =>
+      'සහතික යාවත්කාල, ප්‍රජා පණිවිඩ, සහ පැමිණිලි තත්ත්ව වෙනස්කම් මෙහි පෙනේ.';
 }

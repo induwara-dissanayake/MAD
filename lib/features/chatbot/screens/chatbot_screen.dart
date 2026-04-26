@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/ai_chat_prompts.dart';
+import '../../../core/services/openrouter_chat_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -20,23 +22,13 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   bool _showScrollToBottom = false;
   bool _hasInputText = false;
 
+  final OpenRouterChatService _openRouter = OpenRouterChatService();
+
   final List<_ChatMessage> _messages = [
     _ChatMessage(
-      text:
-          "Hello! I'm your Village Connect AI Assistant. I can help you with:\n\n\u2022 Applying for documents\n\u2022 Tracking applications\n\u2022 Finding office hours & contacts\n\u2022 Understanding village services\n\nHow can I help you today?",
+      text: chatWelcomeMessage,
       isBot: true,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
-    _ChatMessage(
-      text: 'How do I apply for a character certificate?',
-      isBot: false,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 4)),
-    ),
-    _ChatMessage(
-      text:
-          "Great question! Here's how to apply for a character certificate:\n\n1. Go to **Home** \u2192 **Apply for Document**\n2. Select **Character Certificate**\n3. Fill in your personal details\n4. Upload a clear copy of your NIC (front & back)\n5. Review and submit\n\nProcessing usually takes 3-5 working days. You'll receive a notification when it's ready for collection at the GN Office.",
-      isBot: true,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
+      timestamp: DateTime.now(),
     ),
   ];
 
@@ -108,8 +100,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                 _messages.clear();
                 _messages.add(
                   _ChatMessage(
-                    text:
-                        "Hello! I'm your Village Connect AI Assistant. I can help you with:\n\n\u2022 Applying for documents\n\u2022 Tracking applications\n\u2022 Finding office hours & contacts\n\u2022 Understanding village services\n\nHow can I help you today?",
+                    text: chatWelcomeMessage,
                     isBot: true,
                     timestamp: DateTime.now(),
                   ),
@@ -133,9 +124,18 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     );
   }
 
-  void _sendMessage() {
+  static const _langSinhala = '\u0DC3\u0DD2\u0D82\u0DC4\u0DBD';
+  static const _langTamil = '\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD';
+
+  String _outputLanguageForApi() {
+    if (_selectedLanguage == _langSinhala) return 'Sinhala';
+    if (_selectedLanguage == _langTamil) return 'Tamil';
+    return 'English';
+  }
+
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isTyping) return;
 
     setState(() {
       _messages
@@ -146,23 +146,32 @@ class _ChatbotScreenState extends State<ChatbotScreen>
 
     _scrollToBottom();
 
-    // Simulate bot response
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _messages.add(
-            _ChatMessage(
-              text:
-                  "Thank you for your question. I'm processing your request. In the meantime, you can visit the GN Office during working hours (8:30 AM \u2013 4:30 PM, Mon-Fri) for in-person assistance.",
-              isBot: true,
-              timestamp: DateTime.now(),
-            ),
-          );
-        });
-        _scrollToBottom();
-      }
+    final history = _messages
+        .map(
+          (m) => ChatApiMessage(
+            role: m.isBot ? 'assistant' : 'user',
+            content: m.text,
+          ),
+        )
+        .toList();
+
+    final reply = await _openRouter.completeChat(
+      history: history,
+      outputLanguage: _outputLanguageForApi(),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isTyping = false;
+      _messages.add(
+        _ChatMessage(
+          text: reply,
+          isBot: true,
+          timestamp: DateTime.now(),
+        ),
+      );
     });
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -390,8 +399,8 @@ class _ChatbotScreenState extends State<ChatbotScreen>
           ),
           items: [
             'English',
-            '\u0DC3\u0DD2\u0D82\u0DC4\u0DBD',
-            '\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD',
+            _langSinhala,
+            _langTamil,
           ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: (v) =>
               setState(() => _selectedLanguage = v ?? 'English'),
@@ -527,7 +536,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   }
 
   Widget _buildSuggestions() {
-    // Hide suggestions while typing input or when bot is responding
+    // Hide suggestions while typing input, when the bot is responding, or while sending
     if (_hasInputText || _isTyping) return const SizedBox.shrink();
 
     return AnimatedSize(
@@ -546,11 +555,13 @@ class _ChatbotScreenState extends State<ChatbotScreen>
               return Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    _messageController.text = _suggestions[index];
-                    _sendMessage();
-                  },
+                  onTap: _isTyping
+                      ? null
+                      : () {
+                          HapticFeedback.lightImpact();
+                          _messageController.text = _suggestions[index];
+                          _sendMessage();
+                        },
                   borderRadius: BorderRadius.circular(22),
                   splashColor: AppColors.primary.withOpacity(0.12),
                   highlightColor: AppColors.primary.withOpacity(0.06),
@@ -618,6 +629,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
               Expanded(
                 child: TextField(
                   controller: _messageController,
+                  readOnly: _isTyping,
                   style: AppTextStyles.bodyMedium.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
@@ -635,7 +647,9 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                     ),
                     border: InputBorder.none,
                   ),
-                  onSubmitted: (_) => _sendMessage(),
+                  onSubmitted: (_) {
+                    if (!_isTyping) _sendMessage();
+                  },
                 ),
               ),
               AnimatedContainer(
@@ -643,7 +657,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                 curve: Curves.easeInOut,
                 margin: const EdgeInsets.only(bottom: 4, right: 4),
                 decoration: BoxDecoration(
-                  gradient: _hasInputText
+                  gradient: (_hasInputText && !_isTyping)
                       ? const LinearGradient(
                           colors: [AppColors.primary, AppColors.info],
                           begin: Alignment.topLeft,
@@ -656,7 +670,7 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                           ],
                         ),
                   shape: BoxShape.circle,
-                  boxShadow: _hasInputText
+                  boxShadow: (_hasInputText && !_isTyping)
                       ? [
                           BoxShadow(
                             color: AppColors.primary.withOpacity(0.3),
@@ -669,13 +683,15 @@ class _ChatbotScreenState extends State<ChatbotScreen>
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: _hasInputText ? _sendMessage : null,
+                    onTap: (_hasInputText && !_isTyping) ? _sendMessage : null,
                     borderRadius: BorderRadius.circular(24),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Icon(
                         Icons.send_rounded,
-                        color: _hasInputText ? Colors.white : AppColors.textMuted,
+                        color: (_hasInputText && !_isTyping)
+                            ? Colors.white
+                            : AppColors.textMuted,
                         size: 20,
                       ),
                     ),

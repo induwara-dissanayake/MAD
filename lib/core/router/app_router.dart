@@ -11,6 +11,7 @@ import '../../features/auth/screens/add_member_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chatbot/screens/chatbot_screen.dart';
 import '../../features/community/screens/add_community_post_screen.dart';
+import '../../features/community/screens/chat_screen.dart';
 import '../../features/community/screens/community_Home_screen.dart';
 import '../../features/documents/screens/document_request_screen.dart';
 import '../../features/documents/screens/applications_hub_screen.dart';
@@ -283,6 +284,15 @@ final appRouter = GoRouter(
       path: '/community/add',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddCommunityPostScreen(),
+    ),
+    GoRoute(
+      path: '/community/chat',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>? ?? {};
+        final name = extras['name'] as String? ?? 'Community Chat';
+        return ChatScreen(name: name);
+      },
     ),
 
     // ── Profile ──────────────────────────────────────────────────────────

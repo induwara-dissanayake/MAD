@@ -627,6 +627,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Citizen'**
   String get citizen;
+
+  /// No description provided for @homeAlertsAndUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts & updates'**
+  String get homeAlertsAndUpdates;
+
+  /// No description provided for @homeNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Appointments, community, and more'**
+  String get homeNotificationsSubtitle;
+
+  /// No description provided for @homeNotificationsSubtitleUnread.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unread'**
+  String homeNotificationsSubtitleUnread(int count);
+
+  /// No description provided for @notificationsEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Certificate updates, community messages, and complaint status changes will appear here.'**
+  String get notificationsEmptyBody;
 }
 
 class _AppLocalizationsDelegate

@@ -91,5 +91,15 @@
   "reportIncidentDesc": "Report issues in your area to the GN office",
   "inReview": "In Review",
   "total": "Total",
-  "citizen": "Citizen"
+  "citizen": "Citizen",
+
+  "homeAlertsAndUpdates": "Alerts & updates",
+  "homeNotificationsSubtitle": "Appointments, community, and more",
+  "homeNotificationsSubtitleUnread": "{count} unread",
+  "@homeNotificationsSubtitleUnread": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "notificationsEmptyBody": "Certificate updates, community messages, and complaint status changes will appear here."
 }
