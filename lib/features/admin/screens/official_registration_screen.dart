@@ -6,8 +6,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/models/admin_user_model.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/credential_email_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/validators.dart';
 import '../../../shared/widgets/vc_button.dart';
 import '../../../shared/widgets/vc_text_field.dart';
 import '../controllers/admin_controller.dart';
@@ -32,7 +34,6 @@ class _OfficialRegistrationScreenState
   bool _isLoading = false;
   late bool _nicVerified;
   AdminUserModel? _existingUser;
-  String? _generatedPassword;
   bool _showPassword = false;
 
   @override
@@ -70,7 +71,9 @@ class _OfficialRegistrationScreenState
 
     try {
       final repository = ref.read(adminRepositoryProvider);
-      final result = await repository.nicExists(_nicController.text.trim()).run();
+      final result = await repository
+          .nicExists(_nicController.text.trim())
+          .run();
 
       result.fold(
         (error) {
@@ -115,7 +118,9 @@ class _OfficialRegistrationScreenState
   Future<void> _lookupExistingUser() async {
     try {
       final repository = ref.read(adminRepositoryProvider);
-      final result = await repository.searchUserByNic(_nicController.text.trim()).run();
+      final result = await repository
+          .searchUserByNic(_nicController.text.trim())
+          .run();
 
       result.fold(
         (error) {
@@ -167,17 +172,17 @@ class _OfficialRegistrationScreenState
 
     try {
       final authService = AuthService(FirebaseAuth.instance);
+      final credentialEmailService = ref.read(credentialEmailServiceProvider);
 
       // Generate password
       final tempPassword = AuthService.generatePassword();
 
-      // Check email availability (using secondary auth app approach)
-      final emailDerivedFromNic =
-          '${_nicController.text.trim()}@villageconnect.lk';
+      final nic = _nicController.text.trim();
+      final authEmail = Validators.nicToEmail(nic);
 
       // Create account using secondary Firebase app (doesn't drop admin's token)
       final newUid = await authService.createUserAccount(
-        email: _emailController.text.trim(),
+        email: authEmail,
         password: tempPassword,
       );
 
@@ -185,22 +190,41 @@ class _OfficialRegistrationScreenState
       await FirebaseFirestore.instance.collection('users').doc(newUid).set({
         'fullName': _fullNameController.text.trim(),
         'fullNameLower': _fullNameController.text.trim().toLowerCase(),
-        'nic': _nicController.text.trim(),
+        'nic': nic,
         'phone': _phoneController.text.trim(),
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
         'village': _villageController.text.trim(),
         'district': 'TBD', // Can be filled later
         'role': 'gn_officer',
-        'accountStatus': 'active',
+        'accountStatus': 'pending_first_login',
+        'capabilities': {
+          'isCommitteeMember': false,
+          'canModerateCommunity': true,
+          'canAccessAdminDashboard': false,
+        },
         'memberType': 'new_resident',
         'hasSystemAccess': true,
-        'createdByUid': ref.read(authServiceProvider).currentUser?.uid ?? 'admin',
+        'createdByUid':
+            ref.read(authServiceProvider).currentUser?.uid ?? 'admin',
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      try {
+        await credentialEmailService.queueCredentialsEmail(
+          toEmail: _emailController.text.trim(),
+          fullName: _fullNameController.text.trim(),
+          nic: nic,
+          password: tempPassword,
+          memberTypeLabel: 'GN Officer',
+        );
+      } catch (_) {
+        // The success dialog still exposes credentials so the admin can share
+        // them manually if the external email provider is unavailable.
+      }
+
       setState(() {
-        _generatedPassword = tempPassword;
         _isLoading = false;
       });
 
@@ -244,9 +268,7 @@ class _OfficialRegistrationScreenState
                 decoration: BoxDecoration(
                   color: AppColors.successLight,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.success.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.success.withOpacity(0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,10 +283,13 @@ class _OfficialRegistrationScreenState
                     const SizedBox(height: 12),
                     _buildCredentialRow('UID', uid),
                     const SizedBox(height: 8),
-                    _buildCredentialRow('Email', _emailController.text.trim()),
+                    _buildCredentialRow('Username', _nicController.text.trim()),
                     const SizedBox(height: 8),
-                    _buildCredentialRow('Temporary Password', password,
-                        isPassword: true),
+                    _buildCredentialRow(
+                      'Temporary Password',
+                      password,
+                      isPassword: true,
+                    ),
                   ],
                 ),
               ),
@@ -274,9 +299,7 @@ class _OfficialRegistrationScreenState
                 decoration: BoxDecoration(
                   color: AppColors.warningLight,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.warning.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.3)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +312,7 @@ class _OfficialRegistrationScreenState
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Provide the email and temporary password to the GN Officer. They must change their password on first login.',
+                        'Provide the NIC username and temporary password to the GN Officer. They must change their password on first login.',
                         style: AppTextStyles.small.copyWith(
                           color: AppColors.warning,
                           fontSize: 11,
@@ -307,7 +330,11 @@ class _OfficialRegistrationScreenState
             icon: const Icon(Icons.copy_rounded, size: 16),
             label: const Text('Copy Credentials'),
             onPressed: () {
-              _copyCredentialsToClipboard(uid, _emailController.text.trim(), password);
+              _copyCredentialsToClipboard(
+                uid,
+                _nicController.text.trim(),
+                password,
+              );
             },
           ),
           ElevatedButton(
@@ -322,8 +349,11 @@ class _OfficialRegistrationScreenState
     );
   }
 
-  Widget _buildCredentialRow(String label, String value,
-      {bool isPassword = false}) {
+  Widget _buildCredentialRow(
+    String label,
+    String value, {
+    bool isPassword = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -336,9 +366,7 @@ class _OfficialRegistrationScreenState
         ),
         Flexible(
           child: Text(
-            isPassword && !_showPassword
-                ? '••••••••'
-                : value,
+            isPassword && !_showPassword ? '••••••••' : value,
             style: AppTextStyles.small.copyWith(
               fontSize: 11,
               fontFamily: 'monospace',
@@ -361,16 +389,16 @@ class _OfficialRegistrationScreenState
       _addressController.clear();
       _nicVerified = false;
       _existingUser = null;
-      _generatedPassword = null;
       _isLoading = false;
     });
   }
 
-  void _copyCredentialsToClipboard(String uid, String email, String password) {
-    final credentialsText = '''GN Officer Account Credentials
+  void _copyCredentialsToClipboard(String uid, String nic, String password) {
+    final credentialsText =
+        '''GN Officer Account Credentials
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 UID: $uid
-Email: $email
+Username (NIC): $nic
 Temporary Password: $password
 
 ⚠️  Provide these credentials to the GN Officer.
@@ -437,11 +465,7 @@ They must change their password on first login.''';
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.info_rounded,
-            color: AppColors.info,
-            size: 20,
-          ),
+          const Icon(Icons.info_rounded, color: AppColors.info, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -498,9 +522,7 @@ They must change their password on first login.''';
                   decoration: BoxDecoration(
                     color: AppColors.infoLight,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.info.withOpacity(0.3),
-                    ),
+                    border: Border.all(color: AppColors.info.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [

@@ -3,13 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/locale_provider.dart';
+import '../../../core/localization/vc_copy.dart';
+import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/router/route_paths.dart';
 
-/// Language selector screen.
-/// Allows the user to choose from English, Sinhala, or Tamil before
-/// proceeding to the login screen.
 class LanguageSelectorScreen extends ConsumerStatefulWidget {
   const LanguageSelectorScreen({super.key});
 
@@ -20,108 +18,80 @@ class LanguageSelectorScreen extends ConsumerStatefulWidget {
 
 class _LanguageSelectorScreenState
     extends ConsumerState<LanguageSelectorScreen> {
-  /// Index of the currently selected language (null = none selected).
-  int? _selectedIndex;
+  String _selectedCode = 'en';
 
-  /// Available languages with native label, English label, and locale code.
   static const List<_LanguageOption> _languages = [
-    _LanguageOption(
-      nativeLabel: 'සිංහල',
-      englishLabel: 'Sinhala',
-      localeCode: 'si',
-    ),
-    _LanguageOption(
-      nativeLabel: 'தமிழ்',
-      englishLabel: 'Tamil',
-      localeCode: 'ta',
-    ),
-    _LanguageOption(
-      nativeLabel: 'English',
-      englishLabel: 'English',
-      localeCode: 'en',
-    ),
+    _LanguageOption('English', 'English', 'en'),
+    _LanguageOption('සිංහල', 'Sinhala', 'si'),
+    _LanguageOption('தமிழ்', 'Tamil', 'ta'),
   ];
 
-  void _onContinue() {
-    if (_selectedIndex == null) return;
-
-    final selected = _languages[_selectedIndex!];
-    ref.read(localeProvider.notifier).setLocaleByCode(selected.localeCode);
+  void _continue() {
+    ref.read(localeProvider.notifier).setLocaleByCode(_selectedCode);
     context.go(RoutePaths.login);
   }
 
   @override
   Widget build(BuildContext context) {
+    final copy = VcCopy(_selectedCode);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surfaceParchment,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 60),
-              
-              // Minimalist Header
               Container(
-                width: 48,
-                height: 48,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.brandGreenSurface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.brandGreenBorder),
                 ),
                 child: const Icon(
-                  Icons.translate_rounded,
-                  size: 24,
-                  color: AppColors.primary,
+                  Icons.translate_outlined,
+                  color: AppColors.brandGreen,
+                  size: 28,
                 ),
               ),
-              
-              const SizedBox(height: 32),
-              
+              const SizedBox(height: 28),
+              Text(copy.t('chooseLanguage'), style: AppTextStyles.displayLarge),
+              const SizedBox(height: 10),
               Text(
-                'Choose Your\nPreferred Language',
-                style: AppTextStyles.displaySmall,
-              ),
-              
-              const SizedBox(height: 12),
-              
-              Text(
-                'Select a language to proceed with Village Connect',
+                copy.t('languageIntro'),
                 style: AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.textSecondary,
+                  color: AppColors.inkMid,
                 ),
               ),
-              
-              const SizedBox(height: 48),
-
-              // Language List
+              const SizedBox(height: 32),
               Expanded(
                 child: ListView.separated(
-                  physics: const BouncingScrollPhysics(),
                   itemCount: _languages.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final lang = _languages[index];
-                    final bool isSelected = _selectedIndex == index;
-                    return _buildLanguageItem(
-                      lang: lang,
-                      isSelected: isSelected,
-                      onTap: () => setState(() => _selectedIndex = index),
+                    final language = _languages[index];
+                    final selected = language.code == _selectedCode;
+                    return _LanguageCard(
+                      option: language,
+                      selected: selected,
+                      onTap: () => setState(() {
+                        _selectedCode = language.code;
+                        ref
+                            .read(localeProvider.notifier)
+                            .setLocaleByCode(language.code);
+                      }),
                     );
                   },
                 ),
               ),
-
-              // Action
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _selectedIndex != null ? _onContinue : null,
-                    child: const Text('Continue'),
-                  ),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _continue,
+                  child: Text(copy.t('continue')),
                 ),
               ),
             ],
@@ -130,56 +100,67 @@ class _LanguageSelectorScreenState
       ),
     );
   }
+}
 
-  Widget _buildLanguageItem({
-    required _LanguageOption lang,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? AppColors.primary.withOpacity(0.06) 
-              : AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(8),
-          border: isSelected 
-              ? Border.all(color: AppColors.primary, width: 1.5)
-              : Border.all(color: Colors.transparent, width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    lang.nativeLabel,
-                    style: AppTextStyles.h3.copyWith(
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    lang.englishLabel,
-                    style: AppTextStyles.small.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+class _LanguageCard extends StatelessWidget {
+  const _LanguageCard({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _LanguageOption option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: option.englishLabel,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.brandGreenSurface
+                  : AppColors.surfaceIvory,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected
+                    ? AppColors.brandGreen
+                    : AppColors.surfaceWarmSand,
+                width: selected ? 1.5 : 1,
               ),
+              boxShadow: AppColors.shadowLow,
             ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle_rounded,
-                color: AppColors.primary,
-                size: 24,
-              ),
-          ],
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(option.nativeLabel, style: AppTextStyles.h3),
+                      const SizedBox(height: 2),
+                      Text(option.englishLabel, style: AppTextStyles.caption),
+                    ],
+                  ),
+                ),
+                Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: selected ? AppColors.brandGreen : AppColors.inkLight,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -187,13 +168,9 @@ class _LanguageSelectorScreenState
 }
 
 class _LanguageOption {
+  const _LanguageOption(this.nativeLabel, this.englishLabel, this.code);
+
   final String nativeLabel;
   final String englishLabel;
-  final String localeCode;
-
-  const _LanguageOption({
-    required this.nativeLabel,
-    required this.englishLabel,
-    required this.localeCode,
-  });
+  final String code;
 }

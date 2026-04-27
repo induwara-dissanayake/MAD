@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/credential_email_service.dart';
@@ -11,8 +12,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/validators.dart';
 
-/// Screen for admin-residents to register a brand-new village resident.
-/// The new resident receives their login credentials via email.
 class CreateResidentScreen extends ConsumerStatefulWidget {
   const CreateResidentScreen({super.key});
 
@@ -23,7 +22,6 @@ class CreateResidentScreen extends ConsumerStatefulWidget {
 
 class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _fullNameController = TextEditingController();
   final _nicController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -32,12 +30,14 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
 
   bool _isLoading = false;
   bool _isDone = false;
+  String _creatorRole = 'citizen';
+  bool _isCommitteeMember = false;
+  bool _canModerateCommunity = false;
+  bool _canAccessAdminDashboard = false;
   String? _errorMessage;
   String? _generatedPassword;
   String? _createdUserName;
   String? _emailDispatchStatus;
-  String _creatorRole = 'citizen';
-  String _targetRole = 'citizen';
 
   @override
   void initState() {
@@ -55,28 +55,17 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
     super.dispose();
   }
 
-  void _safeSetState(VoidCallback fn) {
-    if (!mounted) return;
-    setState(fn);
-  }
-
   Future<void> _loadCreatorRole() async {
     try {
-      final authService = ref.read(authServiceProvider);
-      final userService = ref.read(userServiceProvider);
-      final uid = authService.currentUser?.uid;
+      final uid = ref.read(authServiceProvider).currentUser?.uid;
       if (uid == null) return;
-
-      final profile = await userService.getUserProfileOnce(uid);
+      final profile = await ref
+          .read(userServiceProvider)
+          .getUserProfileOnce(uid);
       if (!mounted) return;
-
-      final role = profile?.role ?? 'citizen';
-      final normalizedRole = role == 'super_admin' ? 'admin' : role;
+      final role = profile?.role == 'super_admin' ? 'admin' : profile?.role;
       setState(() {
-        _creatorRole = normalizedRole;
-        if (_creatorRole != 'gn_officer' && _creatorRole != 'admin') {
-          _targetRole = 'citizen';
-        }
+        _creatorRole = role ?? 'citizen';
       });
     } catch (_) {
       // Keep safe defaults.
@@ -85,8 +74,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
 
   Future<void> _createResident() async {
     if (!_formKey.currentState!.validate()) return;
-
-    _safeSetState(() {
+    setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
@@ -96,62 +84,49 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       final userService = ref.read(userServiceProvider);
       final authService = ref.read(authServiceProvider);
       final credentialEmailService = ref.read(credentialEmailServiceProvider);
-
-      // Check NIC uniqueness
-      final alreadyExists = await userService.isNicRegistered(nic);
-      if (alreadyExists) {
-        _safeSetState(() {
-          _isLoading = false;
-          _errorMessage = 'This NIC is already registered in the system.';
-        });
-        return;
-      }
-
-      // Generate credentials
-      final password = AuthService.generatePassword();
-      final email = Validators.nicToEmail(nic);
       final currentAdminUid = authService.currentUser?.uid;
 
       if (currentAdminUid == null) {
         throw Exception('Session expired. Please sign in again.');
+      }
+      if (await userService.isNicRegistered(nic)) {
+        throw Exception('This NIC is already registered.');
       }
 
       final creatorProfile = await userService.getUserProfileOnce(
         currentAdminUid,
       );
       final creatorRoleRaw = creatorProfile?.role ?? 'citizen';
-      final creatorRole =
-          creatorRoleRaw == 'super_admin' ? 'admin' : creatorRoleRaw;
-      if (creatorRole != 'admin_resident' &&
-          creatorRole != 'gn_officer' &&
-          creatorRole != 'admin') {
-        throw Exception(
-          'You do not have permission to create new resident records.',
-        );
-      }
-      if (_targetRole == 'admin_resident' &&
-          creatorRole != 'gn_officer' &&
-          creatorRole != 'admin') {
-        throw Exception('Only GN Officer can create resident admin accounts.');
+      final creatorRole = creatorRoleRaw == 'super_admin'
+          ? 'admin'
+          : creatorRoleRaw;
+      if (!['admin_resident', 'gn_officer', 'admin'].contains(creatorRole)) {
+        throw Exception('You do not have permission to create accounts.');
       }
 
       final inheritedVillage = creatorProfile?.village ?? '';
       final inheritedDistrict = creatorProfile?.district ?? '';
-
       if (inheritedVillage.isEmpty || inheritedDistrict.isEmpty) {
         throw Exception(
-          'Your profile is missing village/district. Update your profile before creating residents.',
+          'Your profile needs village and district before registration.',
         );
       }
 
-      // Create Firebase Auth account for the new resident without signing out
-      // the current admin session (handled in AuthService via secondary app).
+      final password = AuthService.generatePassword();
+      final authEmail = Validators.nicToEmail(nic);
       final newUid = await authService.createUserAccount(
-        email: email,
+        email: authEmail,
         password: password,
       );
 
-      // Create Firestore profile for the new resident
+      final role = _allowedRoleForCreator(creatorRole);
+      final capabilities = {
+        'isCommitteeMember': _isCommitteeMember,
+        'canModerateCommunity': _canModerateCommunity || _isCommitteeMember,
+        'canAccessAdminDashboard':
+            creatorRole == 'admin' && _canAccessAdminDashboard,
+      };
+
       final userModel = UserModel(
         uid: newUid,
         fullName: _fullNameController.text.trim(),
@@ -161,7 +136,9 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
         address: _addressController.text.trim(),
         village: inheritedVillage,
         district: inheritedDistrict,
-        role: _targetRole,
+        role: role,
+        accountStatus: 'pending_first_login',
+        capabilities: capabilities,
         memberType: MemberType.newResident,
         createdByUid: currentAdminUid,
         createdAt: DateTime.now(),
@@ -169,7 +146,6 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
 
       await userService.createUserProfile(userModel);
 
-      String emailStatus;
       try {
         await credentialEmailService.queueCredentialsEmail(
           toEmail: _emailController.text.trim(),
@@ -178,82 +154,268 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
           password: password,
           memberTypeLabel: MemberType.newResident.label,
         );
-        emailStatus =
-            '✅ Login credentials were sent to ${_emailController.text.trim()}.';
-      } catch (e) {
-        emailStatus =
-            '⚠️ Account was created, but automatic email delivery failed (${e.toString()}). Please share the credentials manually.';
+        _emailDispatchStatus =
+            'Login credentials were emailed to ${_emailController.text.trim()}.';
+      } catch (error) {
+        _emailDispatchStatus =
+            'Account created, but email delivery failed. Share credentials securely.';
       }
 
-      _safeSetState(() {
-        _isLoading = false;
+      if (!mounted) return;
+      setState(() {
         _isDone = true;
+        _isLoading = false;
         _generatedPassword = password;
         _createdUserName = _fullNameController.text.trim();
-        _emailDispatchStatus = emailStatus;
       });
-    } on FirebaseAuthException catch (e) {
-      _safeSetState(() {
-        _isLoading = false;
-        _errorMessage = _mapAuthError(e.code);
-      });
-    } catch (e) {
-      _safeSetState(() {
-        _isLoading = false;
-        _errorMessage =
-            'Failed to create resident. Please try again.\n${e.toString()}';
-      });
+    } on FirebaseAuthException catch (error) {
+      _setError(_mapAuthError(error.code));
+    } catch (error) {
+      _setError(error.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  void _setError(String message) {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _errorMessage = message;
+    });
+  }
+
+  String _allowedRoleForCreator(String creatorRole) {
+    return 'citizen';
   }
 
   String _mapAuthError(String code) {
     switch (code) {
       case 'email-already-in-use':
-        return 'This NIC is already registered. Please verify the NIC number.';
-      case 'weak-password':
-        return 'Internal error: generated password too weak.';
+        return 'This NIC already has a login account.';
       case 'operation-not-allowed':
-        return 'Email/Password sign-in is not enabled. Contact the system administrator.';
+        return 'Email/password sign-in is disabled in Firebase.';
       default:
-        return 'Registration failed ($code). Please try again.';
+        return 'Registration failed ($code).';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = _creatorRole == 'admin';
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surfaceParchment,
       appBar: AppBar(
-        backgroundColor: AppColors.card,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
+        title: const Text('Register Citizen'),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-            color: AppColors.textPrimary,
-          ),
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _handleBack,
         ),
-        title: Text(
-          _creatorRole == 'gn_officer'
-              ? 'Register Citizen'
-              : _creatorRole == 'admin'
-                  ? 'Create User'
-                  : 'Register New Resident',
-          style: AppTextStyles.h3,
-        ),
-        centerTitle: true,
       ),
-      body: Column(
+      body: _isDone ? _buildSuccessView() : _buildForm(isAdmin: isAdmin),
+    );
+  }
+
+  Widget _buildForm({required bool isAdmin}) {
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
-          if (_creatorRole == 'gn_officer') _buildGnOfficerHeader(),
-          if (_creatorRole == 'admin')
-            _buildAdminHeader(),
-          const Divider(height: 1, color: AppColors.divider),
-          Expanded(child: _isDone ? _buildSuccessView() : _buildForm()),
+          _RegistrationHero(isAdmin: isAdmin),
+          const SizedBox(height: 20),
+          const _StepLabel(number: '1', label: 'Citizen Details'),
+          const SizedBox(height: 12),
+          _FormPanel(
+            children: [
+              _Field(
+                label: 'Full name',
+                controller: _fullNameController,
+                hint: 'Name as used for GN records',
+                icon: Icons.person_outline,
+                validator: Validators.validateFullName,
+              ),
+              _Field(
+                label: 'NIC number',
+                controller: _nicController,
+                hint: '200012345678 or 987654321V',
+                icon: Icons.badge_outlined,
+                validator: Validators.validateNic,
+              ),
+              _Field(
+                label: 'Phone number',
+                controller: _phoneController,
+                hint: '077 123 4567',
+                icon: Icons.call_outlined,
+                keyboardType: TextInputType.phone,
+                validator: Validators.validatePhone,
+              ),
+              _Field(
+                label: 'Email for credentials',
+                controller: _emailController,
+                hint: 'citizen@example.com',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                validator: _validateEmail,
+              ),
+              _Field(
+                label: 'Home address',
+                controller: _addressController,
+                hint: 'Permanent address',
+                icon: Icons.location_on_outlined,
+                maxLines: 2,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Address is required'
+                    : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const _StepLabel(number: '2', label: 'Access'),
+          const SizedBox(height: 12),
+          _FormPanel(
+            children: [
+              _AccessNote(isAdmin: isAdmin),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Committee member',
+                  style: AppTextStyles.bodySemiBold,
+                ),
+                subtitle: Text(
+                  'Use for village committee support without changing the citizen role.',
+                  style: AppTextStyles.caption,
+                ),
+                value: _isCommitteeMember,
+                onChanged: _isLoading
+                    ? null
+                    : (value) => setState(() {
+                        _isCommitteeMember = value;
+                        if (value) _canModerateCommunity = true;
+                      }),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Can moderate community',
+                  style: AppTextStyles.bodySemiBold,
+                ),
+                subtitle: Text(
+                  'Allows approving or removing community posts.',
+                  style: AppTextStyles.caption,
+                ),
+                value: _canModerateCommunity || _isCommitteeMember,
+                onChanged: _isLoading || _isCommitteeMember
+                    ? null
+                    : (value) => setState(() => _canModerateCommunity = value),
+              ),
+              if (isAdmin)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    'Admin dashboard access',
+                    style: AppTextStyles.bodySemiBold,
+                  ),
+                  subtitle: Text(
+                    'Allows opening /admin screens.',
+                    style: AppTextStyles.caption,
+                  ),
+                  value: _canAccessAdminDashboard,
+                  onChanged: _isLoading
+                      ? null
+                      : (value) =>
+                            setState(() => _canAccessAdminDashboard = value),
+                ),
+            ],
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            _MessageBox(message: _errorMessage!, isError: true),
+          ],
+          const SizedBox(height: 22),
+          FilledButton.icon(
+            onPressed: _isLoading ? null : _createResident,
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.person_add_alt_outlined),
+            label: Text(_isLoading ? 'Creating account...' : 'Create Account'),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildSuccessView() {
+    final nic = _nicController.text.trim();
+    final password = _generatedPassword ?? '';
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+      children: [
+        const Icon(
+          Icons.check_circle_rounded,
+          color: AppColors.success,
+          size: 72,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Account Created',
+          textAlign: TextAlign.center,
+          style: AppTextStyles.displaySmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${_createdUserName ?? 'Citizen'} is now pending first login.',
+          textAlign: TextAlign.center,
+          style: AppTextStyles.body.copyWith(color: AppColors.inkMid),
+        ),
+        const SizedBox(height: 22),
+        _FormPanel(
+          children: [
+            Text('Temporary Credentials', style: AppTextStyles.h3),
+            const SizedBox(height: 12),
+            _CredentialRow(label: 'Username', value: nic),
+            _CredentialRow(label: 'Password', value: password),
+            const SizedBox(height: 8),
+            _MessageBox(message: _emailDispatchStatus ?? '', isError: false),
+          ],
+        ),
+        const SizedBox(height: 14),
+        OutlinedButton.icon(
+          onPressed: () {
+            Clipboard.setData(
+              ClipboardData(text: 'NIC: $nic\nPassword: $password'),
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Credentials copied.')),
+            );
+          },
+          icon: const Icon(Icons.copy_outlined),
+          label: const Text('Copy Credentials'),
+        ),
+        const SizedBox(height: 10),
+        FilledButton(
+          onPressed: _handleBack,
+          child: Text(
+            _creatorRole == 'admin'
+                ? 'Back to Admin Dashboard'
+                : _creatorRole == 'gn_officer'
+                ? 'Back to GN Dashboard'
+                : 'Back to Home',
+          ),
+        ),
+      ],
+    );
+  }
+
+  String? _validateEmail(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return 'Email is required to send credentials';
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(text)) {
+      return 'Enter a valid email address';
+    }
+    return null;
   }
 
   void _handleBack() {
@@ -261,654 +423,200 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       context.pop();
       return;
     }
-
     if (_creatorRole == 'admin') {
       context.go('/admin/dashboard');
-      return;
-    }
-
-    if (_creatorRole == 'gn_officer') {
+    } else if (_creatorRole == 'gn_officer') {
       context.go('/official/dashboard');
-      return;
+    } else {
+      context.go('/home');
     }
-
-    context.go('/home');
   }
+}
 
-  Widget _buildAdminHeader() {
+class _RegistrationHero extends StatelessWidget {
+  const _RegistrationHero({required this.isAdmin});
+
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0F766E), Color(0xFF134E4A)],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppColors.shadowMedium,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.admin_panel_settings_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Create New User',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Admin management access',
-                      style: TextStyle(fontSize: 12, color: Colors.white54),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            'Register Citizen',
+            style: AppTextStyles.displaySmall.copyWith(color: Colors.white),
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: Colors.white70,
-                  size: 18,
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Use this form to create citizens, resident admins, or committee accounts. Login credentials will be generated automatically.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGnOfficerHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1565C0), Color(0xFF0D47A1)],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.person_add_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Register New Citizen',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'GN Division 521 — Kaduwela',
-                      style: TextStyle(fontSize: 12, color: Colors.white54),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: Colors.white70,
-                  size: 18,
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Enter the citizen\'s NIC number. The system will generate their login credentials automatically.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildForm() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoBanner(),
-            const SizedBox(height: 24),
-            Text('Resident Details', style: AppTextStyles.h3),
-            const SizedBox(height: 6),
-            Text(
-              'Fill in the details provided by the new resident.',
-              style: AppTextStyles.caption,
-            ),
-            const SizedBox(height: 24),
-
-            _buildFormField(
-              label: 'Full Name',
-              controller: _fullNameController,
-              hint: 'Enter resident\'s full name',
-              icon: Icons.person_outline_rounded,
-              validator: Validators.validateFullName,
-            ),
-            const SizedBox(height: 18),
-            _buildFormField(
-              label: 'NIC Number',
-              controller: _nicController,
-              hint: 'e.g., 200012345678 or 987654321V',
-              icon: Icons.badge_outlined,
-              validator: Validators.validateNic,
-            ),
-            const SizedBox(height: 18),
-            _buildFormField(
-              label: 'Contact Number',
-              controller: _phoneController,
-              hint: '077 123 4567',
-              icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-              validator: Validators.validatePhone,
-            ),
-            const SizedBox(height: 18),
-            _buildFormField(
-              label: 'Email Address',
-              controller: _emailController,
-              hint: 'resident@example.com',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) {
-                  return 'Email is required to send login credentials';
-                }
-                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v.trim())) {
-                  return 'Enter a valid email address';
-                }
-                return null;
-              },
-            ),
-            if (_creatorRole == 'gn_officer' ||
-                _creatorRole == 'admin') ...[
-              const SizedBox(height: 18),
-              Text('Account Role', style: AppTextStyles.label),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: _targetRole,
-                items: (_creatorRole == 'admin'
-                        ? const [
-                            DropdownMenuItem(
-                              value: 'citizen',
-                              child: Text('Citizen'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'gn_officer',
-                              child: Text('GN Officer'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'admin_resident',
-                              child: Text('Resident Admin'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'committee',
-                              child: Text('Committee'),
-                            ),
-                          ]
-                        : const [
-                            DropdownMenuItem(
-                              value: 'citizen',
-                              child: Text('Citizen'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'admin_resident',
-                              child: Text('Resident Admin'),
-                            ),
-                          ])
-                    .toList(),
-                onChanged: _isLoading
-                    ? null
-                    : (value) {
-                        if (value == null) return;
-                        setState(() => _targetRole = value);
-                      },
-                decoration: InputDecoration(
-                  hintText: 'Select role for the new account',
-                  prefixIcon: const Icon(Icons.badge_outlined),
-                  filled: true,
-                  fillColor: AppColors.background,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.6,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 18),
-            _buildFormField(
-              label: 'Home Address',
-              controller: _addressController,
-              hint: 'Enter permanent address',
-              icon: Icons.location_on_outlined,
-              maxLines: 2,
-            ),
-
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 20),
-              _buildErrorBanner(_errorMessage!),
-            ],
-
-            const SizedBox(height: 28),
-
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _createResident,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.textOnPrimary,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        'Create Resident Account',
-                        style: AppTextStyles.button,
-                      ),
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSuccessView() {
-    final nic = _nicController.text.trim();
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const SizedBox(height: 24),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: const BoxDecoration(
-              color: AppColors.successLight,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_circle_rounded,
-              color: AppColors.success,
-              size: 44,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text('Resident Registered!', style: AppTextStyles.h2),
           const SizedBox(height: 8),
           Text(
-            '$_createdUserName has been successfully registered.',
-            style: AppTextStyles.caption,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.key_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Login Credentials',
-                      style: AppTextStyles.bodySemiBold.copyWith(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20, color: AppColors.border),
-                _credentialRow('Username (NIC)', nic),
-                const SizedBox(height: 12),
-                _credentialRow('Temporary Password', _generatedPassword ?? ''),
-                const SizedBox(height: 16),
-                Text(
-                  _emailDispatchStatus ??
-                      'ℹ️ Share these credentials with the resident securely.',
-                  style: AppTextStyles.small.copyWith(color: AppColors.primary),
-                ),
-              ],
+            isAdmin
+                ? 'Create a citizen account, set Firestore capabilities, and send temporary credentials.'
+                : 'Create a citizen account with first-login setup and email credentials.',
+            style: AppTextStyles.body.copyWith(
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
-
-          const SizedBox(height: 20),
-          _buildCopyButton(nic, _generatedPassword ?? ''),
-          const SizedBox(height: 16),
-
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.warningLight,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.warning_amber_rounded,
-                  color: AppColors.warning,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'You are still signed in. You can continue creating accounts or return home.',
-                    style: AppTextStyles.small.copyWith(
-                      color: AppColors.warning,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 28),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () => context.go('/home'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.textOnPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text('Back to Home', style: AppTextStyles.button),
-            ),
-          ),
-          const SizedBox(height: 32),
         ],
       ),
     );
   }
+}
 
-  Widget _credentialRow(String label, String value) {
+class _StepLabel extends StatelessWidget {
+  const _StepLabel({required this.number, required this.label});
+
+  final String number;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 140,
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: AppColors.brandGreen,
+          foregroundColor: Colors.white,
           child: Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            number,
+            style: AppTextStyles.small.copyWith(color: Colors.white),
           ),
         ),
-        Expanded(
-          child: Text(
-            value,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+        const SizedBox(width: 8),
+        Text(label.toUpperCase(), style: AppTextStyles.overline),
       ],
     );
   }
+}
 
-  Widget _buildCopyButton(String nic, String password) {
-    return OutlinedButton.icon(
-      onPressed: () {
-        Clipboard.setData(
-          ClipboardData(text: 'NIC: $nic\nPassword: $password'),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Credentials copied to clipboard')),
-        );
-      },
-      icon: const Icon(Icons.copy_rounded, size: 18),
-      label: const Text('Copy Credentials'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
-        side: const BorderSide(color: AppColors.primary),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
+class _FormPanel extends StatelessWidget {
+  const _FormPanel({required this.children});
 
-  Widget _buildInfoBanner() {
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: AppColors.surfaceIvory,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.surfaceWarmSand),
+        boxShadow: AppColors.shadowLow,
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.admin_panel_settings_rounded,
-            color: AppColors.primary,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'You are creating a NEW RESIDENT account. '
-              'Login credentials will be emailed to the resident automatically.',
-              style: AppTextStyles.small.copyWith(color: AppColors.primary),
-            ),
-          ),
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i != children.length - 1) const SizedBox(height: 12),
+          ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildErrorBanner(String message) {
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.label,
+    required this.controller,
+    required this.hint,
+    required this.icon,
+    this.validator,
+    this.keyboardType = TextInputType.text,
+    this.maxLines = 1,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final String? Function(String?)? validator;
+  final TextInputType keyboardType;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon),
+        alignLabelWithHint: maxLines > 1,
+      ),
+    );
+  }
+}
+
+class _AccessNote extends StatelessWidget {
+  const _AccessNote({required this.isAdmin});
+
+  final bool isAdmin;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MessageBox(
+      message: isAdmin
+          ? 'This route creates citizen profiles. Use Register GN Officer for GN accounts.'
+          : 'GN officers create citizen accounts. Committee access can be enabled below.',
+      isError: false,
+    );
+  }
+}
+
+class _CredentialRow extends StatelessWidget {
+  const _CredentialRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(width: 96, child: Text(label, style: AppTextStyles.caption)),
+        Expanded(child: Text(value, style: AppTextStyles.monoMedium)),
+      ],
+    );
+  }
+}
+
+class _MessageBox extends StatelessWidget {
+  const _MessageBox({required this.message, required this.isError});
+
+  final String message;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.isEmpty) return const SizedBox.shrink();
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.errorLight,
+        color: isError ? AppColors.errorLight : AppColors.brandGreenSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppColors.error,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTextStyles.caption.copyWith(color: AppColors.error),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFormField({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.label),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          validator: validator,
-          style: AppTextStyles.body,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-            prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
-            filled: true,
-            fillColor: AppColors.surfaceGrey,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primary,
-                width: 1.5,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.error),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-            ),
-          ),
+        border: Border.all(
+          color: isError ? AppColors.errorRed : AppColors.brandGreenBorder,
         ),
-      ],
+      ),
+      child: Text(
+        message,
+        style: AppTextStyles.caption.copyWith(
+          color: isError ? AppColors.errorRed : AppColors.brandGreen,
+        ),
+      ),
     );
   }
 }

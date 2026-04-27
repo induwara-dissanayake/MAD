@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -18,7 +19,8 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
     _Task(
       id: 'TSK-001',
       title: 'Repair school playground fence',
-      description: 'The wooden fence around the school playground is broken in multiple places and needs repair.',
+      description:
+          'The wooden fence around the school playground is broken in multiple places and needs repair.',
       assignee: 'Nihal Perera',
       assigneeAvatar: 'NP',
       dueDate: 'Mar 10, 2026',
@@ -29,7 +31,8 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
     _Task(
       id: 'TSK-002',
       title: 'Organize community clean-up drive',
-      description: 'Plan and execute a village-wide clean-up drive for the coming weekend.',
+      description:
+          'Plan and execute a village-wide clean-up drive for the coming weekend.',
       assignee: 'Priya Silva',
       assigneeAvatar: 'PS',
       dueDate: 'Mar 15, 2026',
@@ -40,7 +43,8 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
     _Task(
       id: 'TSK-003',
       title: 'Install new notice board at junction',
-      description: 'Purchase and install a new weather-proof notice board at the main junction.',
+      description:
+          'Purchase and install a new weather-proof notice board at the main junction.',
       assignee: 'Kasun Fernando',
       assigneeAvatar: 'KF',
       dueDate: 'Mar 08, 2026',
@@ -51,7 +55,8 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
     _Task(
       id: 'TSK-004',
       title: 'Follow up on water supply complaint',
-      description: 'Contact Water Board regarding the disruption reported by eastern sector residents.',
+      description:
+          'Contact Water Board regarding the disruption reported by eastern sector residents.',
       assignee: 'Amaya Dias',
       assigneeAvatar: 'AD',
       dueDate: 'Mar 05, 2026',
@@ -62,7 +67,8 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
     _Task(
       id: 'TSK-005',
       title: 'Distribute relief supplies',
-      description: 'Distribute donated relief supplies to flood-affected families.',
+      description:
+          'Distribute donated relief supplies to flood-affected families.',
       assignee: 'Ranjith Kumara',
       assigneeAvatar: 'RK',
       dueDate: 'Feb 28, 2026',
@@ -73,7 +79,8 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
     _Task(
       id: 'TSK-006',
       title: 'Update village resource inventory',
-      description: 'Conduct inventory of shared village resources and update the records.',
+      description:
+          'Conduct inventory of shared village resources and update the records.',
       assignee: 'Lakmini Jayawardena',
       assigneeAvatar: 'LJ',
       dueDate: 'Feb 25, 2026',
@@ -172,8 +179,12 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                     const SizedBox(height: 20),
                     _formLabel('Assign To'),
                     const SizedBox(height: 8),
-                    _formDropdown(
-                        ['Nihal Perera', 'Priya Silva', 'Kasun Fernando', 'Amaya Dias']),
+                    _formDropdown([
+                      'Nihal Perera',
+                      'Priya Silva',
+                      'Kasun Fernando',
+                      'Amaya Dias',
+                    ]),
                     const SizedBox(height: 20),
                     _formLabel('Priority'),
                     const SizedBox(height: 8),
@@ -186,7 +197,9 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceGrey,
                           borderRadius: BorderRadius.circular(12),
@@ -194,12 +207,18 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today_rounded,
-                                size: 18, color: AppColors.textMuted),
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 18,
+                              color: AppColors.textMuted,
+                            ),
                             const SizedBox(width: 12),
-                            Text('Select due date',
-                                style: AppTextStyles.body
-                                    .copyWith(color: AppColors.textMuted)),
+                            Text(
+                              'Select due date',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -213,7 +232,8 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content: Text('Task created successfully!')),
+                              content: Text('Task created successfully!'),
+                            ),
                           );
                         },
                         child: const Text('Create Task'),
@@ -230,8 +250,7 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
     );
   }
 
-  Widget _formLabel(String text) =>
-      Text(text, style: AppTextStyles.label);
+  Widget _formLabel(String text) => Text(text, style: AppTextStyles.label);
 
   Widget _formTextField(String hint, {int maxLines = 1}) {
     return TextFormField(
@@ -263,8 +282,10 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
-          hint: Text('Select',
-              style: AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+          hint: Text(
+            'Select',
+            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+          ),
           items: items
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
@@ -306,10 +327,13 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: _priorityColor(task.priority)
-                                .withOpacity(0.12),
+                            color: _priorityColor(
+                              task.priority,
+                            ).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -323,7 +347,9 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: task.status == 'Completed'
                                 ? AppColors.successLight
@@ -341,9 +367,12 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                           ),
                         ),
                         const Spacer(),
-                        Text(task.id,
-                            style: AppTextStyles.small
-                                .copyWith(color: AppColors.textMuted)),
+                        Text(
+                          task.id,
+                          style: AppTextStyles.small.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -358,17 +387,27 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                       ),
                       child: Text(
                         task.description,
-                        style: AppTextStyles.body
-                            .copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     _taskDetailRow(
-                        Icons.person_rounded, 'Assignee', task.assignee),
+                      Icons.person_rounded,
+                      'Assignee',
+                      task.assignee,
+                    ),
                     _taskDetailRow(
-                        Icons.calendar_today_rounded, 'Due Date', task.dueDate),
+                      Icons.calendar_today_rounded,
+                      'Due Date',
+                      task.dueDate,
+                    ),
                     _taskDetailRow(
-                        Icons.category_rounded, 'Category', task.category),
+                      Icons.category_rounded,
+                      'Category',
+                      task.category,
+                    ),
                     const SizedBox(height: 24),
                     if (task.status != 'Completed')
                       SizedBox(
@@ -406,9 +445,10 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
           const SizedBox(width: 12),
           SizedBox(
             width: 80,
-            child: Text(label,
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textMuted)),
+            child: Text(
+              label,
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+            ),
           ),
           Expanded(child: Text(value, style: AppTextStyles.bodyMedium)),
         ],
@@ -439,6 +479,7 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
+      bottomNavigationBar: const _CommitteeBottomBar(activeIndex: 0),
       body: TabBarView(
         controller: _tabController,
         children: List.generate(3, (tabIndex) {
@@ -448,12 +489,18 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.task_alt_rounded,
-                      size: 64, color: AppColors.success.withOpacity(0.4)),
+                  Icon(
+                    Icons.task_alt_rounded,
+                    size: 64,
+                    color: AppColors.success.withOpacity(0.4),
+                  ),
                   const SizedBox(height: 16),
-                  Text('No tasks found',
-                      style: AppTextStyles.body
-                          .copyWith(color: AppColors.textMuted)),
+                  Text(
+                    'No tasks found',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -469,9 +516,7 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                   duration: const Duration(milliseconds: 375),
                   child: SlideAnimation(
                     verticalOffset: 40,
-                    child: FadeInAnimation(
-                      child: _buildTaskCard(task),
-                    ),
+                    child: FadeInAnimation(child: _buildTaskCard(task)),
                   ),
                 );
               },
@@ -517,8 +562,10 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                   child: Center(
                     child: Text(
                       task.assigneeAvatar,
-                      style: AppTextStyles.captionMedium
-                          .copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+                      style: AppTextStyles.captionMedium.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -529,30 +576,33 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                     children: [
                       Text(
                         task.title,
-                        style: AppTextStyles.bodyMedium
-                            .copyWith(fontWeight: FontWeight.w600),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        task.assignee,
-                        style: AppTextStyles.small,
-                      ),
+                      Text(task.assignee, style: AppTextStyles.small),
                     ],
                   ),
                 ),
                 if (task.status == 'Completed')
-                  const Icon(Icons.check_circle_rounded,
-                      color: AppColors.success, size: 22),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.success,
+                    size: 22,
+                  ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: priorityColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -568,8 +618,10 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceGrey,
                     borderRadius: BorderRadius.circular(6),
@@ -583,11 +635,16 @@ class _CommitteeTaskScreenState extends State<CommitteeTaskScreen>
                   ),
                 ),
                 const Spacer(),
-                Icon(Icons.calendar_today_rounded,
-                    size: 13, color: AppColors.textMuted),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  size: 13,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(width: 4),
-                Text(task.dueDate,
-                    style: AppTextStyles.small.copyWith(fontSize: 11)),
+                Text(
+                  task.dueDate,
+                  style: AppTextStyles.small.copyWith(fontSize: 11),
+                ),
               ],
             ),
           ],
@@ -618,4 +675,100 @@ class _Task {
     required this.status,
     required this.category,
   });
+}
+
+class _CommitteeBottomBar extends StatelessWidget {
+  const _CommitteeBottomBar({required this.activeIndex});
+
+  final int activeIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.surfaceWarmSand)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 72,
+          child: Row(
+            children: [
+              _CommitteeNavItem(
+                icon: Icons.task_alt_outlined,
+                label: 'Tasks',
+                active: activeIndex == 0,
+                onTap: () => context.go('/committee/tasks'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.event_outlined,
+                label: 'Meetings',
+                active: activeIndex == 1,
+                onTap: () => context.go('/committee/meetings'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.how_to_vote_outlined,
+                label: 'Polls',
+                active: activeIndex == 2,
+                onTap: () => context.go('/committee/polls'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.verified_user_outlined,
+                label: 'Moderate',
+                active: activeIndex == 3,
+                onTap: () => context.go('/community/moderation'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.person_outline,
+                label: 'Profile',
+                active: activeIndex == 4,
+                onTap: () => context.push('/profile'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommitteeNavItem extends StatelessWidget {
+  const _CommitteeNavItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: active ? AppColors.brandGreen : AppColors.inkLight,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: (active ? AppTextStyles.tab : AppTextStyles.tabInactive)
+                  .copyWith(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

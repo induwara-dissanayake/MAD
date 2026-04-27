@@ -1,30 +1,18 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:village_connect/main.dart';
+import 'package:village_connect/core/utils/validators.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const VillageConnectApp());
+  group('Village Connect validators', () {
+    test('accepts old and new Sri Lankan NIC formats', () {
+      expect(Validators.validateNic('987654321V'), isNull);
+      expect(Validators.validateNic('200012345678'), isNull);
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('derives the Firebase Auth email from the NIC username', () {
+      expect(
+        Validators.nicToEmail('987654321V'),
+        '987654321v@villageconnect.local',
+      );
+    });
   });
 }

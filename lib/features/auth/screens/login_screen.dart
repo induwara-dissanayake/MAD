@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/localization/localization_extensions.dart';
+import '../../../core/localization/locale_provider.dart';
+import '../../../core/localization/vc_copy.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -59,13 +61,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           .collection('users')
           .doc(uid)
           .get();
-      final role = doc.data()?['role'] as String? ?? 'citizen';
+      final data = doc.data() ?? {};
+      final role = data['role'] == 'super_admin'
+          ? 'admin'
+          : data['role'] as String? ?? 'citizen';
+      final capabilities = data['capabilities'] is Map
+          ? data['capabilities'] as Map
+          : const {};
       switch (role) {
         case 'committee':
           return RoutePaths.committeeTasks;
         case 'admin':
           return RoutePaths.adminDashboard;
+        case 'gn_officer':
+          return RoutePaths.officialDashboard;
         default:
+          if (capabilities['canAccessAdminDashboard'] == true) {
+            return RoutePaths.adminDashboard;
+          }
+          if (capabilities['isCommitteeMember'] == true) {
+            return RoutePaths.committeeTasks;
+          }
           return RoutePaths.home;
       }
     } catch (_) {
@@ -127,49 +143,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    final copy = VcCopy.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.surfaceParchment,
       body: FadeTransition(
         opacity: _fadeAnim,
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 60),
-                _buildLogoHeader(l),
-                const SizedBox(height: 48),
-                Text(l.welcomeBack, style: AppTextStyles.displayLarge),
+                _buildLanguageSwitch(),
+                const SizedBox(height: 32),
+                _buildLogoHeader(copy),
+                const SizedBox(height: 40),
+                Text(copy.t('loginTitle'), style: AppTextStyles.displayLarge),
                 const SizedBox(height: 8),
                 Text(
-                  l.signInSubtitle,
+                  copy.t('loginSubtitle'),
                   style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.textSecondary,
+                    color: AppColors.inkMid,
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 36),
                 Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildLabel(l.nicOrEmail),
+                      _buildLabel(copy.t('nicOrEmail')),
                       const SizedBox(height: 8),
                       _buildSoftWellField(
                         controller: _identifierController,
-                        hint: l.nicOrEmailHint,
+                        hint: copy.t('nicHint'),
                         prefixIcon: Icons.badge_outlined,
                         keyboardType: TextInputType.emailAddress,
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? l.nicOrEmailRequired : null,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? l.nicOrEmailRequired
+                            : null,
                       ),
-                      const SizedBox(height: 24),
-                      _buildLabel(l.password),
+                      const SizedBox(height: 20),
+                      _buildLabel(copy.t('password')),
                       const SizedBox(height: 8),
                       _buildSoftWellField(
                         controller: _passwordController,
-                        hint: l.passwordHint,
+                        hint: copy.t('passwordHint'),
                         prefixIcon: Icons.lock_outline_rounded,
                         obscureText: _obscurePassword,
                         suffixIcon: IconButton(
@@ -179,16 +198,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 : Icons.visibility_outlined,
                             size: 20,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? l.passwordRequired : null,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? l.passwordRequired
+                            : null,
                       ),
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 32),
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
+                        child: FilledButton(
                           onPressed: _isLoading ? null : _login,
                           child: _isLoading
                               ? const SizedBox(
@@ -202,8 +223,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               : Text(l.signIn),
                         ),
                       ),
-                      const SizedBox(height: 40),
-                      _buildHelpSection(l),
+                      const SizedBox(height: 24),
+                      _buildHelpSection(copy),
                     ],
                   ),
                 ),
@@ -216,7 +237,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildLogoHeader(dynamic l) {
+  Widget _buildLanguageSwitch() {
+    const languages = [('English', 'en'), ('සිංහල', 'si'), ('தமிழ்', 'ta')];
+    final currentCode = Localizations.localeOf(context).languageCode;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        spacing: 6,
+        children: [
+          for (final language in languages)
+            ChoiceChip(
+              label: Text(language.$1),
+              selected: currentCode == language.$2,
+              onSelected: (_) => ref
+                  .read(localeProvider.notifier)
+                  .setLocaleByCode(language.$2),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoHeader(VcCopy copy) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -224,22 +266,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.brandGreenSurface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.brandGreenBorder),
           ),
           child: const Icon(
-            Icons.account_balance_rounded,
-            color: Colors.white,
+            Icons.account_balance_outlined,
+            color: AppColors.brandGreen,
             size: 28,
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          l.appTitle.toUpperCase(),
-          style: AppTextStyles.overline.copyWith(
-            color: AppColors.primary,
-          ),
+          copy.t('officialPortal').toUpperCase(),
+          style: AppTextStyles.overline.copyWith(color: AppColors.brandGreen),
         ),
+        const SizedBox(height: 6),
+        Text('Village Connect', style: AppTextStyles.h2),
       ],
     );
   }
@@ -247,9 +290,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: AppTextStyles.label.copyWith(
-        color: AppColors.textPrimary,
-      ),
+      style: AppTextStyles.label.copyWith(color: AppColors.textPrimary),
     );
   }
 
@@ -275,13 +316,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildHelpSection(dynamic l) {
+  Widget _buildHelpSection(VcCopy copy) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.surfaceIvory,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceWarmSand),
+        boxShadow: AppColors.shadowLow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,17 +333,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             children: [
               const Icon(Icons.info_outline_rounded, size: 18),
               const SizedBox(width: 8),
-              Text(
-                l.firstTimeAccessing,
-                style: AppTextStyles.captionMedium,
-              ),
+              Text(copy.t('firstTime'), style: AppTextStyles.captionMedium),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            l.firstTimeDesc,
+            copy.t('firstTimeBody'),
             style: AppTextStyles.small.copyWith(
-              color: AppColors.textSecondary,
+              color: AppColors.inkMid,
               height: 1.5,
             ),
           ),

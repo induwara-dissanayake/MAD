@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -21,7 +22,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
       time: '10:00 AM – 12:00 PM',
       location: 'Community Hall',
       attendees: 8,
-      agenda: 'Review monthly progress, discuss budget allocation, plan community clean-up drive.',
+      agenda:
+          'Review monthly progress, discuss budget allocation, plan community clean-up drive.',
       status: 'Upcoming',
     ),
     _Meeting(
@@ -30,7 +32,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
       time: '2:00 PM – 3:30 PM',
       location: 'GN Office',
       attendees: 5,
-      agenda: 'Address water supply disruptions in eastern sector, coordinate with Water Board.',
+      agenda:
+          'Address water supply disruptions in eastern sector, coordinate with Water Board.',
       status: 'Upcoming',
     ),
     _Meeting(
@@ -39,7 +42,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
       time: '4:00 PM – 5:30 PM',
       location: 'School Auditorium',
       attendees: 12,
-      agenda: 'Plan New Year festival events, assign responsibilities to youth volunteers.',
+      agenda:
+          'Plan New Year festival events, assign responsibilities to youth volunteers.',
       status: 'Upcoming',
     ),
     _Meeting(
@@ -48,7 +52,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
       time: '9:00 AM – 11:00 AM',
       location: 'Community Ground',
       attendees: 25,
-      agenda: 'Flood and fire safety training session for village committee members and volunteers.',
+      agenda:
+          'Flood and fire safety training session for village committee members and volunteers.',
       status: 'Upcoming',
     ),
     _Meeting(
@@ -57,7 +62,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
       time: '3:00 PM – 4:00 PM',
       location: 'GN Office',
       attendees: 4,
-      agenda: 'Review progress of road repair on Kandy Road, discuss remaining budget.',
+      agenda:
+          'Review progress of road repair on Kandy Road, discuss remaining budget.',
       status: 'Past',
     ),
   ];
@@ -118,8 +124,10 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                             children: [
                               _formLabel('Date'),
                               const SizedBox(height: 8),
-                              _datePickerField(Icons.calendar_today_rounded,
-                                  'Select date'),
+                              _datePickerField(
+                                Icons.calendar_today_rounded,
+                                'Select date',
+                              ),
                             ],
                           ),
                         ),
@@ -131,7 +139,9 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                               _formLabel('Time'),
                               const SizedBox(height: 8),
                               _datePickerField(
-                                  Icons.access_time_rounded, 'Select time'),
+                                Icons.access_time_rounded,
+                                'Select time',
+                              ),
                             ],
                           ),
                         ),
@@ -144,8 +154,10 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                     const SizedBox(height: 20),
                     _formLabel('Agenda'),
                     const SizedBox(height: 8),
-                    _formTextField('Meeting agenda and discussion points...',
-                        maxLines: 4),
+                    _formTextField(
+                      'Meeting agenda and discussion points...',
+                      maxLines: 4,
+                    ),
                     const SizedBox(height: 20),
                     _formLabel('Invite Members'),
                     const SizedBox(height: 8),
@@ -164,11 +176,16 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        const Icon(Icons.notifications_active_rounded,
-                            size: 20, color: AppColors.primary),
+                        const Icon(
+                          Icons.notifications_active_rounded,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
                         const SizedBox(width: 8),
-                        Text('Send reminder notification',
-                            style: AppTextStyles.bodyMedium),
+                        Text(
+                          'Send reminder notification',
+                          style: AppTextStyles.bodyMedium,
+                        ),
                         const Spacer(),
                         Switch(
                           value: true,
@@ -186,8 +203,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content:
-                                    Text('Meeting scheduled successfully!')),
+                              content: Text('Meeting scheduled successfully!'),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.event_available_rounded),
@@ -210,17 +227,15 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
       label: Text(name),
       selected: selected,
       onSelected: (_) {},
-      avatar: isAdd
-          ? const Icon(Icons.add_rounded, size: 18)
-          : null,
+      avatar: isAdd ? const Icon(Icons.add_rounded, size: 18) : null,
       backgroundColor: isAdd ? AppColors.primaryLight : null,
       selectedColor: AppColors.primary,
       labelStyle: TextStyle(
         color: isAdd
             ? AppColors.primary
             : selected
-                ? Colors.white
-                : AppColors.textPrimary,
+            ? Colors.white
+            : AppColors.textPrimary,
         fontWeight: FontWeight.w500,
         fontSize: 13,
       ),
@@ -228,8 +243,7 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
     );
   }
 
-  Widget _formLabel(String text) =>
-      Text(text, style: AppTextStyles.label);
+  Widget _formLabel(String text) => Text(text, style: AppTextStyles.label);
 
   Widget _formTextField(String hint, {int maxLines = 1}) {
     return TextFormField(
@@ -265,9 +279,10 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
             Icon(icon, size: 18, color: AppColors.textMuted),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(hint,
-                  style:
-                      AppTextStyles.body.copyWith(color: AppColors.textMuted)),
+              child: Text(
+                hint,
+                style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+              ),
             ),
           ],
         ),
@@ -307,7 +322,9 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: meeting.status == 'Past'
                                 ? AppColors.surfaceGrey
@@ -330,13 +347,25 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                     Text(meeting.title, style: AppTextStyles.h2),
                     const SizedBox(height: 20),
                     _meetingDetailRow(
-                        Icons.calendar_today_rounded, 'Date', meeting.date),
+                      Icons.calendar_today_rounded,
+                      'Date',
+                      meeting.date,
+                    ),
                     _meetingDetailRow(
-                        Icons.access_time_rounded, 'Time', meeting.time),
-                    _meetingDetailRow(Icons.location_on_rounded, 'Location',
-                        meeting.location),
-                    _meetingDetailRow(Icons.people_rounded, 'Attendees',
-                        '${meeting.attendees} members'),
+                      Icons.access_time_rounded,
+                      'Time',
+                      meeting.time,
+                    ),
+                    _meetingDetailRow(
+                      Icons.location_on_rounded,
+                      'Location',
+                      meeting.location,
+                    ),
+                    _meetingDetailRow(
+                      Icons.people_rounded,
+                      'Attendees',
+                      '${meeting.attendees} members',
+                    ),
                     const SizedBox(height: 12),
                     Text('Agenda', style: AppTextStyles.label),
                     const SizedBox(height: 8),
@@ -349,8 +378,9 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                       ),
                       child: Text(
                         meeting.agenda,
-                        style: AppTextStyles.body
-                            .copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -360,12 +390,12 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => Navigator.pop(ctx),
-                              icon:
-                                  const Icon(Icons.edit_rounded, size: 18),
+                              icon: const Icon(Icons.edit_rounded, size: 18),
                               label: const Text('Edit'),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -377,12 +407,14 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                             child: ElevatedButton.icon(
                               onPressed: () => Navigator.pop(ctx),
                               icon: const Icon(
-                                  Icons.notification_add_rounded,
-                                  size: 18),
+                                Icons.notification_add_rounded,
+                                size: 18,
+                              ),
                               label: const Text('Remind'),
                               style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -410,9 +442,10 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
           const SizedBox(width: 12),
           SizedBox(
             width: 80,
-            child: Text(label,
-                style:
-                    AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+            child: Text(
+              label,
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+            ),
           ),
           Expanded(child: Text(value, style: AppTextStyles.bodyMedium)),
         ],
@@ -432,6 +465,7 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
+      bottomNavigationBar: const _CommitteeBottomBar(activeIndex: 1),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,15 +550,20 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                .map((d) => SizedBox(
-                      width: 36,
-                      child: Center(
-                        child: Text(d,
-                            style: AppTextStyles.small.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted)),
+                .map(
+                  (d) => SizedBox(
+                    width: 36,
+                    child: Center(
+                      child: Text(
+                        d,
+                        style: AppTextStyles.small.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textMuted,
+                        ),
                       ),
-                    ))
+                    ),
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: 8),
@@ -551,8 +590,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                         color: isSelected
                             ? AppColors.primary
                             : isToday
-                                ? AppColors.primaryLight
-                                : Colors.transparent,
+                            ? AppColors.primaryLight
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Stack(
@@ -564,8 +603,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                               color: isSelected
                                   ? Colors.white
                                   : isToday
-                                      ? AppColors.primary
-                                      : AppColors.textPrimary,
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
                               fontWeight: isSelected || isToday
                                   ? FontWeight.w700
                                   : FontWeight.w400,
@@ -607,9 +646,10 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
           color: isPast ? AppColors.surfaceGrey : AppColors.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-              color: isPast
-                  ? AppColors.border.withOpacity(0.4)
-                  : AppColors.border.withOpacity(0.6)),
+            color: isPast
+                ? AppColors.border.withOpacity(0.4)
+                : AppColors.border.withOpacity(0.6),
+          ),
           boxShadow: isPast
               ? null
               : [
@@ -669,10 +709,13 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.access_time_rounded,
-                          size: 14,
-                          color:
-                              isPast ? AppColors.disabled : AppColors.textMuted),
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
+                        color: isPast
+                            ? AppColors.disabled
+                            : AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -689,10 +732,13 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on_rounded,
-                          size: 14,
-                          color:
-                              isPast ? AppColors.disabled : AppColors.textMuted),
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 14,
+                        color: isPast
+                            ? AppColors.disabled
+                            : AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         meeting.location,
@@ -702,10 +748,13 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                         ),
                       ),
                       const Spacer(),
-                      Icon(Icons.people_rounded,
-                          size: 14,
-                          color:
-                              isPast ? AppColors.disabled : AppColors.textMuted),
+                      Icon(
+                        Icons.people_rounded,
+                        size: 14,
+                        color: isPast
+                            ? AppColors.disabled
+                            : AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${meeting.attendees}',
@@ -719,8 +768,10 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded,
-                color: isPast ? AppColors.disabled : AppColors.textMuted),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: isPast ? AppColors.disabled : AppColors.textMuted,
+            ),
           ],
         ),
       ),
@@ -745,4 +796,100 @@ class _Meeting {
     required this.agenda,
     required this.status,
   });
+}
+
+class _CommitteeBottomBar extends StatelessWidget {
+  const _CommitteeBottomBar({required this.activeIndex});
+
+  final int activeIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.surfaceWarmSand)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 72,
+          child: Row(
+            children: [
+              _CommitteeNavItem(
+                icon: Icons.task_alt_outlined,
+                label: 'Tasks',
+                active: activeIndex == 0,
+                onTap: () => context.go('/committee/tasks'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.event_outlined,
+                label: 'Meetings',
+                active: activeIndex == 1,
+                onTap: () => context.go('/committee/meetings'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.how_to_vote_outlined,
+                label: 'Polls',
+                active: activeIndex == 2,
+                onTap: () => context.go('/committee/polls'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.verified_user_outlined,
+                label: 'Moderate',
+                active: activeIndex == 3,
+                onTap: () => context.go('/community/moderation'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.person_outline,
+                label: 'Profile',
+                active: activeIndex == 4,
+                onTap: () => context.push('/profile'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommitteeNavItem extends StatelessWidget {
+  const _CommitteeNavItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: active ? AppColors.brandGreen : AppColors.inkLight,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: (active ? AppTextStyles.tab : AppTextStyles.tabInactive)
+                  .copyWith(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

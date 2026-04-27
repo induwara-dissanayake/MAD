@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/vc_copy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -295,6 +296,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final copy = VcCopy.of(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -326,7 +328,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
           ),
         ),
         title: Text(
-          'Applications',
+          copy.t('applications'),
           style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
         ),
         centerTitle: true,
@@ -339,26 +341,26 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
-          _buildSearchBar(),
+          _buildSearchBar(copy),
           const SizedBox(height: 12),
           _buildCategoryFilters(),
           const SizedBox(height: 8),
           Expanded(child: _buildApplicationList()),
-          _buildTrackCard(),
+          _buildTrackCard(copy),
           const SizedBox(height: 12),
         ],
       ),
     );
   }
 
-  Widget _buildTrackCard() {
+  Widget _buildTrackCard(VcCopy copy) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border.withOpacity(0.5)),
           boxShadow: [
             BoxShadow(
@@ -388,14 +390,14 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Track Application Progress',
+                    copy.t('trackProgress'),
                     style: AppTextStyles.body.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'See current status and updates for submitted requests.',
+                    copy.t('trackProgressBody'),
                     style: AppTextStyles.small.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -418,7 +420,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Track'),
+              child: Text(copy.t('trackRequests')),
             ),
           ],
         ),
@@ -426,13 +428,13 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(VcCopy copy) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: TextField(
         onChanged: (value) => setState(() => _searchQuery = value),
         decoration: InputDecoration(
-          hintText: 'Search applications',
+          hintText: copy.t('searchApplications'),
           prefixIcon: const Icon(Icons.search_rounded),
           filled: true,
           fillColor: AppColors.card,
@@ -501,7 +503,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
-            'No applications found for your current filter.',
+            '${VcCopy.of(context).t('noRequests')}.',
             style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
@@ -530,7 +532,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border.withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
@@ -599,7 +601,11 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
             children: [
               InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: () => _showRequiredDetailsSheet(title, details),
+                onTap: () => _showRequiredDetailsSheet(
+                  title,
+                  details,
+                  VcCopy.of(context),
+                ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -619,7 +625,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Form Details',
+                        VcCopy.of(context).t('details'),
                         style: AppTextStyles.small.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w600,
@@ -647,7 +653,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    'Apply',
+                    VcCopy.of(context).t('apply'),
                     style: AppTextStyles.small.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -662,7 +668,11 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
     );
   }
 
-  void _showRequiredDetailsSheet(String title, List<String> details) {
+  void _showRequiredDetailsSheet(
+    String title,
+    List<String> details,
+    VcCopy copy,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -697,7 +707,7 @@ class _ApplicationsHubScreenState extends State<ApplicationsHubScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Required details for GN submission',
+                copy.t('requiredDetails'),
                 style: AppTextStyles.small.copyWith(
                   color: AppColors.textSecondary,
                 ),
