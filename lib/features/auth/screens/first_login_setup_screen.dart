@@ -107,7 +107,7 @@ class _FirstLoginSetupScreenState extends ConsumerState<FirstLoginSetupScreen> {
       return RoutePaths.adminDashboard;
     }
     if (role == 'gn_officer') return RoutePaths.officialDashboard;
-    if (role == 'committee' || caps['isCommitteeMember'] == true) {
+    if (role == 'committee') {
       return RoutePaths.committeeTasks;
     }
     return RoutePaths.home;

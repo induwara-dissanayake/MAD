@@ -79,9 +79,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           if (capabilities['canAccessAdminDashboard'] == true) {
             return RoutePaths.adminDashboard;
           }
-          if (capabilities['isCommitteeMember'] == true) {
-            return RoutePaths.committeeTasks;
-          }
           return RoutePaths.home;
       }
     } catch (_) {

@@ -54,9 +54,6 @@ String _dashboardForRole(
   Map<String, dynamic> capabilities = const {},
 }) {
   final normalizedRole = _normalizeRole(role);
-  final canAccessAdminDashboard =
-      capabilities['canAccessAdminDashboard'] == true;
-  final isCommitteeMember = capabilities['isCommitteeMember'] == true;
   switch (normalizedRole) {
     case 'committee':
       return '/committee/tasks';
@@ -65,8 +62,9 @@ String _dashboardForRole(
     case 'gn_officer':
       return '/official/dashboard';
     default:
-      if (canAccessAdminDashboard) return '/admin/dashboard';
-      if (isCommitteeMember) return '/committee/tasks';
+      if (capabilities['canAccessAdminDashboard'] == true) {
+        return '/admin/dashboard';
+      }
       return '/home';
   }
 }
