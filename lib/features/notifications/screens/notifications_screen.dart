@@ -105,7 +105,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : AppColors.card,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.card,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isSelected
@@ -119,8 +121,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             color: isSelected
                                 ? AppColors.textOnPrimary
                                 : AppColors.textSecondary,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -145,9 +148,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Failed to load notifications: $error'),
-        ),
+        error: (error, stack) =>
+            Center(child: Text('Failed to load notifications: $error')),
       ),
     );
   }
@@ -206,9 +208,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
               context.l10n.notificationsEmptyBody,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textMuted,
-              ),
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
               textAlign: TextAlign.center,
             ),
           ),
@@ -227,17 +227,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     if (opened) return;
 
     final semanticColor = _colorForType(notification.type);
-    final timestamp =
-        DateFormat('MMM d, yyyy • h:mm a').format(notification.createdAt);
+    final timestamp = DateFormat(
+      'MMM d, yyyy • h:mm a',
+    ).format(notification.createdAt);
     if (!mounted) return;
     _showNotificationDetail(notification, timestamp, semanticColor);
   }
 
   /// Returns true if a route was pushed (detail sheet is skipped).
-  bool _tryNavigateFromNotification(
-    BuildContext context,
-    NotificationModel n,
-  ) {
+  bool _tryNavigateFromNotification(BuildContext context, NotificationModel n) {
     final route = n.actionRoute;
     final extra = n.actionExtra;
 
@@ -263,7 +261,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       return true;
     }
 
-    if (n.type == 'complaint_update' || (route == '/community' && n.relatedId != null)) {
+    if (n.type == 'complaint_update' ||
+        (route == '/community' && n.relatedId != null)) {
       context.push('/community');
       return true;
     }
@@ -282,13 +281,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       return true;
     }
 
+    if (route != null && route.startsWith('/')) {
+      context.push(route);
+      return true;
+    }
+
     return false;
   }
 
   Widget _buildNotificationCard(NotificationModel notification) {
     final semanticColor = _colorForType(notification.type);
-    final timestamp =
-        DateFormat('MMM d, yyyy • h:mm a').format(notification.createdAt);
+    final timestamp = DateFormat(
+      'MMM d, yyyy • h:mm a',
+    ).format(notification.createdAt);
 
     return Material(
       color: Colors.transparent,
@@ -432,16 +437,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: semanticColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _labelForType(notification.type),
-                      style: AppTextStyles.captionMedium
-                          .copyWith(color: semanticColor),
+                      style: AppTextStyles.captionMedium.copyWith(
+                        color: semanticColor,
+                      ),
                     ),
                   ),
                   const Spacer(),
@@ -482,8 +490,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   ),
                   child: Text(
                     'Close',
-                    style: AppTextStyles.button
-                        .copyWith(fontWeight: FontWeight.w700),
+                    style: AppTextStyles.button.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -508,6 +517,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return AppColors.accentPurple;
       case 'notice':
         return AppColors.primary;
+      case 'committee_access':
+        return AppColors.brandGreen;
+      case 'incident':
+        return AppColors.error;
       default:
         return AppColors.primary;
     }
@@ -527,6 +540,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return Icons.campaign_rounded;
       case 'notice':
         return Icons.campaign_outlined;
+      case 'committee_access':
+        return Icons.groups_2_outlined;
+      case 'incident':
+        return Icons.warning_amber_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -546,6 +563,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return 'Community';
       case 'notice':
         return 'Notice';
+      case 'committee_access':
+        return 'Committee';
+      case 'incident':
+        return 'Incident';
       default:
         return 'Update';
     }

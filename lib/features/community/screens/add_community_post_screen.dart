@@ -9,7 +9,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/vc_components.dart';
 import '../repositories/community_post_repository.dart';
 
-enum PostType { lostItem, foundItem, jobOpportunity }
+enum PostType { general, lostItem, foundItem, jobOpportunity, communityIssue }
 
 class AddCommunityPostScreen extends ConsumerStatefulWidget {
   const AddCommunityPostScreen({super.key});
@@ -31,23 +31,31 @@ class _AddCommunityPostScreenState
 
   String _postTypeLabel(PostType type) {
     switch (type) {
+      case PostType.general:
+        return 'General';
       case PostType.lostItem:
         return 'Lost Item';
       case PostType.foundItem:
         return 'Found Item';
       case PostType.jobOpportunity:
         return 'Job Opportunity';
+      case PostType.communityIssue:
+        return 'Community Issue';
     }
   }
 
   IconData _postTypeIcon(PostType type) {
     switch (type) {
+      case PostType.general:
+        return Icons.forum_outlined;
       case PostType.lostItem:
         return Icons.search_rounded;
       case PostType.foundItem:
         return Icons.inventory_2_outlined;
       case PostType.jobOpportunity:
         return Icons.work_outline_rounded;
+      case PostType.communityIssue:
+        return Icons.report_problem_outlined;
     }
   }
 
@@ -62,12 +70,16 @@ class _AddCommunityPostScreenState
 
   String _postTypeKey(PostType type) {
     switch (type) {
+      case PostType.general:
+        return 'general';
       case PostType.lostItem:
         return 'lost_item';
       case PostType.foundItem:
         return 'found_item';
       case PostType.jobOpportunity:
         return 'job_opportunity';
+      case PostType.communityIssue:
+        return 'community_issue';
     }
   }
 
@@ -145,74 +157,69 @@ class _AddCommunityPostScreenState
               const VcPageHeader(
                 title: 'Submit for moderation',
                 subtitle:
-                    'Lost items, found items, and jobs become public after GN or committee approval.',
+                    'General updates, lost items, jobs, and issues become public after GN or committee approval.',
                 leadingIcon: Icons.fact_check_outlined,
               ),
               const SizedBox(height: 20),
               // Post type selector
               Text('Post Type', style: AppTextStyles.label),
               const SizedBox(height: 10),
-              Row(
+              Wrap(
                 children: PostType.values.map((type) {
                   final isSelected = _selectedType == type;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: type != PostType.jobOpportunity ? 8 : 0,
-                      ),
-                      child: SizedBox(
-                        height: 48,
-                        child: Material(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.card,
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8, bottom: 8),
+                    child: SizedBox(
+                      width: 150,
+                      height: 46,
+                      child: Material(
+                        color: isSelected ? AppColors.primary : AppColors.card,
+                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedType = type;
+                            });
+                          },
                           borderRadius: BorderRadius.circular(10),
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _selectedType = type;
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                                width: 1.5,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _postTypeIcon(type),
+                                  size: 16,
                                   color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.border,
-                                  width: 1.5,
+                                      ? AppColors.textOnPrimary
+                                      : AppColors.textSecondary,
                                 ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _postTypeIcon(type),
-                                    size: 16,
-                                    color: isSelected
-                                        ? AppColors.textOnPrimary
-                                        : AppColors.textSecondary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      _postTypeLabel(type),
-                                      style: AppTextStyles.small.copyWith(
-                                        color: isSelected
-                                            ? AppColors.textOnPrimary
-                                            : AppColors.textSecondary,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    _postTypeLabel(type),
+                                    style: AppTextStyles.small.copyWith(
+                                      color: isSelected
+                                          ? AppColors.textOnPrimary
+                                          : AppColors.textSecondary,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),

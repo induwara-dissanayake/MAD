@@ -14,6 +14,20 @@ class MeetingSchedulerScreen extends StatefulWidget {
 class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
   DateTime _focusedMonth = DateTime(2026, 3);
   int _selectedDay = 3;
+  static const _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
   final List<_Meeting> _meetings = [
     _Meeting(
@@ -67,9 +81,6 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
       status: 'Past',
     ),
   ];
-
-  // Days in March 2026 that have meetings
-  final Set<int> _meetingDays = {5, 10, 15, 20};
 
   void _showCreateMeetingDialog() {
     showModalBottomSheet(
@@ -505,8 +516,14 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
   }
 
   Widget _buildCalendar() {
-    final daysInMonth = 31; // March 2026
-    final firstWeekday = 6; // March 1, 2026 is a Sunday (0=Mon so 6=Sun)
+    final daysInMonth = _daysInMonth(_focusedMonth);
+    final firstWeekday =
+        DateTime(_focusedMonth.year, _focusedMonth.month).weekday - 1;
+    final weekRows = ((firstWeekday + daysInMonth) / 7).ceil();
+    final meetingDays = _meetingDaysFor(_focusedMonth);
+    final now = DateTime.now();
+    final isFocusedCurrentMonth =
+        now.year == _focusedMonth.year && now.month == _focusedMonth.month;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -531,16 +548,16 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left_rounded),
-                onPressed: () {},
+                onPressed: () => _moveMonth(-1),
                 color: AppColors.textSecondary,
               ),
               Text(
-                'March 2026',
+                '${_monthNames[_focusedMonth.month - 1]} ${_focusedMonth.year}',
                 style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w600),
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right_rounded),
-                onPressed: () {},
+                onPressed: () => _moveMonth(1),
                 color: AppColors.textSecondary,
               ),
             ],
@@ -568,7 +585,7 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
           ),
           const SizedBox(height: 8),
           // Day cells
-          ...List.generate(5, (weekRow) {
+          ...List.generate(weekRows, (weekRow) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
@@ -579,8 +596,8 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
                     return const SizedBox(width: 36, height: 36);
                   }
                   final isSelected = dayNum == _selectedDay;
-                  final hasMeeting = _meetingDays.contains(dayNum);
-                  final isToday = dayNum == 3;
+                  final hasMeeting = meetingDays.contains(dayNum);
+                  final isToday = isFocusedCurrentMonth && dayNum == now.day;
                   return GestureDetector(
                     onTap: () => setState(() => _selectedDay = dayNum),
                     child: Container(
@@ -633,6 +650,43 @@ class _MeetingSchedulerScreenState extends State<MeetingSchedulerScreen> {
         ],
       ),
     );
+  }
+
+  int _daysInMonth(DateTime month) {
+    return DateTime(month.year, month.month + 1, 0).day;
+  }
+
+  void _moveMonth(int offset) {
+    setState(() {
+      _focusedMonth = DateTime(
+        _focusedMonth.year,
+        _focusedMonth.month + offset,
+      );
+      final daysInMonth = _daysInMonth(_focusedMonth);
+      if (_selectedDay > daysInMonth) {
+        _selectedDay = daysInMonth;
+      }
+    });
+  }
+
+  Set<int> _meetingDaysFor(DateTime month) {
+    return _meetings
+        .map(_meetingDayForMonth)
+        .whereType<DateTime>()
+        .where((date) => date.year == month.year && date.month == month.month)
+        .map((date) => date.day)
+        .toSet();
+  }
+
+  DateTime? _meetingDayForMonth(_Meeting meeting) {
+    final parts = meeting.date.replaceAll(',', '').split(' ');
+    if (parts.length < 3) return null;
+    final month =
+        _monthNames.indexWhere((name) => name.substring(0, 3) == parts[0]) + 1;
+    final day = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (month < 1 || day == null || year == null) return null;
+    return DateTime(year, month, day);
   }
 
   Widget _buildMeetingCard(_Meeting meeting) {
