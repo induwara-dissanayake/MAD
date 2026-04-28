@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.6.0](https://github.com/induwara-dissanayake/MAD/compare/v1.5.0...v1.6.0) (2026-04-28)
+
+
+### Features
+
+* add location permissions and enhance emergency alert functionality ([2845d5a](https://github.com/induwara-dissanayake/MAD/commit/2845d5a8fde52b4a7679ca85fab777bec0c3d8f1))
+* enhance admin functionalities with audit logs and analytics screens ([54f1b4d](https://github.com/induwara-dissanayake/MAD/commit/54f1b4d123f52bf7fc129acd4c6b6e24243c6e8c))
+* enhance admin functionalities with incident management and analytics features ([92a4333](https://github.com/induwara-dissanayake/MAD/commit/92a4333076b080b25125cd7f328265817b574c4c))
+* remove committee access card and admin dashboard access chip from screens ([44630aa](https://github.com/induwara-dissanayake/MAD/commit/44630aa88001963996a3ad3d24a8f14cbdc7944e))
+* update household member management and profile editing ([f6d558a](https://github.com/induwara-dissanayake/MAD/commit/f6d558a884c87cac741472b5fdcfa5d7ebf54367))
+
 ## [1.5.0](https://github.com/induwara-dissanayake/MAD/compare/v1.4.1...v1.5.0) (2026-04-28)
 
 
