@@ -79,6 +79,8 @@ class AdminUserModel {
            const {
              'isCommitteeMember': false,
              'canModerateCommunity': false,
+             'canManageIncidents': false,
+             'canPublishNotices': false,
              'canAccessAdminDashboard': false,
            };
 
@@ -95,6 +97,8 @@ class AdminUserModel {
     final defaults = <String, bool>{
       'isCommitteeMember': role == 'committee',
       'canModerateCommunity': role == 'committee' || role == 'gn_officer',
+      'canManageIncidents': role == 'committee' || role == 'gn_officer',
+      'canPublishNotices': role == 'gn_officer',
       'canAccessAdminDashboard': role == 'admin' || role == 'super_admin',
     };
     if (value is Map) {

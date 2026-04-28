@@ -272,6 +272,7 @@ class _NoticeBoardScreenState extends ConsumerState<NoticeBoardScreen> {
               'category': notice.category,
               'date': DateFormat.yMMMd().format(notice.date),
               'hasAttachment': (notice.attachmentUrl != null).toString(),
+              'attachmentUrl': notice.attachmentUrl ?? '',
             },
           );
         },

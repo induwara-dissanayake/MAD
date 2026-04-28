@@ -12,6 +12,7 @@ class HelpScreen extends StatefulWidget {
 
 class _HelpScreenState extends State<HelpScreen> {
   final _searchController = TextEditingController();
+  final _contactKey = GlobalKey();
 
   final List<_FaqItem> _faqs = [
     _FaqItem(
@@ -45,6 +46,26 @@ class _HelpScreenState extends State<HelpScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<_FaqItem> get _filteredFaqs {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return _faqs;
+    return _faqs.where((item) {
+      return item.question.toLowerCase().contains(query) ||
+          item.answer.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  void _scrollToContact() {
+    FocusScope.of(context).unfocus();
+    final contactContext = _contactKey.currentContext;
+    if (contactContext == null) return;
+    Scrollable.ensureVisible(
+      contactContext,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -109,6 +130,7 @@ class _HelpScreenState extends State<HelpScreen> {
         ),
         child: TextField(
           controller: _searchController,
+          onChanged: (_) => setState(() {}),
           style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w500),
           decoration: InputDecoration(
             hintText: 'Search for answers...',
@@ -286,18 +308,21 @@ class _HelpScreenState extends State<HelpScreen> {
                   title: 'How to Apply for Documents',
                   color: AppColors.primary,
                   isFirst: true,
+                  onTap: () => context.push('/applications'),
                 ),
                 const Divider(height: 1, indent: 64, color: AppColors.divider),
                 _buildLinkItem(
                   icon: Icons.track_changes_rounded,
                   title: 'Track Your Application',
                   color: AppColors.info,
+                  onTap: () => context.push('/documents/tracking'),
                 ),
                 const Divider(height: 1, indent: 64, color: AppColors.divider),
                 _buildLinkItem(
                   icon: Icons.phone_rounded,
                   title: 'Contact GN Officer',
                   color: AppColors.success,
+                  onTap: _scrollToContact,
                 ),
                 const Divider(height: 1, indent: 64, color: AppColors.divider),
                 _buildLinkItem(
@@ -305,6 +330,7 @@ class _HelpScreenState extends State<HelpScreen> {
                   title: 'Report an Issue',
                   color: AppColors.error,
                   isLast: true,
+                  onTap: () => context.push('/emergency/alert'),
                 ),
               ],
             ),
@@ -318,13 +344,14 @@ class _HelpScreenState extends State<HelpScreen> {
     required IconData icon,
     required String title,
     required Color color,
+    required VoidCallback onTap,
     bool isFirst = false,
     bool isLast = false,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         borderRadius: BorderRadius.vertical(
           top: isFirst ? const Radius.circular(24) : Radius.zero,
           bottom: isLast ? const Radius.circular(24) : Radius.zero,
@@ -366,6 +393,7 @@ class _HelpScreenState extends State<HelpScreen> {
 
   // ── FAQ Section ───────────────────────────────────────────────────────
   Widget _buildFAQSection() {
+    final faqs = _filteredFaqs;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -386,55 +414,74 @@ class _HelpScreenState extends State<HelpScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Column(
-            children: List.generate(_faqs.length, (index) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border.withOpacity(0.5)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.shadowLight.withOpacity(0.04),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+          if (faqs.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.border.withOpacity(0.5)),
+              ),
+              child: Text(
+                'No help articles match your search.',
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textSecondary,
                 ),
-                child: Theme(
-                  data: Theme.of(
-                    context,
-                  ).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    tilePadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
+              ),
+            )
+          else
+            Column(
+              children: List.generate(faqs.length, (index) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.border.withOpacity(0.5),
                     ),
-                    childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    iconColor: AppColors.primary,
-                    collapsedIconColor: AppColors.textSecondary,
-                    title: Text(
-                      _faqs[index].question,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    children: [
-                      Text(
-                        _faqs[index].answer,
-                        style: AppTextStyles.body.copyWith(
-                          height: 1.6,
-                          color: AppColors.textSecondary,
-                        ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.shadowLight.withOpacity(0.04),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                ),
-              );
-            }),
-          ),
+                  child: Theme(
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
+                      childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      iconColor: AppColors.primary,
+                      collapsedIconColor: AppColors.textSecondary,
+                      title: Text(
+                        faqs[index].question,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      children: [
+                        Text(
+                          faqs[index].answer,
+                          style: AppTextStyles.body.copyWith(
+                            height: 1.6,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
         ],
       ),
     );
@@ -443,6 +490,7 @@ class _HelpScreenState extends State<HelpScreen> {
   // ── Contact Card ──────────────────────────────────────────────────────
   Widget _buildContactCard() {
     return Padding(
+      key: _contactKey,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

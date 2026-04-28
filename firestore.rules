@@ -121,6 +121,44 @@ service cloud.firestore {
               caps.get('canModerateCommunity', false) == true);
     }
 
+    function canManageIncidents() {
+      let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let userRole = requester.role;
+      let caps = requester.get('capabilities', {});
+      return isAuthenticated() &&
+             (userRole == 'gn_officer' ||
+              userRole == 'admin' ||
+              userRole == 'super_admin' ||
+              userRole == 'committee' ||
+              caps.get('canManageIncidents', false) == true ||
+              caps.get('isCommitteeMember', false) == true);
+    }
+
+    function canPublishNotices() {
+      let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let userRole = requester.role;
+      let caps = requester.get('capabilities', {});
+      return isAuthenticated() &&
+             isAccountActive() &&
+             (userRole == 'gn_officer' ||
+              userRole == 'admin' ||
+              userRole == 'super_admin' ||
+              caps.get('canPublishNotices', false) == true);
+    }
+
+    function announcementMatchesRequester(data) {
+      let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let targetRole = data.get('targetRole', 'all');
+      let targetVillage = data.get('targetVillage', '');
+      return isAuthenticated() &&
+             data.get('status', 'sent') == 'sent' &&
+             (targetVillage == '' || targetVillage == requester.get('village', '')) &&
+             (targetRole == 'all' ||
+              targetRole == requester.role ||
+              (targetRole == 'committee' &&
+               requester.get('capabilities', {}).get('isCommitteeMember', false) == true));
+    }
+
     /// GN can read other users in the same village (notification fan-out query).
     function isSameVillageAsRequester() {
       return resource.data.get('village', '') == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('village', '');
@@ -181,6 +219,18 @@ service cloud.firestore {
                         'address'
                       ]);
 
+      // GN officers may grant village committee/support capabilities to
+      // citizens in their own village without changing role or account status.
+      allow update: if isGnOfficer() &&
+                      isAccountActive() &&
+                      isSameVillageAsRequester() &&
+                      request.resource.data.get('role', '') == resource.data.get('role', '') &&
+                      request.resource.data.get('accountStatus', '') == resource.data.get('accountStatus', '') &&
+                      request.resource.data.diff(resource.data).changedKeys().hasOnly([
+                        'capabilities',
+                        'updatedAt'
+                      ]);
+
       // Users can update their own lastLogin field
       allow update: if isOwner(userId) && isAuthenticated() &&
                       request.resource.data.diff(resource.data).changedKeys().hasOnly(['lastLogin']);
@@ -230,6 +280,31 @@ service cloud.firestore {
 
       // Household owner can remove member profiles they created.
       allow delete: if canManageHouseholdMembers() && isCreatorOfHouseholdMember();
+
+      match /householdMembers/{memberId} {
+        // Household owner, and signed-in members of that household, can view
+        // the saved member list under users/{ownerUid}.
+        allow read: if isAuthenticated() &&
+          (
+            request.auth.uid == userId ||
+            exists(/databases/$(database)/documents/users/$(userId)/householdMembers/$(request.auth.uid))
+          );
+
+        // Citizens/admin-residents save added family/rental members under their own UID.
+        allow create: if request.auth.uid == userId &&
+          canManageHouseholdMembers() &&
+          isValidHouseholdMemberCreate();
+
+        // Household owner can maintain the copy stored under their UID.
+        allow update: if request.auth.uid == userId &&
+          canManageHouseholdMembers() &&
+          resource.data.get('createdByUid', '') == userId &&
+          isSafeHouseholdMemberUpdate();
+
+        allow delete: if request.auth.uid == userId &&
+          canManageHouseholdMembers() &&
+          resource.data.get('createdByUid', '') == userId;
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -344,26 +419,51 @@ service cloud.firestore {
     match /incidents/{incidentId} {
       allow read: if isAuthenticated() &&
                     (resource.data.reporterId == request.auth.uid ||
-                     isOfficialOrAdmin() ||
-                     canModerateCommunity());
+                     canManageIncidents());
       allow create: if isAuthenticated() &&
                       request.resource.data.reporterId == request.auth.uid;
-      allow update: if isOfficialOrAdmin() || canModerateCommunity();
+      allow update: if canManageIncidents();
       allow delete: if false;
     }
 
     match /committee_tasks/{taskId} {
       allow read: if isAuthenticated() &&
-                    (isOfficialOrAdmin() || canModerateCommunity());
+                    (isOfficialOrAdmin() || canModerateCommunity() || canManageIncidents());
       allow create, update: if isAuthenticated() &&
-                            (isOfficialOrAdmin() || canModerateCommunity());
+                            (isOfficialOrAdmin() || canModerateCommunity() || canManageIncidents());
       allow delete: if isOfficialOrAdmin();
     }
 
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated() && (isAdmin() || isGnOfficer());
+      allow create: if isAuthenticated() &&
+                    (isAdmin() || isGnOfficer() || canManageIncidents());
       allow update, delete: if false;
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if announcementMatchesRequester(resource.data) ||
+                    isOfficialOrAdmin() ||
+                    canModerateCommunity();
+      allow create: if canPublishNotices() &&
+                      request.resource.data.createdBy == request.auth.uid &&
+                      request.resource.data.keys().hasAll([
+                        'title',
+                        'body',
+                        'targetRole',
+                        'targetVillage',
+                        'createdBy',
+                        'createdAt',
+                        'status'
+                      ]);
+      allow update: if canPublishNotices();
+      allow delete: if isAdmin() && isAccountActive();
+    }
+
+    match /system_stats/{statId} {
+      allow read: if isAdmin() || isOfficialOrAdmin();
+      allow create, update: if isAdmin() && isAccountActive();
+      allow delete: if false;
     }
 
     // ── Default deny ─────────────────────────────────────────────
@@ -376,8 +476,9 @@ service cloud.firestore {
       // Anyone authenticated can read notices
       allow read: if isAuthenticated();
 
-      // Only admins can create/update/delete notices
-      allow write: if isAdmin() && isAccountActive();
+      // Admins and active GN officers can publish/update official notices.
+      allow create, update: if canPublishNotices();
+      allow delete: if isAdmin() && isAccountActive();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

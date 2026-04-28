@@ -25,6 +25,7 @@ import '../../features/home/screens/app_shell.dart';
 import '../../features/home/screens/citizen_home_screen.dart';
 import '../../features/emergency/screens/emergency_alert_screen.dart';
 import '../../features/notices/screens/notice_board_screen.dart';
+import '../../features/notices/screens/notice_detail_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/incidents/screens/incident_detail_screen.dart';
@@ -36,9 +37,13 @@ import '../../features/committee/screens/committee_task_screen.dart';
 import '../../features/committee/screens/meeting_scheduler_screen.dart';
 import '../../features/committee/screens/polling_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/audit_logs_screen.dart';
 import '../../features/admin/screens/user_management_screen.dart';
 import '../../features/admin/screens/official_registration_screen.dart';
 import '../../features/admin/screens/certificate_management_screen.dart';
+import '../../features/admin/screens/system_analytics_screen.dart';
+import '../../features/official/screens/announcement_screen.dart';
+import '../../features/official/screens/citizen_records_screen.dart';
 import '../../features/official/screens/official_dashboard_screen.dart';
 import '../../features/official/screens/pending_requests_screen.dart';
 import '../../features/official/screens/request_review_screen.dart';
@@ -116,6 +121,16 @@ bool _canModerateCommunity(Map<String, dynamic> userData) {
       role == 'gn_officer' ||
       role == 'committee' ||
       capabilities['canModerateCommunity'] == true;
+}
+
+bool _canManageIncidents(Map<String, dynamic> userData) {
+  final role = _normalizeRole(userData['role'] as String?);
+  final capabilities = _capabilitiesFrom(userData);
+  return role == 'admin' ||
+      role == 'gn_officer' ||
+      role == 'committee' ||
+      capabilities['canManageIncidents'] == true ||
+      capabilities['isCommitteeMember'] == true;
 }
 
 final appRouter = GoRouter(
@@ -197,9 +212,13 @@ final appRouter = GoRouter(
     // ── Role-gate specific dashboards ─────────────────────────────────────
     // Prevent unauthorized users from accessing restricted routes.
     if (path == '/incidents') {
-      final role = await _fetchCurrentUserRole();
-      if (role != 'admin' && role != 'gn_officer') {
-        return _dashboardForRole(role);
+      final userData = await _fetchCurrentUserData();
+      if (!_canManageIncidents(userData)) {
+        final role = _normalizeRole(userData['role'] as String?);
+        return _dashboardForRole(
+          role,
+          capabilities: _capabilitiesFrom(userData),
+        );
       }
     }
 
@@ -220,7 +239,9 @@ final appRouter = GoRouter(
         path == '/admin/users' ||
         path == '/admin/create-user' ||
         path == '/admin/certificates' ||
-        path == '/admin/register-official') {
+        path == '/admin/register-official' ||
+        path == '/admin/audit-logs' ||
+        path == '/admin/analytics') {
       final userData = await _fetchCurrentUserData();
       final role = _normalizeRole(userData['role'] as String?);
       final capabilities = _capabilitiesFrom(userData);
@@ -362,6 +383,20 @@ final appRouter = GoRouter(
       builder: (context, state) => const NotificationsScreen(),
     ),
     GoRoute(
+      path: '/notice-detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extras = state.extra as Map?;
+        final notice = <String, String>{};
+        if (extras != null) {
+          for (final entry in extras.entries) {
+            notice[entry.key.toString()] = entry.value?.toString() ?? '';
+          }
+        }
+        return NoticeDetailScreen(notice: notice);
+      },
+    ),
+    GoRoute(
       path: '/help',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const HelpScreen(),
@@ -483,6 +518,16 @@ final appRouter = GoRouter(
       builder: (context, state) => const CertificateManagementScreen(),
     ),
     GoRoute(
+      path: '/admin/audit-logs',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AuditLogsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/analytics',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const SystemAnalyticsScreen(),
+    ),
+    GoRoute(
       path: '/admin/register-official',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const OfficialRegistrationScreen(),
@@ -498,6 +543,16 @@ final appRouter = GoRouter(
       path: '/official/requests/pending',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const PendingRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/official/citizens',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CitizenRecordsScreen(),
+    ),
+    GoRoute(
+      path: '/official/announcements',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AnnouncementScreen(),
     ),
     GoRoute(
       path: '/official/requests/:requestId/review',

@@ -201,6 +201,8 @@ class _OfficialRegistrationScreenState
         'capabilities': {
           'isCommitteeMember': false,
           'canModerateCommunity': true,
+          'canManageIncidents': true,
+          'canPublishNotices': true,
           'canAccessAdminDashboard': false,
         },
         'memberType': 'new_resident',

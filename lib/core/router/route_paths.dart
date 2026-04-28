@@ -40,9 +40,13 @@ class RoutePaths {
 
   // Admin
   static const String adminDashboard = '/admin/dashboard';
+  static const String adminAuditLogs = '/admin/audit-logs';
+  static const String adminAnalytics = '/admin/analytics';
 
   // GN Officer
   static const String officialDashboard = '/official/dashboard';
+  static const String officialCitizens = '/official/citizens';
+  static const String officialAnnouncements = '/official/announcements';
   static const String officialPendingRequests = '/official/requests/pending';
   static const String officialRequestReview =
       '/official/requests/:requestId/review';

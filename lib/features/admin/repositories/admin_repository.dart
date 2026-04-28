@@ -86,12 +86,10 @@ class AdminRepository {
   /// Update a user's role.
   /// **Optimized:** Single write operation.
   ///
-  /// Valid base roles: 'citizen', 'gn_officer', 'admin'.
-  ///
-  /// Committee access is handled through capabilities, per the PRD.
+  /// Valid base roles: 'citizen', 'gn_officer', 'committee', 'admin'.
   TaskEither<String, void> updateUserRole(String uid, String newRole) {
     return TaskEither.tryCatch(() async {
-      final validRoles = ['citizen', 'gn_officer', 'admin'];
+      final validRoles = ['citizen', 'gn_officer', 'committee', 'admin'];
       if (!validRoles.contains(newRole)) {
         throw Exception('Invalid role: $newRole');
       }
@@ -154,7 +152,7 @@ class AdminRepository {
     String status,
   ) {
     return TaskEither.tryCatch(() async {
-      final validRoles = ['citizen', 'gn_officer', 'admin'];
+      final validRoles = ['citizen', 'gn_officer', 'committee', 'admin'];
       if (!validRoles.contains(newRole)) {
         throw Exception('Invalid role: $newRole');
       }
@@ -277,8 +275,10 @@ class AdminRepository {
 
   Map<String, bool> _capabilitiesForRole(String role) {
     return {
-      'isCommitteeMember': false,
-      'canModerateCommunity': role == 'gn_officer',
+      'isCommitteeMember': role == 'committee',
+      'canModerateCommunity': role == 'gn_officer' || role == 'committee',
+      'canManageIncidents': role == 'gn_officer' || role == 'committee',
+      'canPublishNotices': role == 'gn_officer',
       'canAccessAdminDashboard': role == 'admin',
     };
   }

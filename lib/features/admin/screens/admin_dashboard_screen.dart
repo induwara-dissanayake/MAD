@@ -13,9 +13,7 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userCountAsync = ref.watch(getUserCountByRoleProvider);
-    final requestMetricsAsync = ref.watch(requestMetricsProvider);
-    final noticeCountAsync = ref.watch(noticeCountProvider);
+    final statsAsync = ref.watch(systemStatsProvider);
     final today = DateFormat('EEE, MMM d').format(DateTime.now());
 
     Future<void> signOut() async {
@@ -47,20 +45,14 @@ class AdminDashboardScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(getUserCountByRoleProvider);
-          ref.invalidate(requestMetricsProvider);
-          ref.invalidate(noticeCountProvider);
+          ref.invalidate(systemStatsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
             _AdminHero(today: today),
             const SizedBox(height: 20),
-            _MetricsGrid(
-              userCountAsync: userCountAsync,
-              requestMetricsAsync: requestMetricsAsync,
-              noticeCountAsync: noticeCountAsync,
-            ),
+            _MetricsGrid(statsAsync: statsAsync),
             const SizedBox(height: 24),
             const _SectionLabel('Registration Workflow'),
             const SizedBox(height: 10),
@@ -104,8 +96,16 @@ class AdminDashboardScreen extends ConsumerWidget {
               icon: Icons.analytics_outlined,
               title: 'Analytics Review',
               subtitle:
-                  'Use live totals above to monitor requests, notices, and user growth.',
-              onTap: () => context.go('/admin/certificates'),
+                  'View Spark-safe aggregate stats from system_stats/global.',
+              onTap: () => context.go('/admin/analytics'),
+            ),
+            const SizedBox(height: 10),
+            _WorkflowTile(
+              icon: Icons.history_rounded,
+              title: 'Audit Logs',
+              subtitle:
+                  'Monitor recent role, certificate, notice, and incident actions.',
+              onTap: () => context.go('/admin/audit-logs'),
             ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -191,33 +191,30 @@ class _HeroChip extends StatelessWidget {
 }
 
 class _MetricsGrid extends StatelessWidget {
-  const _MetricsGrid({
-    required this.userCountAsync,
-    required this.requestMetricsAsync,
-    required this.noticeCountAsync,
-  });
+  const _MetricsGrid({required this.statsAsync});
 
-  final AsyncValue<Map<String, int>> userCountAsync;
-  final AsyncValue<({int pending, int approved, int rejected, int total})>
-  requestMetricsAsync;
-  final AsyncValue<int> noticeCountAsync;
+  final AsyncValue<Map<String, int>> statsAsync;
 
   @override
   Widget build(BuildContext context) {
-    final totalUsers = userCountAsync.maybeWhen(
-      data: (counts) => counts.values.fold<int>(0, (sum, count) => sum + count),
+    final totalUsers = statsAsync.maybeWhen(
+      data: (stats) => stats['totalUsers'] == 0
+          ? (stats['totalCitizens'] ?? 0) +
+                (stats['totalGnOfficers'] ?? 0) +
+                (stats['totalCommitteeMembers'] ?? 0)
+          : stats['totalUsers'] ?? 0,
       orElse: () => 0,
     );
-    final pendingRequests = requestMetricsAsync.maybeWhen(
-      data: (metrics) => metrics.pending,
+    final pendingRequests = statsAsync.maybeWhen(
+      data: (stats) => stats['pendingRequests'] ?? 0,
       orElse: () => 0,
     );
-    final totalRequests = requestMetricsAsync.maybeWhen(
-      data: (metrics) => metrics.total,
+    final totalRequests = statsAsync.maybeWhen(
+      data: (stats) => stats['totalRequests'] ?? 0,
       orElse: () => 0,
     );
-    final notices = noticeCountAsync.maybeWhen(
-      data: (value) => value,
+    final notices = statsAsync.maybeWhen(
+      data: (stats) => stats['publishedNotices'] ?? 0,
       orElse: () => 0,
     );
 
@@ -464,7 +461,7 @@ class _AdminBottomBar extends StatelessWidget {
               _BottomItem(
                 icon: Icons.description_outlined,
                 label: 'Audit',
-                onTap: () => context.go('/admin/certificates'),
+                onTap: () => context.go('/admin/audit-logs'),
               ),
               _BottomItem(
                 icon: Icons.person_outline,

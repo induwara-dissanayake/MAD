@@ -85,11 +85,6 @@ class CitizenHomeScreen extends ConsumerWidget {
                           _SectionTitle(title: copy.t('quickServices')),
                           const SizedBox(height: 12),
                           _QuickGrid(copy: copy),
-                          if (profile?.capabilities['isCommitteeMember'] ==
-                              true) ...[
-                            const SizedBox(height: 16),
-                            const _CommitteeAccessCard(),
-                          ],
                           const SizedBox(height: 24),
                           _EmergencyButton(copy: copy),
                           const SizedBox(height: 24),
@@ -301,53 +296,6 @@ class _EmergencyButton extends StatelessWidget {
         style: FilledButton.styleFrom(backgroundColor: AppColors.errorRed),
         icon: const Icon(Icons.warning_amber_outlined),
         label: Text(copy.t('emergency')),
-      ),
-    );
-  }
-}
-
-class _CommitteeAccessCard extends StatelessWidget {
-  const _CommitteeAccessCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => context.go('/committee/tasks'),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.brandGreenSurface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.brandGreenBorder),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.groups_2_outlined, color: AppColors.brandGreen),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Committee Desk', style: AppTextStyles.bodySemiBold),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Open tasks, meetings, polls, and moderation tools.',
-                      style: AppTextStyles.caption,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.brandGreen,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

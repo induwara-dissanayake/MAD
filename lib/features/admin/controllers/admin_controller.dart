@@ -132,12 +132,42 @@ final currentUsersProvider = StreamProvider<List<AdminUserModel>>((ref) {
   return FirebaseFirestore.instance
       .collection('users')
       .orderBy('createdAt', descending: true)
-      .limit(100)
+      .limit(30)
       .snapshots()
       .map((snapshot) {
         return snapshot.docs
             .map((doc) => AdminUserModel.fromMap(doc.data(), doc.id))
             .toList();
+      });
+});
+
+/// Spark-safe aggregate stats. Keep this document updated during write flows
+/// or seed it from Firebase console while running on the free tier.
+final systemStatsProvider = StreamProvider<Map<String, int>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('system_stats')
+      .doc('global')
+      .snapshots()
+      .map((doc) {
+        final data = doc.data() ?? const <String, dynamic>{};
+        int intValue(String key) {
+          final value = data[key];
+          if (value is int) return value;
+          if (value is num) return value.toInt();
+          return 0;
+        }
+
+        return {
+          'totalUsers': intValue('totalUsers'),
+          'totalCitizens': intValue('totalCitizens'),
+          'totalGnOfficers': intValue('totalGnOfficers'),
+          'totalCommitteeMembers': intValue('totalCommitteeMembers'),
+          'pendingRequests': intValue('pendingRequests'),
+          'totalRequests': intValue('totalRequests'),
+          'publishedNotices': intValue('publishedNotices'),
+          'openIncidents': intValue('openIncidents'),
+          'pendingCommunityPosts': intValue('pendingCommunityPosts'),
+        };
       });
 });
 
