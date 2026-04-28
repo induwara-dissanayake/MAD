@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/induwara-dissanayake/MAD/compare/v1.4.0...v1.4.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* card widgets for improved styling and consistency; add VcPageHeader and VcStatusPill components; update VcStepIndicator and VcSectionHeader; enhance VcEmptyState and VcMetricTile; ([665c10b](https://github.com/induwara-dissanayake/MAD/commit/665c10b944975011f66e9734320e90517e0a7bb2))
+
 ## [1.4.0](https://github.com/induwara-dissanayake/MAD/compare/v1.3.0...v1.4.0) (2026-04-14)
 
 
