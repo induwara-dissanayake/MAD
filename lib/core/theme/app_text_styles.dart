@@ -1,176 +1,158 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
 class AppTextStyles {
   AppTextStyles._();
 
-  static String? get _displayFont => GoogleFonts.merriweather().fontFamily;
-  static String? get _bodyFont => GoogleFonts.dmSans().fontFamily;
-  static String? get _monoFont => GoogleFonts.jetBrainsMono().fontFamily;
+  static const String? appFontFamily = null;
+  static const List<String>? fontFallback = null;
 
-  static const List<String> _fallback = [
-    'NotoSansSinhala',
-    'NotoSansTamil',
-    'Roboto',
-  ];
-
-  static TextStyle displayLarge = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fallback,
-    fontSize: 28,
-    fontWeight: FontWeight.w700,
-    color: AppColors.inkBlack,
-    height: 1.25,
-    letterSpacing: 0,
+  static const TextHeightBehavior textHeightBehavior = TextHeightBehavior(
+    applyHeightToFirstAscent: true,
+    applyHeightToLastDescent: true,
+    leadingDistribution: TextLeadingDistribution.proportional,
   );
 
-  static TextStyle displaySmall = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fallback,
-    fontSize: 22,
-    fontWeight: FontWeight.w700,
+  static StrutStyle strutStyle(double fontSize, {double height = 1.45}) {
+    return StrutStyle(
+      fontFamily: appFontFamily,
+      fontFamilyFallback: fontFallback,
+      fontSize: fontSize,
+      height: height,
+      leading: 0.25,
+      forceStrutHeight: true,
+    );
+  }
+
+  static TextStyle _style({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required Color color,
+    required double height,
+  }) {
+    return TextStyle(
+      fontFamily: appFontFamily,
+      fontFamilyFallback: fontFallback,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      leadingDistribution: TextLeadingDistribution.proportional,
+    );
+  }
+
+  static TextStyle displayLarge = _style(
+    fontSize: 28,
+    fontWeight: FontWeight.w400,
     color: AppColors.inkBlack,
-    height: 1.3,
-    letterSpacing: 0,
+    height: 1.55,
+  );
+
+  static TextStyle displaySmall = _style(
+    fontSize: 22,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkBlack,
+    height: 1.55,
   );
 
   static TextStyle h1 = displayLarge;
 
-  static TextStyle h2 = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle h2 = _style(
     fontSize: 22,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w400,
     color: AppColors.inkBlack,
-    height: 1.3,
-    letterSpacing: 0,
+    height: 1.55,
   );
 
-  static TextStyle h3 = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle h3 = _style(
     fontSize: 18,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w400,
     color: AppColors.inkBlack,
-    height: 1.35,
-    letterSpacing: 0,
+    height: 1.55,
   );
 
-  static TextStyle bodyLarge = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle bodyLarge = _style(
     fontSize: 16,
     fontWeight: FontWeight.w400,
     color: AppColors.inkBlack,
     height: 1.6,
-    letterSpacing: 0,
   );
 
-  static TextStyle body = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle body = _style(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.inkBlack,
-    height: 1.6,
-    letterSpacing: 0,
+    height: 1.58,
   );
 
-  static TextStyle bodyMedium = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle bodyMedium = _style(
     fontSize: 15,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
     color: AppColors.inkBlack,
-    height: 1.45,
-    letterSpacing: 0,
+    height: 1.58,
   );
 
-  static TextStyle bodySemiBold = bodyMedium.copyWith(
-    fontWeight: FontWeight.w600,
-  );
+  static TextStyle bodySemiBold = bodyMedium;
 
-  static TextStyle caption = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle caption = _style(
     fontSize: 13,
     fontWeight: FontWeight.w400,
     color: AppColors.inkMid,
     height: 1.5,
-    letterSpacing: 0,
   );
 
   static TextStyle captionMedium = caption.copyWith(
     fontSize: 12,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w400,
   );
 
-  static TextStyle label = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle label = _style(
     fontSize: 14,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w400,
     color: AppColors.inkBlack,
-    height: 1,
-    letterSpacing: 0,
+    height: 1.55,
   );
 
-  static TextStyle small = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle small = _style(
     fontSize: 12,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
     color: AppColors.inkLight,
-    height: 1.35,
-    letterSpacing: 0,
+    height: 1.55,
   );
 
-  static TextStyle overline = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle overline = _style(
     fontSize: 11,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w400,
     color: AppColors.inkLight,
-    height: 1.4,
-    letterSpacing: 0.8,
+    height: 1.55,
   );
 
-  static TextStyle button = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle button = _style(
     fontSize: 14,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w400,
     color: AppColors.textOnPrimary,
-    height: 1,
-    letterSpacing: 0,
+    height: 1.55,
   );
 
   static TextStyle buttonSmall = button.copyWith(fontSize: 13);
 
-  static TextStyle tab = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle tab = _style(
     fontSize: 11,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w400,
     color: AppColors.brandGreen,
-    height: 1.4,
-    letterSpacing: 0,
+    height: 1.55,
   );
 
   static TextStyle tabInactive = tab.copyWith(
     color: AppColors.inkLight,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
   );
 
-  static TextStyle monoMedium = TextStyle(
-    fontFamily: _monoFont,
-    fontFamilyFallback: _fallback,
+  static TextStyle monoMedium = _style(
     fontSize: 13,
     fontWeight: FontWeight.w400,
     color: AppColors.inkMid,
     height: 1.5,
-    letterSpacing: 0,
   );
 }

@@ -30,6 +30,8 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: scheme,
+      fontFamily: AppTextStyles.appFontFamily,
+      fontFamilyFallback: AppTextStyles.fontFallback,
       scaffoldBackgroundColor: AppColors.background,
       visualDensity: VisualDensity.standard,
       splashFactory: InkRipple.splashFactory,
@@ -78,7 +80,7 @@ class AppTheme {
         fillColor: AppColors.surfaceIvory,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
-          vertical: 14,
+          vertical: 18,
         ),
         hintStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
         labelStyle: AppTextStyles.label.copyWith(
@@ -114,8 +116,8 @@ class AppTheme {
           disabledBackgroundColor: AppColors.disabledBackground,
           disabledForegroundColor: AppColors.textMuted,
           elevation: 0,
-          minimumSize: const Size(double.infinity, 52),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          minimumSize: const Size(double.infinity, 56),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
@@ -126,7 +128,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.textOnPrimary,
-          minimumSize: const Size(64, 48),
+          minimumSize: const Size(64, 56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
@@ -137,8 +139,8 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.brandGreen, width: 1.5),
-          minimumSize: const Size(64, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+          minimumSize: const Size(64, 56),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
