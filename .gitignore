@@ -1,58 +1,151 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# ---------------------------------------------------------------------------
+# Operating system files
+# ---------------------------------------------------------------------------
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# IntelliJ related
+# ---------------------------------------------------------------------------
+# Editor and IDE files
+# ---------------------------------------------------------------------------
+.idea/
 *.iml
 *.ipr
 *.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
 .vscode/
+.history/
+*.swp
+*.swo
+*~
 
-# Flutter/Dart/Pub related
+# ---------------------------------------------------------------------------
+# Logs and temporary files
+# ---------------------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.pid
+*.seed
+*.class
+*.pyc
+nul
+
+# ---------------------------------------------------------------------------
+# Dart, Flutter, and Pub
+# ---------------------------------------------------------------------------
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub/
+.pub-cache/
+build/
+coverage/
 **/doc/api/
 **/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
 
-# Local verification/debug artifacts
-verification/*.png
-verification/*.log
+# Flutter generated plugin registrants are intentionally tracked in platform
+# folders when present. Do not ignore android/ios/linux/macos/windows generated
+# registrant files unless the project intentionally regenerates them in CI.
 
-# Symbolication related
+# ---------------------------------------------------------------------------
+# Android
+# ---------------------------------------------------------------------------
+android/.gradle/
+android/local.properties
+android/**/build/
+android/app/debug/
+android/app/profile/
+android/app/release/
+*.jks
+*.keystore
+key.properties
+
+# Keep Firebase app config tracked for this academic project unless the team
+# decides to move environment configs out of Git.
+!android/app/google-services.json
+
+# ---------------------------------------------------------------------------
+# iOS and macOS
+# ---------------------------------------------------------------------------
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+macos/Flutter/GeneratedPluginRegistrant.swift.tmp
+macos/Flutter/ephemeral/
+macos/Pods/
+macos/Runner.xcworkspace/xcuserdata/
+macos/Runner.xcodeproj/xcuserdata/
+macos/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+xcuserdata/
+
+# ---------------------------------------------------------------------------
+# Windows and Linux build output
+# ---------------------------------------------------------------------------
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# ---------------------------------------------------------------------------
+# Firebase and local secrets
+# ---------------------------------------------------------------------------
+.firebaserc.local
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.service-account.json
+serviceAccount*.json
+
+# Prefer local overrides for real keys. Existing committed files remain tracked
+# until removed from Git history/index by the project owner.
+*.env
+.env
+.env.*
+!.env.example
+lib/core/config/openrouter_secrets.local.dart
+
+# ---------------------------------------------------------------------------
+# Flutter release artifacts
+# ---------------------------------------------------------------------------
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
+*.apk
+*.aab
+*.ipa
+*.app
+*.dSYM.zip
+*.dSYM/
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-nul
+# ---------------------------------------------------------------------------
+# Local verification and generated workspace artifacts
+# ---------------------------------------------------------------------------
+verification/
+.agent/
+devtools_options.yaml
+
+# ---------------------------------------------------------------------------
+# Local planning documents
+# ---------------------------------------------------------------------------
 implementationplan.md
 Tasks.md
 PRD.md
 GN_OFFICER_IMPLEMENTATION_GUIDE.md
 IMPLEMENTATION_COMPLETE.md
 IMPLEMENTATION_VERIFIED.md
-devtools_options.yaml
-.agent/
