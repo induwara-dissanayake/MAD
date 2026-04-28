@@ -1,16 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../../../core/models/user_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -23,1134 +24,688 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isUploadingPhoto = false;
 
   Future<void> _pickAndUploadPhoto(String uid) async {
-    final picker = ImagePicker();
-
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: const Color(0xFFFFFFFF),
+      backgroundColor: AppColors.surfaceIvory,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFBFCABA).withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(2),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceWarmSand,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Profile Picture',
-              style: TextStyle(
-                fontFamily: 'PublicSans',
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.02 * 22,
-                color: Color(0xFF1A1C1C),
+              const SizedBox(height: 20),
+              Text('Profile Photo', style: AppTextStyles.displaySmall),
+              const SizedBox(height: 6),
+              Text(
+                'Choose a clear photo for your Village Connect profile.',
+                style: AppTextStyles.caption,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Choose how to update your photo.',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                color: const Color(0xFF1A1C1C).withOpacity(0.5),
+              const SizedBox(height: 18),
+              _PhotoSourceTile(
+                icon: Icons.photo_library_outlined,
+                title: 'Choose from gallery',
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
-            ),
-            const SizedBox(height: 24),
-            _buildBottomSheetTile(
-              icon: Icons.photo_library_outlined,
-              title: 'Choose from Gallery',
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            const SizedBox(height: 12),
-            _buildBottomSheetTile(
-              icon: Icons.camera_alt_outlined,
-              title: 'Take a Photo',
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-          ],
+              const SizedBox(height: 10),
+              _PhotoSourceTile(
+                icon: Icons.camera_alt_outlined,
+                title: 'Take a photo',
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+            ],
+          ),
         ),
       ),
     );
 
     if (source == null) return;
 
-    final picked = await picker.pickImage(
+    final picked = await ImagePicker().pickImage(
       source: source,
       imageQuality: 70,
       maxWidth: 512,
     );
-
     if (picked == null) return;
 
     setState(() => _isUploadingPhoto = true);
     try {
-      final ref = FirebaseStorage.instance.ref().child(
+      final storageRef = FirebaseStorage.instance.ref().child(
         'profile_pictures/$uid.jpg',
       );
       final bytes = await picked.readAsBytes();
-      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-      final url = await ref.getDownloadURL();
+      await storageRef.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      final url = await storageRef.getDownloadURL();
 
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'photoURL': url,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Profile picture updated successfully.'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    } catch (e) {
+      _showSnack('Profile photo updated.');
+    } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showSnack(error.toString(), isError: true);
     } finally {
       if (mounted) setState(() => _isUploadingPhoto = false);
     }
   }
 
-  Widget _buildBottomSheetTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: const Color(0xFFF3F3F3),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0d631b).withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: const Color(0xFF0d631b), size: 20),
-              ),
-              const SizedBox(width: 14),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF1A1C1C),
-                ),
-              ),
-            ],
-          ),
-        ),
+  void _showSnack(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.errorRed : AppColors.brandGreen,
       ),
     );
+  }
+
+  Future<void> _signOut() async {
+    await ref.read(authServiceProvider).signOut();
+    if (mounted) context.go('/auth/login');
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authServiceProvider).currentUser;
+    final authUser = ref.watch(authServiceProvider).currentUser;
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
 
-    if (user == null) {
+    if (authUser == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: AppColors.surfaceParchment,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFFFFF),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        shadowColor: const Color(0xFF1A1C1C).withOpacity(0.04),
+        title: const Text('My Profile'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1A1C1C)),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'My Profile',
-          style: TextStyle(
-            fontFamily: 'PublicSans',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.02 * 18,
-            color: Color(0xFF1A1C1C),
-          ),
-        ),
-        centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: const Color(0xFFBFCABA).withOpacity(0.15),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: StreamBuilder<UserModel?>(
-          stream: ref.read(userServiceProvider).getUserProfile(user.uid),
-          builder: (context, snapshot) {
-            final profile = snapshot.data;
-            return Column(
-              children: [
-                _buildProfileHeader(user, profile),
-                const SizedBox(height: 32),
-                _buildSectionLabel('Personal'),
-                const SizedBox(height: 10),
-                _buildPersonalInfo(context, user, profile),
-                const SizedBox(height: 28),
-                _buildSectionLabel('Village'),
-                const SizedBox(height: 10),
-                _buildVillageInfo(profile),
-                const SizedBox(height: 28),
-                _buildSectionLabel('Household'),
-                const SizedBox(height: 10),
-                _buildFamilyMembers(context, profile),
-                const SizedBox(height: 28),
-                _buildSectionLabel('Quick Access'),
-                const SizedBox(height: 10),
-                _buildShortcutsSection(
-                  context,
-                  ref.watch(unreadNotificationCountProvider),
-                ),
-                const SizedBox(height: 28),
-                _buildSectionLabel('Preferences'),
-                const SizedBox(height: 10),
-                _buildSettingsSection(context),
-                const SizedBox(height: 32),
-                _buildLogoutButton(context, ref),
-                const SizedBox(height: 48),
-              ],
-            );
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
           },
         ),
       ),
-    );
-  }
-
-  // ── Section Label ─────────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              color: Color(0xFF0d631b),
+      body: StreamBuilder<UserModel?>(
+        stream: ref.read(userServiceProvider).getUserProfile(authUser.uid),
+        builder: (context, snapshot) {
+          final profile = snapshot.data;
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(unreadNotificationCountProvider);
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              children: [
+                _ProfileHero(
+                  authUser: authUser,
+                  profile: profile,
+                  uploading: _isUploadingPhoto,
+                  onPhotoTap: () => _pickAndUploadPhoto(authUser.uid),
+                ),
+                const SizedBox(height: 20),
+                _SectionHeader(
+                  label: 'Account',
+                  actionLabel: 'Edit',
+                  onAction: () =>
+                      context.push('/profile/edit-personal-information'),
+                ),
+                const SizedBox(height: 10),
+                _InfoPanel(
+                  rows: [
+                    _InfoRow(
+                      icon: Icons.person_outline,
+                      label: 'Full name',
+                      value: _fallback(profile?.fullName, authUser.displayName),
+                    ),
+                    _InfoRow(
+                      icon: Icons.badge_outlined,
+                      label: 'NIC username',
+                      value: _fallback(profile?.nic, 'Not available'),
+                      mono: true,
+                    ),
+                    _InfoRow(
+                      icon: Icons.email_outlined,
+                      label: 'Email',
+                      value: _fallback(profile?.email, authUser.email),
+                    ),
+                    _InfoRow(
+                      icon: Icons.call_outlined,
+                      label: 'Phone',
+                      value: _fallback(profile?.phone, authUser.phoneNumber),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const _SectionHeader(label: 'Village Record'),
+                const SizedBox(height: 10),
+                _InfoPanel(
+                  rows: [
+                    _InfoRow(
+                      icon: Icons.location_city_outlined,
+                      label: 'Village',
+                      value: _fallback(profile?.village, 'Not set'),
+                    ),
+                    _InfoRow(
+                      icon: Icons.map_outlined,
+                      label: 'District',
+                      value: _fallback(profile?.district, 'Not set'),
+                    ),
+                    _InfoRow(
+                      icon: Icons.home_outlined,
+                      label: 'Address',
+                      value: _fallback(profile?.address, 'Not set'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _AccessPanel(profile: profile),
+                const SizedBox(height: 20),
+                _HouseholdPanel(
+                  profile: profile,
+                  stream: profile == null
+                      ? const Stream<List<UserModel>>.empty()
+                      : ref
+                            .read(userServiceProvider)
+                            .streamHouseholdMembers(profile.uid),
+                  onAdd: () => context.push('/auth/add-member'),
+                  onOpen: (member) => context.push(
+                    '/profile/edit-family-member',
+                    extra: member.uid,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const _SectionHeader(label: 'Actions'),
+                const SizedBox(height: 10),
+                _ActionPanel(
+                  unreadCount: unreadCount,
+                  onNotifications: () => context.push('/notifications'),
+                  onHelp: () => context.push('/help'),
+                  onPassword: () => context.push('/profile/change-password'),
+                ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: _signOut,
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Sign Out'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.errorRed,
+                    side: const BorderSide(color: AppColors.errorRed),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              height: 1,
-              color: const Color(0xFF0d631b).withOpacity(0.12),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
+}
 
-  // ── Profile Header ────────────────────────────────────────────────────
-  String _roleLabel(String role) {
-    switch (role) {
-      case 'gn_officer':
-        return 'GN Officer';
-      case 'admin_resident':
-        return 'Resident Admin';
-      case 'admin':
-        return 'Admin';
-      case 'committee':
-        return 'Committee';
-      default:
-        return 'Citizen';
-    }
-  }
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({
+    required this.authUser,
+    required this.profile,
+    required this.uploading,
+    required this.onPhotoTap,
+  });
 
-  Widget _buildProfileHeader(User user, UserModel? profile) {
-    final displayName = profile?.fullName ?? user.displayName ?? 'Citizen';
-    final role = _roleLabel(profile?.role ?? 'citizen');
-    final initials = displayName.substring(0, 1).toUpperCase();
-    final photoURL = (profile?.photoURL?.isNotEmpty == true)
+  final User authUser;
+  final UserModel? profile;
+  final bool uploading;
+  final VoidCallback onPhotoTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _fallback(profile?.fullName, authUser.displayName);
+    final photoUrl = profile?.photoURL?.isNotEmpty == true
         ? profile!.photoURL
-        : user.photoURL;
+        : authUser.photoURL;
+    final status = profile?.accountStatus ?? 'pending_first_login';
 
     return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0d631b), Color(0xFF2e7d32)],
-        ),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppColors.shadowMedium,
       ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Background texture dots
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.04),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -40,
-            bottom: -30,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.04),
-              ),
-            ),
-          ),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 36, 24, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Avatar
-                  Stack(
-                    children: [
-                      Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                            width: 2,
-                          ),
-                          image: photoURL != null
-                              ? DecorationImage(
-                                  image: NetworkImage(photoURL),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: photoURL == null
-                            ? Center(
-                                child: Text(
-                                  initials,
-                                  style: const TextStyle(
-                                    fontFamily: 'PublicSans',
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              )
-                            : null,
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _isUploadingPhoto
-                              ? null
-                              : () => _pickAndUploadPhoto(user.uid),
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(9),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.12),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: _isUploadingPhoto
-                                ? const Padding(
-                                    padding: EdgeInsets.all(5),
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Color(0xFF0d631b),
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.camera_alt_rounded,
-                                    size: 15,
-                                    color: Color(0xFF0d631b),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    displayName,
-                    style: const TextStyle(
-                      fontFamily: 'PublicSans',
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.02 * 24,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    profile?.email.isNotEmpty == true
-                        ? profile!.email
-                        : (user.email ?? 'No Email'),
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      color: Colors.white.withOpacity(0.65),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Role & Village chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '$role  ·  ${profile?.village.isNotEmpty == true ? profile!.village : 'Village'}',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.85),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Personal Information ──────────────────────────────────────────────
-  Widget _buildPersonalInfo(
-    BuildContext context,
-    User user,
-    UserModel? profile,
-  ) {
-    final fullName = profile?.fullName ?? user.displayName ?? 'N/A';
-    final email = profile?.email ?? user.email ?? 'N/A';
-    final phone = profile?.phone ?? user.phoneNumber ?? 'N/A';
-    return _buildInfoSection(
-      title: 'Personal Information',
-      onTap: () => context.push('/profile/edit-personal-information'),
-      items: [
-        _InfoRow(Icons.person_outline_rounded, 'Full Name', fullName),
-        _InfoRow(Icons.email_outlined, 'Email', email),
-        _InfoRow(Icons.phone_outlined, 'Phone', phone),
-        _InfoRow(
-          Icons.verified_user_outlined,
-          'User ID',
-          user.uid.substring(0, 8),
-        ),
-      ],
-    );
-  }
-
-  // ── Village Information ───────────────────────────────────────────────
-  Widget _buildVillageInfo(UserModel? profile) {
-    return _buildInfoSection(
-      title: 'Village Details',
-      onTap: null,
-      items: [
-        _InfoRow(
-          Icons.holiday_village_outlined,
-          'Village',
-          profile?.village ?? 'N/A',
-        ),
-        _InfoRow(
-          Icons.location_on_outlined,
-          'GN Division',
-          profile?.village ?? 'N/A',
-        ),
-        _InfoRow(Icons.map_outlined, 'District', profile?.district ?? 'N/A'),
-        _InfoRow(Icons.home_outlined, 'Address', profile?.address ?? 'N/A'),
-      ],
-    );
-  }
-
-  // ── Family Members ────────────────────────────────────────────────────
-  Widget _buildFamilyMembers(BuildContext context, UserModel? profile) {
-    if (profile == null) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Family Members',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1C1C),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => context.push('/auth/add-member'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0d631b), Color(0xFF2e7d32)],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_rounded, size: 14, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text(
-                        'Add',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .where('createdByUid', isEqualTo: profile.uid)
-                .where('memberType', isEqualTo: MemberType.familyMember.key)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final docs = snapshot.data?.docs ?? [];
-
-              if (docs.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F3F3),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0d631b).withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.group_outlined,
-                          size: 20,
-                          color: Color(0xFF0d631b),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'No members yet',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1C1C),
-                              ),
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 38,
+                    backgroundColor: Colors.white.withValues(alpha: 0.16),
+                    backgroundImage: photoUrl == null
+                        ? null
+                        : NetworkImage(photoUrl),
+                    child: photoUrl == null
+                        ? Text(
+                            _initial(name),
+                            style: AppTextStyles.displayLarge.copyWith(
+                              color: Colors.white,
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Tap Add to register a family member.',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 13,
-                                color: Color(0xFF1A1C1C),
-                              ),
-                            ),
-                          ],
-                        ),
+                          )
+                        : null,
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: IconButton.filled(
+                      onPressed: uploading ? null : onPhotoTap,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.surfaceIvory,
+                        foregroundColor: AppColors.brandGreen,
+                        minimumSize: const Size(34, 34),
                       ),
-                    ],
-                  ),
-                );
-              }
-
-              final members = docs
-                  .map(
-                    (d) => UserModel.fromMap(
-                      d.data() as Map<String, dynamic>,
-                      d.id,
+                      icon: uploading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.camera_alt_outlined, size: 18),
                     ),
-                  )
-                  .toList();
-
-              return Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF1A1C1C).withOpacity(0.05),
-                      blurRadius: 32,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Column(
-                    children: members.asMap().entries.map((entry) {
-                      final member = entry.value;
-                      final isLast = entry.key == members.length - 1;
-                      return Column(
-                        children: [
-                          _buildFamilyMemberCard(
-                            context,
-                            member,
-                            isFirst: entry.key == 0,
-                            isLast: isLast,
-                          ),
-                          if (!isLast)
-                            Container(
-                              height: 1,
-                              margin: const EdgeInsets.only(left: 56),
-                              color: const Color(0xFFBFCABA).withOpacity(0.15),
-                            ),
-                        ],
-                      );
-                    }).toList(),
                   ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Single Family Member Card ─────────────────────────────────────────
-  Widget _buildFamilyMemberCard(
-    BuildContext context,
-    UserModel member, {
-    bool isFirst = false,
-    bool isLast = false,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () =>
-            context.push('/profile/edit-family-member', extra: member.uid),
-        borderRadius: BorderRadius.vertical(
-          top: isFirst ? const Radius.circular(14) : Radius.zero,
-          bottom: isLast ? const Radius.circular(14) : Radius.zero,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0d631b).withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.person_outline_rounded,
-                  size: 18,
-                  color: Color(0xFF0d631b),
-                ),
+                ],
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      member.fullName.isNotEmpty ? member.fullName : 'N/A',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1C1C),
+                      name,
+                      style: AppTextStyles.displaySmall.copyWith(
+                        color: Colors.white,
                       ),
                     ),
-                    if (member.relationship?.isNotEmpty == true) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        member.relationship!,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13,
-                          color: const Color(0xFF1A1C1C).withOpacity(0.5),
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _fallback(profile?.email, authUser.email),
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.white.withValues(alpha: 0.78),
                       ),
-                    ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _HeroChip(
+                          icon: Icons.verified_user_outlined,
+                          label: _roleLabel(profile?.role ?? 'citizen'),
+                        ),
+                        _HeroChip(
+                          icon: Icons.toggle_on_outlined,
+                          label: _statusLabel(status),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: member.hasSystemAccess
-                      ? const Color(0xFF0d631b).withOpacity(0.08)
-                      : const Color(0xFFBFCABA).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  member.hasSystemAccess ? 'Active' : 'No Access',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: member.hasSystemAccess
-                        ? const Color(0xFF0d631b)
-                        : const Color(0xFF1A1C1C).withOpacity(0.4),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: const Color(0xFF1A1C1C).withOpacity(0.25),
-                size: 20,
-              ),
             ],
           ),
-        ),
+          const SizedBox(height: 16),
+          Text(
+            _fallback(profile?.village, 'Village not set'),
+            style: AppTextStyles.bodySemiBold.copyWith(color: Colors.white),
+          ),
+        ],
       ),
     );
   }
+}
 
-  // ── Shared Info Section ───────────────────────────────────────────────
-  Widget _buildInfoSection({
-    required String title,
-    required List<_InfoRow> items,
-    VoidCallback? onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+class _AccessPanel extends StatelessWidget {
+  const _AccessPanel({required this.profile});
+
+  final UserModel? profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final capabilities = profile?.capabilities ?? const <String, bool>{};
+    final chips = <_AccessChipData>[
+      _AccessChipData(
+        'Committee member',
+        capabilities['isCommitteeMember'] == true,
+      ),
+      _AccessChipData(
+        'Community moderation',
+        capabilities['canModerateCommunity'] == true,
+      ),
+      _AccessChipData(
+        'Admin dashboard',
+        capabilities['canAccessAdminDashboard'] == true,
+      ),
+    ];
+
+    return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (onTap != null)
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: onTap,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0d631b).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.edit_outlined,
-                        size: 13,
-                        color: Color(0xFF0d631b),
+          const _SectionHeader(label: 'Access'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final chip in chips)
+                _StatusChip(label: chip.label, active: chip.active),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Role and capabilities are managed by GN officers or system admins.',
+            style: AppTextStyles.caption,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HouseholdPanel extends StatelessWidget {
+  const _HouseholdPanel({
+    required this.profile,
+    required this.stream,
+    required this.onAdd,
+    required this.onOpen,
+  });
+
+  final UserModel? profile;
+  final Stream<List<UserModel>> stream;
+  final VoidCallback onAdd;
+  final ValueChanged<UserModel> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    if (profile == null) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        _SectionHeader(label: 'Household', actionLabel: 'Add', onAction: onAdd),
+        const SizedBox(height: 10),
+        StreamBuilder<List<UserModel>>(
+          stream: stream,
+          builder: (context, snapshot) {
+            final members = snapshot.data ?? const <UserModel>[];
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const _Panel(
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (members.isEmpty) {
+              return _Panel(
+                child: Row(
+                  children: [
+                    const _IconBadge(icon: Icons.group_outlined),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'No household members yet.',
+                        style: AppTextStyles.bodySemiBold,
                       ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Edit',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0d631b),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    TextButton(onPressed: onAdd, child: const Text('Add')),
+                  ],
                 ),
+              );
+            }
+
+            return _Panel(
+              child: Column(
+                children: [
+                  for (int i = 0; i < members.length; i++) ...[
+                    _MemberRow(
+                      member: members[i],
+                      onTap: () => onOpen(members[i]),
+                    ),
+                    if (i != members.length - 1) const Divider(height: 1),
+                  ],
+                ],
               ),
-            ),
-          if (onTap != null) const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFFFF),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1A1C1C).withOpacity(0.05),
-                  blurRadius: 32,
-                  offset: const Offset(0, 4),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionPanel extends StatelessWidget {
+  const _ActionPanel({
+    required this.unreadCount,
+    required this.onNotifications,
+    required this.onHelp,
+    required this.onPassword,
+  });
+
+  final int unreadCount;
+  final VoidCallback onNotifications;
+  final VoidCallback onHelp;
+  final VoidCallback onPassword;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        children: [
+          _ActionRow(
+            icon: Icons.notifications_outlined,
+            label: 'Notifications',
+            trailing: unreadCount > 0 ? '$unreadCount unread' : 'All clear',
+            onTap: onNotifications,
+          ),
+          const Divider(height: 1),
+          _ActionRow(
+            icon: Icons.help_outline,
+            label: 'Help',
+            trailing: 'Guidance',
+            onTap: onHelp,
+          ),
+          const Divider(height: 1),
+          _ActionRow(
+            icon: Icons.lock_outline,
+            label: 'Change Password',
+            trailing: 'Security',
+            onTap: onPassword,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoPanel extends StatelessWidget {
+  const _InfoPanel({required this.rows});
+
+  final List<_InfoRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        children: [
+          for (int i = 0; i < rows.length; i++) ...[
+            _InfoTile(row: rows[i]),
+            if (i != rows.length - 1) const Divider(height: 1),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  const _InfoTile({required this.row});
+
+  final _InfoRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _IconBadge(icon: row.icon),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(row.label, style: AppTextStyles.small),
+                const SizedBox(height: 2),
+                Text(
+                  row.value,
+                  style: row.mono
+                      ? AppTextStyles.monoMedium
+                      : AppTextStyles.bodySemiBold,
                 ),
               ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Column(
-                children: items.asMap().entries.map((entry) {
-                  final item = entry.value;
-                  final isLast = entry.key == items.length - 1;
-                  return Column(
-                    children: [
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: onTap,
-                          borderRadius: BorderRadius.vertical(
-                            top: entry.key == 0
-                                ? const Radius.circular(14)
-                                : Radius.zero,
-                            bottom: isLast
-                                ? const Radius.circular(14)
-                                : Radius.zero,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF0d631b,
-                                    ).withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    item.icon,
-                                    size: 18,
-                                    color: const Color(0xFF0d631b),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.label,
-                                        style: TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 12,
-                                          color: const Color(
-                                            0xFF1A1C1C,
-                                          ).withOpacity(0.5),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        item.value,
-                                        style: const TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF1A1C1C),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (!isLast)
-                        Container(
-                          height: 1,
-                          margin: const EdgeInsets.only(left: 66),
-                          color: const Color(0xFFBFCABA).withOpacity(0.15),
-                        ),
-                    ],
-                  );
-                }).toList(),
-              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  // ── Shortcuts ─────────────────────────────────────────────────────────
-  Widget _buildShortcutsSection(BuildContext context, int unreadCount) {
-    return _buildTileGroup([
-      _buildNavTile(
-        icon: Icons.notifications_none_rounded,
-        title: 'Alerts',
-        isFirst: true,
-        onTap: () => context.push('/notifications'),
-        unreadCount: unreadCount,
-      ),
-      _buildNavTile(
-        icon: Icons.help_outline_rounded,
-        title: 'Help',
-        isLast: true,
-        onTap: () => context.push('/help'),
-      ),
-    ]);
-  }
+class _MemberRow extends StatelessWidget {
+  const _MemberRow({required this.member, required this.onTap});
 
-  // ── Settings ──────────────────────────────────────────────────────────
-  Widget _buildSettingsSection(BuildContext context) {
-    return _buildTileGroup([
-      _buildNavTile(
-        icon: Icons.translate_rounded,
-        title: 'Language',
-        trailing: 'English',
-        isFirst: true,
-        onTap: () {},
-      ),
-      _buildNavTile(
-        icon: Icons.notifications_none_rounded,
-        title: 'Notifications',
-        trailing: 'Enabled',
-        onTap: () {},
-      ),
-      _buildNavTile(
-        icon: Icons.security_rounded,
-        title: 'Change Password',
-        isLast: true,
-        onTap: () => context.push('/profile/change-password'),
-      ),
-    ]);
-  }
+  final UserModel member;
+  final VoidCallback onTap;
 
-  Widget _buildTileGroup(List<Widget> tiles) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1A1C1C).withOpacity(0.05),
-              blurRadius: 32,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Column(children: tiles),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    String? trailing,
-    int unreadCount = 0,
-    bool isFirst = false,
-    bool isLast = false,
-  }) {
-    return Column(
-      children: [
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.vertical(
-              top: isFirst ? const Radius.circular(14) : Radius.zero,
-              bottom: isLast ? const Radius.circular(14) : Radius.zero,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Row(
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            const _IconBadge(icon: Icons.person_outline),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0d631b).withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, size: 18, color: const Color(0xFF0d631b)),
+                  Text(
+                    member.fullName.isEmpty
+                        ? 'Unnamed member'
+                        : member.fullName,
+                    style: AppTextStyles.bodySemiBold,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF1A1C1C),
-                      ),
-                    ),
-                  ),
-                  if (trailing != null) ...[
-                    Text(
-                      trailing,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        color: const Color(0xFF1A1C1C).withOpacity(0.4),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  if (unreadCount > 0) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      margin: const EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDC2626),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        unreadCount > 99 ? '99+' : '$unreadCount',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFFFFFFF),
-                        ),
-                      ),
-                    ),
-                  ],
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: const Color(0xFF1A1C1C).withOpacity(0.25),
-                    size: 20,
-                  ),
+                  if (member.relationship?.isNotEmpty == true)
+                    Text(member.relationship!, style: AppTextStyles.caption),
                 ],
               ),
             ),
-          ),
+            _StatusChip(
+              label: member.hasSystemAccess ? 'Active' : 'No access',
+              active: member.hasSystemAccess,
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.inkLight),
+          ],
         ),
-        if (!isLast)
-          Container(
-            height: 1,
-            margin: const EdgeInsets.only(left: 66),
-            color: const Color(0xFFBFCABA).withOpacity(0.15),
-          ),
-      ],
+      ),
     );
   }
+}
 
-  // ── Logout ────────────────────────────────────────────────────────────
-  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: OutlinedButton.icon(
-          onPressed: () async {
-            await ref.read(authServiceProvider).signOut();
-          },
-          icon: const Icon(Icons.logout_rounded, size: 18),
-          label: const Text(
-            'Sign Out',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.error,
-            side: BorderSide(color: AppColors.error.withOpacity(0.4), width: 1),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    required this.trailing,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String trailing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Row(
+          children: [
+            _IconBadge(icon: icon),
+            const SizedBox(width: 12),
+            Expanded(child: Text(label, style: AppTextStyles.bodySemiBold)),
+            Text(trailing, style: AppTextStyles.caption),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.inkLight),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoSourceTile extends StatelessWidget {
+  const _PhotoSourceTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceParchment,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              _IconBadge(icon: icon),
+              const SizedBox(width: 12),
+              Expanded(child: Text(title, style: AppTextStyles.bodySemiBold)),
+            ],
           ),
         ),
       ),
@@ -1158,10 +713,189 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label, this.actionLabel, this.onAction});
+
+  final String label;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label.toUpperCase(), style: AppTextStyles.overline),
+        ),
+        if (actionLabel != null && onAction != null)
+          TextButton.icon(
+            onPressed: onAction,
+            icon: Icon(
+              actionLabel == 'Add' ? Icons.add_rounded : Icons.edit_outlined,
+            ),
+            label: Text(actionLabel!),
+          ),
+      ],
+    );
+  }
+}
+
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceIvory,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceWarmSand),
+        boxShadow: AppColors.shadowLow,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(
+        color: AppColors.brandGreenSurface,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: AppColors.brandGreen, size: 20),
+    );
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 15),
+          const SizedBox(width: 6),
+          Text(label, style: AppTextStyles.small.copyWith(color: Colors.white)),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.active});
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: active ? AppColors.brandGreenSurface : AppColors.surfaceWarmSand,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: active
+              ? AppColors.brandGreenBorder
+              : AppColors.surfaceWarmSand,
+        ),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.small.copyWith(
+          color: active ? AppColors.brandGreen : AppColors.inkMid,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _AccessChipData {
+  const _AccessChipData(this.label, this.active);
+
+  final String label;
+  final bool active;
+}
+
 class _InfoRow {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.mono = false,
+  });
+
   final IconData icon;
   final String label;
   final String value;
+  final bool mono;
+}
 
-  const _InfoRow(this.icon, this.label, this.value);
+String _fallback(String? primary, String? fallback) {
+  final value = primary?.trim();
+  if (value != null && value.isNotEmpty) return value;
+  final fallbackValue = fallback?.trim();
+  if (fallbackValue != null && fallbackValue.isNotEmpty) return fallbackValue;
+  return 'Not available';
+}
+
+String _initial(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return '?';
+  return trimmed[0].toUpperCase();
+}
+
+String _roleLabel(String role) {
+  switch (role) {
+    case 'gn_officer':
+      return 'GN Officer';
+    case 'admin':
+    case 'super_admin':
+      return 'Admin';
+    case 'committee':
+      return 'Committee';
+    case 'admin_resident':
+      return 'Resident Admin';
+    default:
+      return 'Citizen';
+  }
+}
+
+String _statusLabel(String status) {
+  switch (status) {
+    case 'pending_first_login':
+      return 'Pending first login';
+    case 'inactive':
+      return 'Inactive';
+    case 'suspended':
+      return 'Suspended';
+    default:
+      return 'Active';
+  }
 }

@@ -55,7 +55,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         final user = ref.read(authServiceProvider).currentUser;
         if (user != null) {
           // User is logged in - let router handle role-based redirect
-          context.go('/');
+          context.go(RoutePaths.home);
         } else {
           // Not logged in - go to language selection
           context.go(RoutePaths.language);
@@ -85,13 +85,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   end: Alignment.bottomRight,
                   colors: [
                     AppColors.primary,
-                    AppColors.primary.withRed(15).withGreen(110), // Slightly darker
+                    AppColors.primary
+                        .withRed(15)
+                        .withGreen(110), // Slightly darker
                   ],
                 ),
               ),
             ),
           ),
-          
+
           Center(
             child: AnimatedBuilder(
               animation: _controller,
@@ -124,18 +126,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             size: 44,
                           ),
                         ),
-                        
+
                         const SizedBox(height: 32),
-                        
+
                         Text(
                           'Village Connect',
                           style: AppTextStyles.displaySmall.copyWith(
                             color: Colors.white,
                           ),
                         ),
-                        
+
                         const SizedBox(height: 12),
-                        
+
                         Text(
                           'OFFICIAL CITIZEN PORTAL',
                           style: AppTextStyles.overline.copyWith(
@@ -150,7 +152,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               },
             ),
           ),
-          
+
           // Bottom Status Removed per user request
         ],
       ),

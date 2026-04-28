@@ -1,79 +1,101 @@
 import 'package:flutter/material.dart';
 
-/// Village Connect — "Editorial Ruralism" Color Palette.
+/// Village Connect design tokens.
 ///
-/// Moving from a generic GovTech look to a premium aesthetic
-/// that honors rural users' time and intent. Replaces borders with tonal layering.
+/// The primary names follow DESIGN.md. The aliases at the bottom keep older
+/// screens compiling while they are migrated to the newer token names.
 class AppColors {
   AppColors._();
 
-  // ── Primary (Nature Green) ────────────────────────────────────────────────
-  static const Color primary = Color(0xFF1B5E20); // Premium Nature Green
-  static const Color primaryLight = Color(0xFFE8F5E9);
-  static const Color primaryDark = Color(0xFF123D15);
+  static const Color brandGreen = Color(0xFF1A6B3C);
+  static const Color brandGreenLight = Color(0xFF2E8B57);
+  static const Color brandGreenSurface = Color(0xFFE8F5EE);
+  static const Color brandGreenBorder = Color(0xFFB2DFCB);
 
-  // ── Surfaces (Editorial Ledger) ───────────────────────────────────────────
-  static const Color background = Color(0xFFF9F9F9); // Crisp Ledger White
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceContainerLow = Color(0xFFF3F3F3); // Soft tonal shift
-  static const Color surfaceContainerLowest = Color(0xFFFFFFFF);
-  
-  // ── Legacy / Compatibility Surfaces ──────────────────────────────────────
-  static const Color card = Color(0xFFFFFFFF);
-  static const Color surfaceGrey = Color(0xFFF3F3F3);
-  static const Color secondarySurface = Color(0xFFECECEC);
+  static const Color inkBlack = Color(0xFF1C1B18);
+  static const Color inkDark = Color(0xFF3A3936);
+  static const Color inkMid = Color(0xFF5C5B56);
+  static const Color inkLight = Color(0xFF8A8880);
 
-  // ── Text (Ink & Ash) ─────────────────────────────────────────────────────
-  static const Color textPrimary = Color(0xFF141A14); // Deep Forest Ink
-  static const Color textSecondary = Color(0xFF4A4D4A); // Dimmed Ash
-  static const Color textMuted = Color(0xFF8E928E);
-  static const Color textOnPrimary = Color(0xFFFFFFFF);
+  static const Color surfaceParchment = Color(0xFFF6F4ED);
+  static const Color surfaceIvory = Color(0xFFFAFAF6);
+  static const Color surfaceWarmSand = Color(0xFFEAE8DF);
+  static const Color surfaceDark = Color(0xFF2B2B28);
 
-  // ── Semantic Status (Muted Clarity) ──────────────────────────────────────
-  static const Color success = Color(0xFF2E7D32);
-  static const Color successLight = Color(0xFFE8F5E9);
-  static const Color warning = Color(0xFFF9A825);
-  static const Color warningLight = Color(0xFFFFF9C4);
-  static const Color error = Color(0xFFD32F2F);
-  static const Color errorLight = Color(0xFFFFEBEE);
-  static const Color info = Color(0xFF0277BD);
-  static const Color infoLight = Color(0xFFE1F5FE);
+  static const Color statusApproved = Color(0xFF1A6B3C);
+  static const Color statusPending = Color(0xFFB07A1A);
+  static const Color statusReview = Color(0xFF1A5A8A);
+  static const Color statusRejected = Color(0xFFB53333);
+  static const Color focusBlue = Color(0xFF3898EC);
+  static const Color errorRed = Color(0xFFB53333);
+  static const Color successGreen = Color(0xFF2D7A4F);
 
-  // ── Borders / Dividers (Used sparingly per Stitch "No-Line" rule) ─────────
-  static const Color border = Color(0xFFE0E0E0);
-  static const Color divider = Color(0xFFF0F0F0);
-
-  // ── Disabled ────────────────────────────────────────────────────────────
-  static const Color disabled = Color(0xFFA5A5A5);
-  static const Color disabledBackground = Color(0xFFEEEEEE);
-
-  // ── Shadow (Ambient Elevation) ───────────────────────────────────────────
-  static final Color shadow = const Color(0xFF000000).withOpacity(0.04);
-  static final Color shadowLight = const Color(0xFF000000).withOpacity(0.02);
-
-  // ── Legacy aliases (keeps existing screen code compiling) ───────────────
-  static const Color accentBlue = infoLight;
-  static const Color accentGreen = successLight;
-  static const Color accentRed = errorLight;
-  static const Color accentYellow = warningLight;
-  static const Color accentPurple = infoLight;
-
-  // ── Gradient helpers (Nature-inspired) ──────────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF0D631B), Color(0xFF084B14)],
+    colors: [brandGreen, brandGreenLight],
   );
 
-  static const LinearGradient heroGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFF0D631B), Color(0xFF1B5E20)],
-  );
+  static const LinearGradient heroGradient = primaryGradient;
 
   static const LinearGradient surfaceGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFF9F9F9), Color(0xFFFFFFFF)],
+    colors: [surfaceParchment, surfaceIvory],
   );
+
+  static const List<BoxShadow> shadowLow = [
+    BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2)),
+  ];
+
+  static const List<BoxShadow> shadowMedium = [
+    BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, 4)),
+  ];
+
+  // Backwards-compatible aliases.
+  static const Color primary = brandGreen;
+  static const Color primaryLight = brandGreenSurface;
+  static const Color primaryDark = Color(0xFF104528);
+  static const Color secondary = statusReview;
+  static const Color secondaryLight = Color(0xFFDAE8F5);
+  static const Color accent = statusPending;
+  static const Color accentLight = Color(0xFFFDF3DA);
+
+  static const Color background = surfaceParchment;
+  static const Color surface = surfaceIvory;
+  static const Color surfaceContainerLow = surfaceWarmSand;
+  static const Color surfaceContainerLowest = surfaceIvory;
+  static const Color card = surfaceIvory;
+  static const Color surfaceGrey = surfaceWarmSand;
+  static const Color secondarySurface = brandGreenSurface;
+
+  static const Color textPrimary = inkBlack;
+  static const Color textSecondary = inkMid;
+  static const Color textMuted = inkLight;
+  static const Color textOnPrimary = Colors.white;
+
+  static const Color success = statusApproved;
+  static const Color successLight = Color(0xFFD4EDE0);
+  static const Color warning = statusPending;
+  static const Color warningLight = Color(0xFFFDF3DA);
+  static const Color error = errorRed;
+  static const Color errorLight = Color(0xFFFBDADA);
+  static const Color info = statusReview;
+  static const Color infoLight = Color(0xFFDAE8F5);
+
+  static const Color border = surfaceWarmSand;
+  static const Color divider = surfaceWarmSand;
+  static const Color disabled = inkLight;
+  static const Color disabledBackground = surfaceWarmSand;
+
+  static final Color shadow = const Color(0xFF000000).withValues(alpha: 0.08);
+  static final Color shadowLight = const Color(
+    0xFF000000,
+  ).withValues(alpha: 0.04);
+
+  static const Color accentBlue = infoLight;
+  static const Color accentGreen = successLight;
+  static const Color accentRed = errorLight;
+  static const Color accentYellow = warningLight;
+  static const Color accentPurple = Color(0xFFEDE7F6);
 }

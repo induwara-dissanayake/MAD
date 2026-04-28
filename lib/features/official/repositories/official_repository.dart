@@ -25,13 +25,13 @@ class OfficialRepository {
         .orderBy('submittedAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      final requests = snapshot.docs
-          .map((doc) => RequestModel.fromMap(doc.data(), doc.id))
-          .where((request) => request.status != 'Approved')
-          .toList();
+          final requests = snapshot.docs
+              .map((doc) => RequestModel.fromMap(doc.data(), doc.id))
+              .where((request) => request.status.toLowerCase() == 'pending')
+              .toList();
 
-      return requests;
-    });
+          return requests;
+        });
   }
 
   /// Get a single request by ID for review
@@ -83,10 +83,9 @@ class OfficialRepository {
   /// Get dashboard metrics (pending, approved this month, rejected this month)
   /// Avoids composite queries by filtering dates in code
   Stream<DashboardMetrics> getDashboardMetrics() {
-    return _firestore
-        .collection('requests')
-        .snapshots()
-        .asyncMap((snapshot) async {
+    return _firestore.collection('requests').snapshots().asyncMap((
+      snapshot,
+    ) async {
       // Get current month start
       final now = DateTime.now();
       final monthStart = DateTime(now.year, now.month, 1);
@@ -100,16 +99,18 @@ class OfficialRepository {
         final status = data['status'];
         final processedAt = data['processedAt'];
 
-        if (status == 'Pending') {
+        final normalizedStatus = status.toString().toLowerCase();
+
+        if (normalizedStatus == 'pending') {
           totalPending++;
-        } else if (status == 'Approved') {
+        } else if (normalizedStatus == 'approved') {
           if (processedAt != null) {
             final date = processedAt.toDate();
             if (date.isAfter(monthStart)) {
               approvedThisMonth++;
             }
           }
-        } else if (status == 'Rejected') {
+        } else if (normalizedStatus == 'rejected') {
           if (processedAt != null) {
             final date = processedAt.toDate();
             if (date.isAfter(monthStart)) {

@@ -35,8 +35,27 @@ class UserService {
   }) async {
     await _firestore.collection('users').doc(uid).update({
       'fullName': fullName,
+      'fullNameLower': fullName.toLowerCase(),
       'email': email,
       'phone': phone,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> completeFirstLoginProfile({
+    required String uid,
+    required String fullName,
+    required String phone,
+    required String address,
+  }) async {
+    await _usersCollection.doc(uid).update({
+      'fullName': fullName.trim(),
+      'fullNameLower': fullName.trim().toLowerCase(),
+      'phone': phone.trim(),
+      'address': address.trim(),
+      'accountStatus': 'active',
+      'updatedAt': FieldValue.serverTimestamp(),
+      'activatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -52,8 +71,13 @@ class UserService {
     try {
       final doc = await _usersCollection.doc(uid).get();
       if (!doc.exists) return false;
-      final role = doc.data()?['role'] as String? ?? 'citizen';
-      return role == 'admin_resident' || role == 'gn_officer';
+      final data = doc.data()!;
+      final role = data['role'] as String? ?? 'citizen';
+      final caps = data['capabilities'] as Map?;
+      return role == 'admin_resident' ||
+          role == 'gn_officer' ||
+          role == 'admin' ||
+          caps?['canAccessAdminDashboard'] == true;
     } catch (_) {
       return false;
     }
@@ -102,9 +126,7 @@ class UserService {
   /// All user document IDs in a village (for notification fan-out).
   Future<List<String>> getUserUidsInVillage(String village) async {
     if (village.isEmpty) return [];
-    final q = await _usersCollection
-        .where('village', isEqualTo: village)
-        .get();
+    final q = await _usersCollection.where('village', isEqualTo: village).get();
     return q.docs.map((d) => d.id).toList();
   }
 
@@ -114,6 +136,17 @@ class UserService {
     if (m == null) return false;
     final r = m.role;
     if (r == 'super_admin') return true;
-    return r == 'gn_officer' || r == 'admin';
+    return r == 'gn_officer' ||
+        r == 'admin' ||
+        m.capabilities['canAccessAdminDashboard'] == true;
+  }
+
+  Future<bool> canModerateCommunity(String uid) async {
+    final m = await getUserProfileOnce(uid);
+    if (m == null) return false;
+    return m.role == 'gn_officer' ||
+        m.role == 'admin' ||
+        m.role == 'committee' ||
+        m.capabilities['canModerateCommunity'] == true;
   }
 }
