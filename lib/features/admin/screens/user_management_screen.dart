@@ -585,6 +585,10 @@ class _EditorPanel extends StatelessWidget {
             items: const [
               DropdownMenuItem(value: 'citizen', child: Text('Citizen')),
               DropdownMenuItem(value: 'gn_officer', child: Text('GN Officer')),
+              DropdownMenuItem(
+                value: 'committee',
+                child: Text('Committee Member'),
+              ),
               DropdownMenuItem(value: 'admin', child: Text('Admin')),
             ],
             onChanged: isSaving ? null : onRoleChanged,
@@ -634,6 +638,22 @@ class _EditorPanel extends StatelessWidget {
             onChanged: isSaving
                 ? null
                 : (value) => onCapabilityChanged('canModerateCommunity', value),
+          ),
+          _CapabilitySwitch(
+            title: 'Manage incidents',
+            subtitle: 'Can access emergency incidents and support tasks.',
+            value: capabilities['canManageIncidents'] == true,
+            onChanged: isSaving
+                ? null
+                : (value) => onCapabilityChanged('canManageIncidents', value),
+          ),
+          _CapabilitySwitch(
+            title: 'Publish official notices',
+            subtitle: 'Can publish village notices and announcements.',
+            value: capabilities['canPublishNotices'] == true,
+            onChanged: isSaving
+                ? null
+                : (value) => onCapabilityChanged('canPublishNotices', value),
           ),
           _CapabilitySwitch(
             title: 'Admin dashboard access',
@@ -830,10 +850,17 @@ class _SectionLabel extends StatelessWidget {
 Map<String, bool> _capabilitiesForRole(String role, Map<String, bool> current) {
   return {
     ...current,
-    'isCommitteeMember': current['isCommitteeMember'] == true,
-    'canModerateCommunity': role == 'gn_officer'
+    'isCommitteeMember':
+        role == 'committee' || current['isCommitteeMember'] == true,
+    'canModerateCommunity': role == 'gn_officer' || role == 'committee'
         ? true
         : current['canModerateCommunity'] == true,
+    'canManageIncidents': role == 'gn_officer' || role == 'committee'
+        ? true
+        : current['canManageIncidents'] == true,
+    'canPublishNotices': role == 'gn_officer'
+        ? true
+        : current['canPublishNotices'] == true,
     'canAccessAdminDashboard': role == 'admin'
         ? true
         : current['canAccessAdminDashboard'] == true,
@@ -842,8 +869,10 @@ Map<String, bool> _capabilitiesForRole(String role, Map<String, bool> current) {
 
 String _normalizeRole(String role) {
   if (role == 'super_admin') return 'admin';
-  if (role == 'admin_resident' || role == 'committee') return 'citizen';
-  if (role == 'gn_officer' || role == 'admin') return role;
+  if (role == 'admin_resident') return 'citizen';
+  if (role == 'gn_officer' || role == 'committee' || role == 'admin') {
+    return role;
+  }
   return 'citizen';
 }
 
