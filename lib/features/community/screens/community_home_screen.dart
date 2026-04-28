@@ -32,6 +32,11 @@ class _CommunityHomeScreenState extends ConsumerState<CommunityHomeScreen> {
         title: Text(copy.t('communityTitle')),
         actions: [
           IconButton(
+            onPressed: () => context.push('/community/chats'),
+            tooltip: 'Community chat',
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+          ),
+          IconButton(
             onPressed: () => context.push('/community/moderation'),
             tooltip: copy.t('moderation'),
             icon: const Icon(Icons.fact_check_outlined),
@@ -52,6 +57,8 @@ class _CommunityHomeScreenState extends ConsumerState<CommunityHomeScreen> {
               copy.t('communitySubtitle'),
               style: AppTextStyles.bodyLarge.copyWith(color: AppColors.inkMid),
             ),
+            const SizedBox(height: 18),
+            _ChatEntryCard(onTap: () => context.push('/community/chats')),
             const SizedBox(height: 18),
             _SegmentedTabs(
               selected: _tab,
@@ -98,6 +105,65 @@ class _CommunityHomeScreenState extends ConsumerState<CommunityHomeScreen> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatEntryCard extends StatelessWidget {
+  const _ChatEntryCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceIvory,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.brandGreenBorder),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  color: AppColors.brandGreenSurface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.groups_2_outlined,
+                  color: AppColors.brandGreen,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Community Chat', style: AppTextStyles.bodySemiBold),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Talk with village members and teams.',
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.inkLight,
+              ),
+            ],
+          ),
         ),
       ),
     );

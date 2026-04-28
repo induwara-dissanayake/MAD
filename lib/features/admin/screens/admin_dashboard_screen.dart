@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../controllers/admin_controller.dart';
@@ -16,6 +17,11 @@ class AdminDashboardScreen extends ConsumerWidget {
     final requestMetricsAsync = ref.watch(requestMetricsProvider);
     final noticeCountAsync = ref.watch(noticeCountProvider);
     final today = DateFormat('EEE, MMM d').format(DateTime.now());
+
+    Future<void> signOut() async {
+      await ref.read(authServiceProvider).signOut();
+      if (context.mounted) context.go('/auth/login');
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surfaceParchment,
@@ -31,6 +37,11 @@ class AdminDashboardScreen extends ConsumerWidget {
             onPressed: () => context.push('/profile'),
             tooltip: 'Profile',
             icon: const Icon(Icons.person_outline),
+          ),
+          IconButton(
+            onPressed: signOut,
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout_rounded),
           ),
         ],
       ),
@@ -95,6 +106,16 @@ class AdminDashboardScreen extends ConsumerWidget {
               subtitle:
                   'Use live totals above to monitor requests, notices, and user growth.',
               onTap: () => context.go('/admin/certificates'),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: signOut,
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Sign Out'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.errorRed,
+                side: const BorderSide(color: AppColors.errorRed),
+              ),
             ),
           ],
         ),
