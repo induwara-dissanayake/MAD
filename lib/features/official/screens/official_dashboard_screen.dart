@@ -138,6 +138,18 @@ class _OfficialDashboardScreenState
                   subtitle: 'Acknowledge and resolve alerts.',
                   onTap: () => context.go('/incidents'),
                 ),
+                _WorkflowAction(
+                  icon: Icons.manage_search_outlined,
+                  title: 'Citizen Records',
+                  subtitle: 'Search by NIC, email, or phone.',
+                  onTap: () => context.go('/official/citizens'),
+                ),
+                _WorkflowAction(
+                  icon: Icons.record_voice_over_outlined,
+                  title: 'Announcements',
+                  subtitle: 'Send village-wide messages.',
+                  onTap: () => context.go('/official/announcements'),
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -254,11 +266,31 @@ class _OfficialDashboardScreenState
     });
 
     try {
-      final snapshot = await FirebaseFirestore.instance
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      final officer = currentUid == null
+          ? null
+          : await ref.read(userServiceProvider).getUserProfileOnce(currentUid);
+      final officerRole = officer?.role == 'super_admin'
+          ? 'admin'
+          : officer?.role ?? 'gn_officer';
+
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('users')
-          .where('nic', isEqualTo: nic)
-          .limit(1)
-          .get();
+          .where('nic', isEqualTo: nic);
+
+      if (officerRole == 'gn_officer') {
+        final village = officer?.village.trim() ?? '';
+        if (village.isEmpty) {
+          _setCommitteeMessage(
+            'Your GN profile needs a village before citizen search.',
+            isError: true,
+          );
+          return;
+        }
+        query = query.where('village', isEqualTo: village);
+      }
+
+      final snapshot = await query.limit(1).get();
 
       if (snapshot.docs.isEmpty) {
         _setCommitteeMessage('No citizen found for this NIC.', isError: true);
@@ -277,11 +309,7 @@ class _OfficialDashboardScreenState
         return;
       }
 
-      final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final officer = currentUid == null
-          ? null
-          : await ref.read(userServiceProvider).getUserProfileOnce(currentUid);
-      if (officer?.role == 'gn_officer' &&
+      if (officerRole == 'gn_officer' &&
           officer?.village.isNotEmpty == true &&
           candidate.village.isNotEmpty &&
           officer!.village != candidate.village) {
@@ -315,6 +343,7 @@ class _OfficialDashboardScreenState
         ...candidate.capabilities,
         'isCommitteeMember': true,
         'canModerateCommunity': true,
+        'canManageIncidents': true,
       };
 
       await FirebaseFirestore.instance
@@ -328,14 +357,17 @@ class _OfficialDashboardScreenState
         'action': 'promote_citizen_to_committee',
         'targetUid': candidate.uid,
         'actorUid': actorUid,
+        'actorRole': 'gn_officer',
         'details': {'capabilities': capabilities},
         'createdAt': FieldValue.serverTimestamp(),
       });
       await FirebaseFirestore.instance.collection('notifications').add({
         'userId': candidate.uid,
+        'title': 'Committee access enabled',
         'message':
             'You have been added to the village committee. Committee tools are now available.',
         'type': 'committee_access',
+        'actionRoute': '/committee/tasks',
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -467,11 +499,24 @@ class _OfficialDashboardScreenState
       await FirebaseFirestore.instance.collection('notices').add({
         'title': title,
         'description': description,
+        'body': description,
         'category': _noticeCategory,
         'date': FieldValue.serverTimestamp(),
+        'status': 'published',
         'isVerified': true,
         'createdBy': user?.uid,
+        'publishedBy': user?.uid,
+        'publishedByRole': 'gn_officer',
         'createdByName': user?.displayName ?? 'GN Officer',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'action': 'publish_notice',
+        'actorUid': user?.uid,
+        'actorRole': 'gn_officer',
+        'targetCollection': 'notices',
+        'details': {'title': title, 'category': _noticeCategory},
+        'createdAt': FieldValue.serverTimestamp(),
       });
       _noticeTitleController.clear();
       _noticeBodyController.clear();
