@@ -414,10 +414,6 @@ class _AccessPanel extends StatelessWidget {
         'Community moderation',
         capabilities['canModerateCommunity'] == true,
       ),
-      _AccessChipData(
-        'Admin dashboard',
-        capabilities['canAccessAdminDashboard'] == true,
-      ),
     ];
 
     return _Panel(
