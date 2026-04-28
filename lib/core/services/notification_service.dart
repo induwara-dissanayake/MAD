@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/notification_model.dart';
@@ -62,17 +64,70 @@ class NotificationService {
   /// Real-time list for this user, newest first (sorted client-side to avoid
   /// requiring a composite index before indexes are deployed).
   Stream<List<NotificationModel>> getNotifications(String userId) {
-    return _firestore
+    late final StreamSubscription<QuerySnapshot<Map<String, dynamic>>>
+        notificationSub;
+    late final StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>
+        userSub;
+
+    final controller = StreamController<List<NotificationModel>>(
+      onCancel: () async {
+        await notificationSub.cancel();
+        await userSub.cancel();
+      },
+    );
+
+    List<NotificationModel> notifications = [];
+    var canModerateCommunity = false;
+    var hasUserSnapshot = false;
+
+    void emit() {
+      if (!hasUserSnapshot || controller.isClosed) return;
+
+      final visible = canModerateCommunity
+          ? List<NotificationModel>.from(notifications)
+          : notifications
+                .where((n) => n.type != 'community_moderation')
+                .toList();
+      visible.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      controller.add(visible);
+    }
+
+    userSub = _firestore.collection('users').doc(userId).snapshots().listen(
+      (doc) {
+        final data = doc.data() ?? const <String, dynamic>{};
+        canModerateCommunity = _canModerateCommunity(data);
+        hasUserSnapshot = true;
+        emit();
+      },
+      onError: controller.addError,
+    );
+
+    notificationSub = _firestore
         .collection('notifications')
         .where('userId', isEqualTo: userId)
         .snapshots()
-        .map((snapshot) {
-      final list = snapshot.docs
-          .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
-          .toList();
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return list;
-    });
+        .listen((snapshot) {
+          notifications = snapshot.docs
+              .map((doc) => NotificationModel.fromMap(doc.data(), doc.id))
+              .toList();
+          emit();
+        }, onError: controller.addError);
+
+    return controller.stream;
+  }
+
+  bool _canModerateCommunity(Map<String, dynamic> data) {
+    final role = data['role'] as String? ?? 'citizen';
+    final rawCapabilities = data['capabilities'];
+    final capabilities = rawCapabilities is Map
+        ? rawCapabilities.map((key, value) => MapEntry(key.toString(), value))
+        : const <String, dynamic>{};
+
+    return role == 'admin' ||
+        role == 'super_admin' ||
+        role == 'gn_officer' ||
+        role == 'committee' ||
+        capabilities['canModerateCommunity'] == true;
   }
 
   /// Mark a notification as read

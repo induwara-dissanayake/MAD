@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/user_service.dart';
@@ -22,7 +23,10 @@ class _EmergencyAlertScreenState extends ConsumerState<EmergencyAlertScreen>
   final _locationController = TextEditingController();
   bool _useCurrentLocation = true;
   bool _isSending = false;
+  bool _isFetchingLocation = false;
   String? _lastIncidentId;
+  Position? _currentPosition;
+  String? _locationError;
 
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
@@ -99,9 +103,7 @@ class _EmergencyAlertScreenState extends ConsumerState<EmergencyAlertScreen>
       if (profile == null) {
         throw Exception('User profile not found.');
       }
-      final location = _useCurrentLocation
-          ? 'Current device location requested'
-          : _locationController.text.trim();
+      final location = await _resolveAlertLocation();
       _lastIncidentId = await ref
           .read(incidentRepositoryProvider)
           .createIncident(
@@ -125,6 +127,66 @@ class _EmergencyAlertScreenState extends ConsumerState<EmergencyAlertScreen>
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
+  }
+
+  Future<String> _resolveAlertLocation() async {
+    if (!_useCurrentLocation) return _locationController.text.trim();
+
+    setState(() {
+      _isFetchingLocation = true;
+      _locationError = null;
+    });
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permission was denied.');
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception(
+          'Location permission is permanently denied. Enable it in settings or enter location manually.',
+        );
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+
+      if (mounted) {
+        setState(() => _currentPosition = position);
+      }
+
+      return 'Lat: ${position.latitude.toStringAsFixed(6)}, Lng: ${position.longitude.toStringAsFixed(6)}, Accuracy: ${position.accuracy.toStringAsFixed(0)}m';
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _locationError = error.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+      rethrow;
+    } finally {
+      if (mounted) setState(() => _isFetchingLocation = false);
+    }
+  }
+
+  String _currentLocationLabel() {
+    final position = _currentPosition;
+    if (position != null) {
+      return '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
+    }
+    if (_locationError != null) return _locationError!;
+    return 'Location will be requested securely when sending';
   }
 
   void _showSuccessDialog() {
@@ -358,19 +420,27 @@ class _EmergencyAlertScreenState extends ConsumerState<EmergencyAlertScreen>
                             ),
                             Text(
                               _useCurrentLocation
-                                  ? '6.9271° N, 79.8612° E'
+                                  ? _currentLocationLabel()
                                   : 'Enter location manually',
                               style: AppTextStyles.small,
                             ),
                           ],
                         ),
                       ),
-                      Switch(
-                        value: _useCurrentLocation,
-                        onChanged: (v) =>
-                            setState(() => _useCurrentLocation = v),
-                        activeThumbColor: AppColors.primary,
-                      ),
+                      _isFetchingLocation
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Switch(
+                              value: _useCurrentLocation,
+                              onChanged: (v) => setState(() {
+                                _useCurrentLocation = v;
+                                _locationError = null;
+                              }),
+                              activeThumbColor: AppColors.primary,
+                            ),
                     ],
                   ),
                   if (!_useCurrentLocation) ...[

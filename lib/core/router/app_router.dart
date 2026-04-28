@@ -25,6 +25,7 @@ import '../../features/home/screens/app_shell.dart';
 import '../../features/home/screens/citizen_home_screen.dart';
 import '../../features/emergency/screens/emergency_alert_screen.dart';
 import '../../features/notices/screens/notice_board_screen.dart';
+import '../../features/notices/screens/notice_detail_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/incidents/screens/incident_detail_screen.dart';
@@ -360,6 +361,20 @@ final appRouter = GoRouter(
       path: '/notifications',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const NotificationsScreen(),
+    ),
+    GoRoute(
+      path: '/notice-detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extras = state.extra as Map?;
+        final notice = <String, String>{};
+        if (extras != null) {
+          for (final entry in extras.entries) {
+            notice[entry.key.toString()] = entry.value?.toString() ?? '';
+          }
+        }
+        return NoticeDetailScreen(notice: notice);
+      },
     ),
     GoRoute(
       path: '/help',

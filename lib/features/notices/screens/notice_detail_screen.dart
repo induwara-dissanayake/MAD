@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -31,6 +33,7 @@ class NoticeDetailScreen extends StatelessWidget {
     final String content =
         notice['content'] ?? notice['description'] ?? 'No details provided.';
     final bool hasAttachment = notice['hasAttachment'] == 'true';
+    final String attachmentUrl = notice['attachmentUrl'] ?? '';
     final catColor = _categoryColor(category);
 
     return Scaffold(
@@ -238,12 +241,28 @@ class NoticeDetailScreen extends StatelessWidget {
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Downloading attachment...'),
-                              ),
-                            );
+                          onTap: () async {
+                            if (attachmentUrl.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Attachment unavailable.'),
+                                ),
+                              );
+                              return;
+                            }
+                            final uri = Uri.tryParse(attachmentUrl);
+                            if (uri == null ||
+                                !await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                )) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Unable to open attachment.'),
+                                ),
+                              );
+                            }
                           },
                           borderRadius: BorderRadius.circular(20),
                           child: Padding(
@@ -278,10 +297,14 @@ class NoticeDetailScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Official_Notice.pdf (1.2 MB)',
+                                        attachmentUrl.isEmpty
+                                            ? 'Official attachment'
+                                            : attachmentUrl,
                                         style: AppTextStyles.caption.copyWith(
                                           color: AppColors.textSecondary,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
@@ -311,10 +334,13 @@ class NoticeDetailScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
+                            final text = '$title\n\n$content';
+                            await Clipboard.setData(ClipboardData(text: text));
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Share options opened'),
+                                content: Text('Notice copied to clipboard'),
                               ),
                             );
                           },
