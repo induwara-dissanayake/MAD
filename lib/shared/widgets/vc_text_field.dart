@@ -45,6 +45,7 @@ class VcTextField extends StatelessWidget {
           controller: controller,
           validator: validator,
           keyboardType: keyboardType,
+          textDirection: TextDirection.ltr,
           obscureText: obscureText,
           maxLines: maxLines,
           readOnly: readOnly,
@@ -52,6 +53,7 @@ class VcTextField extends StatelessWidget {
           onChanged: onChanged,
           enabled: enabled,
           style: AppTextStyles.body,
+          strutStyle: AppTextStyles.strutStyle(14, height: 1.58),
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null

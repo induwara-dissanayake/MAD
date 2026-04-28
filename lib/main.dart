@@ -6,14 +6,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'firebase_options.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_text_styles.dart';
 import 'core/localization/locale_provider.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -42,6 +41,19 @@ class VillageConnectApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: appRouter,
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(textScaler: TextScaler.noScaling),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: DefaultTextHeightBehavior(
+              textHeightBehavior: AppTextStyles.textHeightBehavior,
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
+        );
+      },
 
       // ── Localization ─────────────────────────────────────────────
       locale: locale,

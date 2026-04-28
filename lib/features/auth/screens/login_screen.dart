@@ -305,8 +305,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       obscureText: obscureText,
       validator: validator,
       keyboardType: keyboardType,
+      textDirection: TextDirection.ltr,
+      style: AppTextStyles.bodyLarge,
+      strutStyle: AppTextStyles.strutStyle(16, height: 1.65),
       decoration: InputDecoration(
         hintText: hint,
+        hintStyle: AppTextStyles.bodyLarge.copyWith(
+          color: AppColors.textMuted,
+          height: 1.65,
+        ),
         prefixIcon: Icon(prefixIcon, size: 20),
         suffixIcon: suffixIcon,
       ),
