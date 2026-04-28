@@ -94,6 +94,22 @@ class UserService {
         );
   }
 
+  /// Stream household members visible from a profile.
+  ///
+  /// Household owners see members they created. A family/rental member sees
+  /// other member profiles that share the same household owner.
+  Stream<List<UserModel>> streamVisibleHouseholdMembers(UserModel profile) {
+    final ownerUid = (profile.createdByUid != null &&
+            profile.createdByUid!.trim().isNotEmpty &&
+            profile.memberType != MemberType.newResident)
+        ? profile.createdByUid!.trim()
+        : profile.uid;
+
+    return streamHouseholdMembers(ownerUid).map(
+      (members) => members.where((member) => member.uid != profile.uid).toList(),
+    );
+  }
+
   /// Check if a NIC is already registered.
   Future<bool> isNicRegistered(String nic) async {
     try {

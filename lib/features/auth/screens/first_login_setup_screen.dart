@@ -21,7 +21,6 @@ class FirstLoginSetupScreen extends ConsumerStatefulWidget {
 
 class _FirstLoginSetupScreenState extends ConsumerState<FirstLoginSetupScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _fullNameController = TextEditingController();
@@ -29,14 +28,12 @@ class _FirstLoginSetupScreenState extends ConsumerState<FirstLoginSetupScreen> {
   final _addressController = TextEditingController();
 
   bool _isSubmitting = false;
-  bool _obscureCurrent = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _loadedProfile = false;
 
   @override
   void dispose() {
-    _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     _fullNameController.dispose();
@@ -69,10 +66,7 @@ class _FirstLoginSetupScreenState extends ConsumerState<FirstLoginSetupScreen> {
     try {
       await ref
           .read(authServiceProvider)
-          .changePassword(
-            currentPassword: _currentPasswordController.text,
-            newPassword: _newPasswordController.text,
-          );
+          .updateCurrentUserPassword(_newPasswordController.text);
       await ref
           .read(userServiceProvider)
           .completeFirstLoginProfile(
@@ -143,23 +137,12 @@ class _FirstLoginSetupScreenState extends ConsumerState<FirstLoginSetupScreen> {
               const VcPageHeader(
                 title: 'Secure your account',
                 subtitle:
-                    'Change the temporary password and confirm your profile before dashboard access.',
+                    'Set a new password and confirm your profile before dashboard access.',
                 leadingIcon: Icons.verified_user_rounded,
               ),
               const SizedBox(height: 24),
               Text('Security', style: AppTextStyles.h3),
               const SizedBox(height: 12),
-              _passwordField(
-                controller: _currentPasswordController,
-                label: 'Temporary Password',
-                obscure: _obscureCurrent,
-                onToggle: () =>
-                    setState(() => _obscureCurrent = !_obscureCurrent),
-                validator: (v) => v == null || v.isEmpty
-                    ? 'Temporary password is required'
-                    : null,
-              ),
-              const SizedBox(height: 16),
               _passwordField(
                 controller: _newPasswordController,
                 label: 'New Password',

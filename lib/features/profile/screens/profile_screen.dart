@@ -179,6 +179,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       label: 'Full name',
                       value: _fallback(profile?.fullName, authUser.displayName),
                     ),
+                    if (profile != null &&
+                        profile.memberType != MemberType.newResident)
+                      _InfoRow(
+                        icon: Icons.family_restroom_outlined,
+                        label: 'Profile type',
+                        value: profile.memberType.label,
+                      ),
+                    if (profile?.relationship?.isNotEmpty == true)
+                      _InfoRow(
+                        icon: Icons.diversity_1_outlined,
+                        label: 'Relationship',
+                        value: profile!.relationship!,
+                      ),
                     _InfoRow(
                       icon: Icons.badge_outlined,
                       label: 'NIC username',
@@ -228,7 +241,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ? const Stream<List<UserModel>>.empty()
                       : ref
                             .read(userServiceProvider)
-                            .streamHouseholdMembers(profile.uid),
+                            .streamVisibleHouseholdMembers(profile),
                   onAdd: () => context.push('/auth/add-member'),
                   onOpen: (member) => context.push(
                     '/profile/edit-family-member',
@@ -451,7 +464,15 @@ class _HouseholdPanel extends StatelessWidget {
 
     return Column(
       children: [
-        _SectionHeader(label: 'Household', actionLabel: 'Add', onAction: onAdd),
+        _SectionHeader(
+          label: profile.memberType == MemberType.newResident
+              ? 'Family Members'
+              : 'Household',
+          actionLabel: profile.memberType == MemberType.newResident
+              ? 'Add'
+              : null,
+          onAction: profile.memberType == MemberType.newResident ? onAdd : null,
+        ),
         const SizedBox(height: 10),
         StreamBuilder<List<UserModel>>(
           stream: stream,

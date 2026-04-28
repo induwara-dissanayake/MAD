@@ -12,6 +12,7 @@ import '../../features/auth/screens/add_member_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chatbot/screens/chatbot_screen.dart';
 import '../../features/community/screens/add_community_post_screen.dart';
+import '../../features/community/screens/chat_list_screen.dart';
 import '../../features/community/screens/chat_screen.dart';
 import '../../features/community/screens/community_Home_screen.dart';
 import '../../features/community/screens/community_moderation_screen.dart';
@@ -391,6 +392,11 @@ final appRouter = GoRouter(
       path: '/community/moderation',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const CommunityModerationScreen(),
+    ),
+    GoRoute(
+      path: '/community/chats',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ChatListScreen(),
     ),
     GoRoute(
       path: '/community/chat',

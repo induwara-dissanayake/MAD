@@ -1,13 +1,10 @@
-import 'dart:async' show Timer, TimeoutException;
+import 'dart:async' show Timer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/community_broadcast_notification_service.dart';
 import '../../../core/services/user_service.dart';
@@ -27,7 +24,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Timer? _debounce;
   bool _isTyping = false;
   bool _showEmojiPicker = false;
-  bool _isUploading = false;
 
   // Reply state
   Map<String, dynamic>? _replyingTo;
@@ -114,9 +110,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  void sendMessage({String? imageUrl, String? fileUrl, String? fileName}) async {
+  void sendMessage() async {
     final text = controller.text.trim();
-    if (text.isEmpty && imageUrl == null && fileUrl == null) return;
+    if (text.isEmpty) return;
 
     final canAnnounce = _isOfficial == true;
     final shouldBroadcast = _announceToVillage && canAnnounce;
@@ -130,17 +126,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('Please sign in again to send messages.');
+      }
       final payload = <String, dynamic>{
         'room': widget.name,
-        'senderId': user?.uid ?? 'unknown',
-        'senderName': user?.displayName ?? 'Anonymous',
+        'senderId': user.uid,
+        'senderName': user.displayName ?? 'Anonymous',
         'status': 'sent',
         'timestamp': FieldValue.serverTimestamp(),
       };
 
-      if (text.isNotEmpty) payload['text'] = text;
-      if (imageUrl != null) payload['imageUrl'] = imageUrl;
-      if (fileUrl != null) { payload['fileUrl'] = fileUrl; payload['fileName'] = fileName; }
+      payload['text'] = text;
       if (replySnapshot != null) {
         payload['replyToText'] = replySnapshot['text'] ?? '';
         payload['replyToSender'] = replySnapshot['senderName'] ?? 'Unknown';
@@ -149,22 +146,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       await FirebaseFirestore.instance.collection('community_chats').add(payload);
 
-      if (shouldBroadcast && user != null) {
+      if (shouldBroadcast) {
         final profile = await ref.read(userServiceProvider).getUserProfileOnce(user.uid);
         final village = profile?.village ?? '';
-        String? preview;
-        if (text.isNotEmpty) {
-          preview = text;
-        } else if (imageUrl != null) {
-          preview = 'An image was shared in ${widget.name}.';
-        } else if (fileUrl != null) {
-          preview = 'A file was shared in ${widget.name}.';
-        }
         await ref.read(communityBroadcastNotificationServiceProvider).broadcastImportantMessage(
               village: village,
               senderUserId: user.uid,
               roomName: widget.name,
-              messagePreview: preview,
+              messagePreview: text,
             );
       }
     } catch (e) {
@@ -174,162 +163,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       }
     }
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (picked == null) return;
-
-    setState(() { _isUploading = true; });
-
-    try {
-      // Step 1: Read bytes
-      final bytes = await picked.readAsBytes();
-      if (bytes.isEmpty) throw Exception('Step 1 failed: image bytes are empty.');
-
-      // Step 2: Upload to Firebase Storage with timeout
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-
-      final task = ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-
-      // Listen for state changes for debugging
-      task.snapshotEvents.listen((snapshot) {
-        debugPrint('Upload state: ${snapshot.state}, bytes: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
-      });
-
-      // Wait with timeout
-      final snapshot = await task.timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw TimeoutException('Upload timed out after 30s. Check Firebase Storage CORS settings.'),
-      );
-
-      if (snapshot.state != TaskState.success) {
-        throw Exception('Upload did not complete. State: ${snapshot.state}');
-      }
-
-      // Step 3: Get download URL
-      final url = await ref.getDownloadURL();
-      if (url.isEmpty) throw Exception('Step 3 failed: download URL is empty.');
-
-      // Step 4: Send message
-      sendMessage(imageUrl: url);
-
-    } on TimeoutException catch (e) {
-      if (mounted) _showError('Upload Timed Out', '${e.message}\n\nPlease check:\n1. Firebase Storage rules allow authenticated users.\n2. Firebase Storage CORS is configured for web.');
-    } catch (e) {
-      if (mounted) _showError('Image Upload Failed', e.toString());
-    } finally {
-      if (mounted) setState(() { _isUploading = false; });
-    }
-  }
-
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(withData: true);
-    if (result == null || result.files.single.bytes == null) return;
-
-    setState(() { _isUploading = true; });
-    try {
-      final bytes = result.files.single.bytes!;
-      final fileName = result.files.single.name;
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('chat_files/${DateTime.now().millisecondsSinceEpoch}_$fileName');
-      await ref.putData(bytes);
-      final url = await ref.getDownloadURL();
-      sendMessage(fileUrl: url, fileName: fileName);
-    } catch (e) {
-      if (mounted) _showError('File Upload Failed', e.toString());
-    } finally {
-      if (mounted) setState(() { _isUploading = false; });
-    }
-  }
-
-  void _showError(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(title),
-        content: SingleChildScrollView(child: Text(message)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-        ],
-      ),
-    );
-  }
-
-  void _showAttachmentOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 20),
-            const Text('Send Attachment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _attachOption(Icons.photo_library, 'Gallery', Colors.purple, () {
-                  Navigator.pop(context);
-                  _pickImage();
-                }),
-                _attachOption(Icons.camera_alt, 'Camera', Colors.red, () async {
-                  Navigator.pop(context);
-                  final picker = ImagePicker();
-                  final picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
-                  if (picked == null) return;
-                  setState(() { _isUploading = true; });
-                  try {
-                    final bytes = await picked.readAsBytes();
-                    final ref = FirebaseStorage.instance.ref().child('chat_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-                    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-                    final url = await ref.getDownloadURL();
-                    sendMessage(imageUrl: url);
-                  } finally {
-                    if (mounted) setState(() { _isUploading = false; });
-                  }
-                }),
-                _attachOption(Icons.insert_drive_file, 'File', Colors.blue, () {
-                  Navigator.pop(context);
-                  _pickFile();
-                }),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _attachOption(IconData icon, String label, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 60, height: 60,
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
   }
 
   void _startReply(Map<String, dynamic> data) {
@@ -386,13 +219,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Upload progress bar
-          if (_isUploading)
-            const LinearProgressIndicator(
-              backgroundColor: Color(0xFFB8E6B0),
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
-            ),
-
           // Messages
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -532,11 +358,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             maxLines: 4,
                           ),
                         ),
-                        // Attachment
-                        IconButton(
-                          icon: const Icon(Icons.attach_file, color: Colors.grey),
-                          onPressed: _showAttachmentOptions,
-                        ),
                       ],
                     ),
                   ),
@@ -596,9 +417,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget buildMessage(Map<String, dynamic> data, bool isMe, String time) {
     final text = data['text'] as String? ?? '';
-    final imageUrl = data['imageUrl'] as String?;
-    final fileUrl = data['fileUrl'] as String?;
-    final fileName = data['fileName'] as String?;
     final senderName = data['senderName'] as String? ?? '';
     final status = data['status'] as String? ?? 'read';
     final replyToText = data['replyToText'] as String?;
@@ -645,43 +463,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ],
               ),
             ),
-          ],
-
-          // Image
-          if (imageUrl != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(imageUrl, width: 220, fit: BoxFit.cover,
-                  loadingBuilder: (_, child, progress) => progress == null
-                      ? child
-                      : SizedBox(width: 220, height: 120,
-                          child: Center(child: CircularProgressIndicator(value: progress.expectedTotalBytes != null
-                              ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes! : null)))),
-            ),
-            const SizedBox(height: 4),
-          ],
-
-          // File
-          if (fileUrl != null) ...[
-            GestureDetector(
-              onTap: () {
-                // Could open URL launcher here
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.insert_drive_file, color: Color(0xFF2E7D32), size: 22),
-                    const SizedBox(width: 8),
-                    Flexible(child: Text(fileName ?? 'File', style: const TextStyle(fontSize: 13, color: Colors.black87),
-                        overflow: TextOverflow.ellipsis)),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
           ],
 
           // Text
