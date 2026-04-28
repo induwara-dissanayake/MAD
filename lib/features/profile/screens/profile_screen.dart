@@ -460,18 +460,16 @@ class _HouseholdPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final profile = this.profile;
     if (profile == null) return const SizedBox.shrink();
+    final canManageHousehold = profile.memberType == MemberType.newResident;
 
     return Column(
       children: [
         _SectionHeader(
-          label: profile.memberType == MemberType.newResident
-              ? 'Family Members'
-              : 'Household',
-          actionLabel: profile.memberType == MemberType.newResident
-              ? 'Add'
-              : null,
-          onAction: profile.memberType == MemberType.newResident ? onAdd : null,
+          label: 'Members Under Your Household',
+          actionLabel: canManageHousehold ? 'Add Member' : null,
+          onAction: canManageHousehold ? onAdd : null,
         ),
         const SizedBox(height: 10),
         StreamBuilder<List<UserModel>>(
@@ -495,7 +493,12 @@ class _HouseholdPanel extends StatelessWidget {
                         style: AppTextStyles.bodySemiBold,
                       ),
                     ),
-                    TextButton(onPressed: onAdd, child: const Text('Add')),
+                    if (canManageHousehold)
+                      TextButton.icon(
+                        onPressed: onAdd,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Add Member'),
+                      ),
                   ],
                 ),
               );
@@ -752,7 +755,9 @@ class _SectionHeader extends StatelessWidget {
           TextButton.icon(
             onPressed: onAction,
             icon: Icon(
-              actionLabel == 'Add' ? Icons.add_rounded : Icons.edit_outlined,
+              actionLabel!.startsWith('Add')
+                  ? Icons.add_rounded
+                  : Icons.edit_outlined,
             ),
             label: Text(actionLabel!),
           ),

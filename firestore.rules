@@ -230,6 +230,31 @@ service cloud.firestore {
 
       // Household owner can remove member profiles they created.
       allow delete: if canManageHouseholdMembers() && isCreatorOfHouseholdMember();
+
+      match /householdMembers/{memberId} {
+        // Household owner, and signed-in members of that household, can view
+        // the saved member list under users/{ownerUid}.
+        allow read: if isAuthenticated() &&
+          (
+            request.auth.uid == userId ||
+            exists(/databases/$(database)/documents/users/$(userId)/householdMembers/$(request.auth.uid))
+          );
+
+        // Citizens/admin-residents save added family/rental members under their own UID.
+        allow create: if request.auth.uid == userId &&
+          canManageHouseholdMembers() &&
+          isValidHouseholdMemberCreate();
+
+        // Household owner can maintain the copy stored under their UID.
+        allow update: if request.auth.uid == userId &&
+          canManageHouseholdMembers() &&
+          resource.data.get('createdByUid', '') == userId &&
+          isSafeHouseholdMemberUpdate();
+
+        allow delete: if request.auth.uid == userId &&
+          canManageHouseholdMembers() &&
+          resource.data.get('createdByUid', '') == userId;
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

@@ -14,9 +14,63 @@ class UserService {
   CollectionReference<Map<String, dynamic>> get _usersCollection =>
       _firestore.collection('users');
 
+  CollectionReference<Map<String, dynamic>> _householdMembersCollection(
+    String ownerUid,
+  ) {
+    return _usersCollection.doc(ownerUid).collection('householdMembers');
+  }
+
   /// Create user profile document keyed by Firebase Auth UID.
   Future<void> createUserProfile(UserModel user) async {
     await _usersCollection.doc(user.uid).set(user.toMap());
+  }
+
+  /// Create a member profile and save it under the owner's household.
+  Future<void> createHouseholdMemberProfile({
+    required String ownerUid,
+    required UserModel member,
+  }) async {
+    final data = member.toMap();
+    final batch = _firestore.batch();
+
+    batch.set(_usersCollection.doc(member.uid), data);
+    batch.set(_householdMembersCollection(ownerUid).doc(member.uid), data);
+
+    await batch.commit();
+  }
+
+  /// Update a household member in both the user profile and household list.
+  Future<void> updateHouseholdMemberProfile({
+    required String ownerUid,
+    required String memberUid,
+    required Map<String, dynamic> data,
+  }) async {
+    final updateData = {
+      ...data,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    final batch = _firestore.batch();
+
+    batch.update(_usersCollection.doc(memberUid), updateData);
+    batch.update(
+      _householdMembersCollection(ownerUid).doc(memberUid),
+      updateData,
+    );
+
+    await batch.commit();
+  }
+
+  /// Remove a household member from both storage locations.
+  Future<void> deleteHouseholdMemberProfile({
+    required String ownerUid,
+    required String memberUid,
+  }) async {
+    final batch = _firestore.batch();
+
+    batch.delete(_usersCollection.doc(memberUid));
+    batch.delete(_householdMembersCollection(ownerUid).doc(memberUid));
+
+    await batch.commit();
   }
 
   /// Stream a single user profile.
@@ -85,8 +139,7 @@ class UserService {
 
   /// Stream all family members / rental users created by [creatorUid].
   Stream<List<UserModel>> streamHouseholdMembers(String creatorUid) {
-    return _usersCollection
-        .where('createdByUid', isEqualTo: creatorUid)
+    return _householdMembersCollection(creatorUid)
         .snapshots()
         .map(
           (snap) =>
