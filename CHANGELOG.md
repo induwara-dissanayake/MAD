@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/induwara-dissanayake/MAD/compare/v1.4.1...v1.5.0) (2026-04-28)
+
+
+### Features
+
+* add chat list screen and routing; ([cda113c](https://github.com/induwara-dissanayake/MAD/commit/cda113c04add8281aae29a0a862d7d8976986019))
+* add chat list screen and routing; ([f94e898](https://github.com/induwara-dissanayake/MAD/commit/f94e898eba278649126f3158dbfe9d31d58a06ce))
+
 ## [1.4.1](https://github.com/induwara-dissanayake/MAD/compare/v1.4.0...v1.4.1) (2026-04-28)
 
 
