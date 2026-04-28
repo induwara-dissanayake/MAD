@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/induwara-dissanayake/MAD/compare/v1.6.0...v1.7.0) (2026-04-28)
+
+
+### Features
+
+* add citizen records and announcements screens with search functionality ([3777245](https://github.com/induwara-dissanayake/MAD/commit/3777245fc5c81327310abfa5c5dcfa612eb54617))
+* enhance community features with new post types and improved notifications ([4bc339a](https://github.com/induwara-dissanayake/MAD/commit/4bc339a0cc851476492ef98d44409ad3cf2a660f))
+* update incident status from 'Acknowledged' to 'Reported' and add audit logging ([cbc0035](https://github.com/induwara-dissanayake/MAD/commit/cbc0035488714f921d290371b4b126f99d32f225))
+
 ## [1.6.0](https://github.com/induwara-dissanayake/MAD/compare/v1.5.0...v1.6.0) (2026-04-28)
 
 
