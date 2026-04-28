@@ -270,6 +270,8 @@ class _IncidentDashboardScreenState
         return AppColors.warning;
       case 'Acknowledged':
         return AppColors.info;
+      case 'Reported':
+        return AppColors.error;
       default:
         return AppColors.textSecondary;
     }
@@ -335,6 +337,10 @@ class _IncidentDashboardScreenState
                       DropdownButtonFormField<String>(
                         initialValue: selectedStatus,
                         items: const [
+                          DropdownMenuItem(
+                            value: 'Reported',
+                            child: Text('Reported'),
+                          ),
                           DropdownMenuItem(
                             value: 'Acknowledged',
                             child: Text('Acknowledged'),

@@ -37,7 +37,7 @@ class IncidentRepository {
       description: description,
       location: location,
       priority: _priorityFor(type),
-      status: 'Acknowledged',
+      status: 'Reported',
       createdAt: DateTime.now(),
     );
 
@@ -67,6 +67,14 @@ class IncidentRepository {
       'responseNotes': notes,
       'updatedAt': FieldValue.serverTimestamp(),
       'lastUpdatedBy': responderUid,
+    });
+    await _firestore.collection('audit_logs').add({
+      'action': 'update_incident_status',
+      'actorUid': responderUid,
+      'targetCollection': 'incidents',
+      'targetId': incidentId,
+      'details': {'status': status},
+      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
