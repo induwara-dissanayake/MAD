@@ -33,6 +33,8 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
   String _creatorRole = 'citizen';
   bool _isCommitteeMember = false;
   bool _canModerateCommunity = false;
+  bool _canManageIncidents = false;
+  bool _canPublishNotices = false;
   bool _canAccessAdminDashboard = false;
   String? _errorMessage;
   String? _generatedPassword;
@@ -123,6 +125,8 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
       final capabilities = {
         'isCommitteeMember': _isCommitteeMember,
         'canModerateCommunity': _canModerateCommunity || _isCommitteeMember,
+        'canManageIncidents': _canManageIncidents || _isCommitteeMember,
+        'canPublishNotices': creatorRole == 'gn_officer' && _canPublishNotices,
         'canAccessAdminDashboard':
             creatorRole == 'admin' && _canAccessAdminDashboard,
       };
@@ -290,6 +294,7 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
                     : (value) => setState(() {
                         _isCommitteeMember = value;
                         if (value) _canModerateCommunity = true;
+                        if (value) _canManageIncidents = true;
                       }),
               ),
               SwitchListTile(
@@ -307,6 +312,37 @@ class _CreateResidentScreenState extends ConsumerState<CreateResidentScreen> {
                     ? null
                     : (value) => setState(() => _canModerateCommunity = value),
               ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Can manage incidents',
+                  style: AppTextStyles.bodySemiBold,
+                ),
+                subtitle: Text(
+                  'Allows emergency incident support and task handling.',
+                  style: AppTextStyles.caption,
+                ),
+                value: _canManageIncidents || _isCommitteeMember,
+                onChanged: _isLoading || _isCommitteeMember
+                    ? null
+                    : (value) => setState(() => _canManageIncidents = value),
+              ),
+              if (_creatorRole == 'gn_officer')
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    'Can publish notices',
+                    style: AppTextStyles.bodySemiBold,
+                  ),
+                  subtitle: Text(
+                    'Allows this resident to publish official notices when promoted.',
+                    style: AppTextStyles.caption,
+                  ),
+                  value: _canPublishNotices,
+                  onChanged: _isLoading
+                      ? null
+                      : (value) => setState(() => _canPublishNotices = value),
+                ),
               if (isAdmin)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,

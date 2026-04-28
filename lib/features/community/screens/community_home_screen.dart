@@ -19,7 +19,7 @@ class CommunityHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _CommunityHomeScreenState extends ConsumerState<CommunityHomeScreen> {
-  String _tab = 'lost_found';
+  String _tab = 'general';
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +62,6 @@ class _CommunityHomeScreenState extends ConsumerState<CommunityHomeScreen> {
             const SizedBox(height: 18),
             _SegmentedTabs(
               selected: _tab,
-              lostLabel: copy.t('lostFound'),
-              jobsLabel: copy.t('jobs'),
               onChanged: (value) => setState(() => _tab = value),
             ),
             const SizedBox(height: 18),
@@ -75,7 +73,9 @@ class _CommunityHomeScreenState extends ConsumerState<CommunityHomeScreen> {
               error: (error, _) => _FeedError(message: '$error'),
               data: (posts) {
                 final filtered = posts.where((post) {
+                  if (_tab == 'general') return post.type == 'general';
                   if (_tab == 'jobs') return post.type == 'job_opportunity';
+                  if (_tab == 'issues') return post.type == 'community_issue';
                   return post.type == 'lost_item' || post.type == 'found_item';
                 }).toList();
 
@@ -171,16 +171,9 @@ class _ChatEntryCard extends StatelessWidget {
 }
 
 class _SegmentedTabs extends StatelessWidget {
-  const _SegmentedTabs({
-    required this.selected,
-    required this.lostLabel,
-    required this.jobsLabel,
-    required this.onChanged,
-  });
+  const _SegmentedTabs({required this.selected, required this.onChanged});
 
   final String selected;
-  final String lostLabel;
-  final String jobsLabel;
   final ValueChanged<String> onChanged;
 
   @override
@@ -195,14 +188,24 @@ class _SegmentedTabs extends StatelessWidget {
       child: Row(
         children: [
           _TabButton(
-            label: lostLabel,
+            label: 'General',
+            selected: selected == 'general',
+            onTap: () => onChanged('general'),
+          ),
+          _TabButton(
+            label: 'Lost & Found',
             selected: selected == 'lost_found',
             onTap: () => onChanged('lost_found'),
           ),
           _TabButton(
-            label: jobsLabel,
+            label: 'Jobs',
             selected: selected == 'jobs',
             onTap: () => onChanged('jobs'),
+          ),
+          _TabButton(
+            label: 'Issues',
+            selected: selected == 'issues',
+            onTap: () => onChanged('issues'),
           ),
         ],
       ),
@@ -331,6 +334,8 @@ class _CommunityPostCard extends StatelessWidget {
         return AppColors.statusApproved;
       case 'job_opportunity':
         return AppColors.statusReview;
+      case 'community_issue':
+        return AppColors.warning;
       default:
         return AppColors.brandGreen;
     }
@@ -344,6 +349,8 @@ class _CommunityPostCard extends StatelessWidget {
         return Icons.inventory_2_outlined;
       case 'job_opportunity':
         return Icons.work_outline;
+      case 'community_issue':
+        return Icons.report_problem_outlined;
       default:
         return Icons.forum_outlined;
     }
@@ -357,6 +364,8 @@ class _CommunityPostCard extends StatelessWidget {
         return 'Found';
       case 'job_opportunity':
         return 'Job';
+      case 'community_issue':
+        return 'Issue';
       default:
         return 'Post';
     }
