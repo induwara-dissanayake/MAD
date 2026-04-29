@@ -1,32 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../incidents/repositories/incident_repository.dart';
 
-class EmergencyAlertScreen extends StatefulWidget {
+class EmergencyAlertScreen extends ConsumerStatefulWidget {
   const EmergencyAlertScreen({super.key});
 
   @override
-  State<EmergencyAlertScreen> createState() => _EmergencyAlertScreenState();
+  ConsumerState<EmergencyAlertScreen> createState() =>
+      _EmergencyAlertScreenState();
 }
 
-class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
+class _EmergencyAlertScreenState extends ConsumerState<EmergencyAlertScreen>
     with TickerProviderStateMixin {
   String? _selectedType;
   final _descriptionController = TextEditingController();
+  final _locationController = TextEditingController();
   bool _useCurrentLocation = true;
   bool _isSending = false;
+  bool _isFetchingLocation = false;
+  String? _lastIncidentId;
+  Position? _currentPosition;
+  String? _locationError;
 
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
 
   final List<_EmergencyType> _emergencyTypes = [
-    _EmergencyType('Fire', Icons.local_fire_department_rounded, const Color(0xFFE53935)),
+    _EmergencyType(
+      'Fire',
+      Icons.local_fire_department_rounded,
+      const Color(0xFFE53935),
+    ),
     _EmergencyType('Flood', Icons.water_rounded, const Color(0xFF1E88E5)),
-    _EmergencyType('Medical', Icons.medical_services_rounded, const Color(0xFF43A047)),
+    _EmergencyType(
+      'Medical',
+      Icons.medical_services_rounded,
+      const Color(0xFF43A047),
+    ),
     _EmergencyType('Crime', Icons.gavel_rounded, const Color(0xFF6D4C41)),
-    _EmergencyType('Accident', Icons.car_crash_rounded, const Color(0xFFF57C00)),
-    _EmergencyType('Other', Icons.warning_amber_rounded, const Color(0xFF757575)),
+    _EmergencyType(
+      'Accident',
+      Icons.car_crash_rounded,
+      const Color(0xFFF57C00),
+    ),
+    _EmergencyType(
+      'Other',
+      Icons.warning_amber_rounded,
+      const Color(0xFF757575),
+    ),
   ];
 
   @override
@@ -45,23 +72,121 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
   void dispose() {
     _pulseController.dispose();
     _descriptionController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
-  void _sendAlert() {
+  Future<void> _sendAlert() async {
     if (_selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an emergency type')),
       );
       return;
     }
+    if (!_useCurrentLocation && _locationController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the incident location')),
+      );
+      return;
+    }
+    final user = ref.read(authServiceProvider).currentUser;
+    if (user == null) {
+      context.go('/auth/login');
+      return;
+    }
+
     setState(() => _isSending = true);
-    // Simulate sending
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      final profile = await ref
+          .read(userServiceProvider)
+          .getUserProfileOnce(user.uid);
+      if (profile == null) {
+        throw Exception('User profile not found.');
+      }
+      final location = await _resolveAlertLocation();
+      _lastIncidentId = await ref
+          .read(incidentRepositoryProvider)
+          .createIncident(
+            reporter: profile,
+            type: _selectedType!,
+            description: _descriptionController.text.trim().isEmpty
+                ? 'No additional description provided.'
+                : _descriptionController.text.trim(),
+            location: location,
+          );
       if (!mounted) return;
-      setState(() => _isSending = false);
       _showSuccessDialog();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send alert: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  Future<String> _resolveAlertLocation() async {
+    if (!_useCurrentLocation) return _locationController.text.trim();
+
+    setState(() {
+      _isFetchingLocation = true;
+      _locationError = null;
     });
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permission was denied.');
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception(
+          'Location permission is permanently denied. Enable it in settings or enter location manually.',
+        );
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+
+      if (mounted) {
+        setState(() => _currentPosition = position);
+      }
+
+      return 'Lat: ${position.latitude.toStringAsFixed(6)}, Lng: ${position.longitude.toStringAsFixed(6)}, Accuracy: ${position.accuracy.toStringAsFixed(0)}m';
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _locationError = error.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+      rethrow;
+    } finally {
+      if (mounted) setState(() => _isFetchingLocation = false);
+    }
+  }
+
+  String _currentLocationLabel() {
+    final position = _currentPosition;
+    if (position != null) {
+      return '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
+    }
+    if (_locationError != null) return _locationError!;
+    return 'Location will be requested securely when sending';
   }
 
   void _showSuccessDialog() {
@@ -80,7 +205,11 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
                 color: AppColors.successLight,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_rounded, color: AppColors.success, size: 40),
+              child: const Icon(
+                Icons.check_rounded,
+                color: AppColors.success,
+                size: 40,
+              ),
             ),
             const SizedBox(height: 20),
             Text('Alert Sent!', style: AppTextStyles.h2),
@@ -98,8 +227,10 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'Reference: EMR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-                style: AppTextStyles.small.copyWith(fontWeight: FontWeight.w600),
+                'Reference: ${_lastIncidentId ?? 'EMR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'}',
+                style: AppTextStyles.small.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -237,8 +368,9 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
                             color: isSelected
                                 ? type.color
                                 : AppColors.textSecondary,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                           ),
                         ),
                       ],
@@ -271,51 +403,65 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
                           color: AppColors.primaryLight,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.my_location_rounded,
-                            color: AppColors.primary, size: 22),
+                        child: const Icon(
+                          Icons.my_location_rounded,
+                          color: AppColors.primary,
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Use current location',
-                                style: AppTextStyles.bodyMedium),
+                            Text(
+                              'Use current location',
+                              style: AppTextStyles.bodyMedium,
+                            ),
                             Text(
                               _useCurrentLocation
-                                  ? '6.9271° N, 79.8612° E'
+                                  ? _currentLocationLabel()
                                   : 'Enter location manually',
                               style: AppTextStyles.small,
                             ),
                           ],
                         ),
                       ),
-                      Switch(
-                        value: _useCurrentLocation,
-                        onChanged: (v) =>
-                            setState(() => _useCurrentLocation = v),
-                        activeThumbColor: AppColors.primary,
-                      ),
+                      _isFetchingLocation
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Switch(
+                              value: _useCurrentLocation,
+                              onChanged: (v) => setState(() {
+                                _useCurrentLocation = v;
+                                _locationError = null;
+                              }),
+                              activeThumbColor: AppColors.primary,
+                            ),
                     ],
                   ),
                   if (!_useCurrentLocation) ...[
                     const SizedBox(height: 12),
                     TextFormField(
+                      controller: _locationController,
                       decoration: InputDecoration(
                         hintText: 'Enter address or landmark',
-                        prefixIcon: const Icon(Icons.location_on_outlined,
-                            size: 20),
+                        prefixIcon: const Icon(
+                          Icons.location_on_outlined,
+                          size: 20,
+                        ),
                         filled: true,
                         fillColor: AppColors.surfaceGrey,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                       ),
                     ),
@@ -327,52 +473,13 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
             const SizedBox(height: 28),
 
             // Description
-            Row(
-              children: [
-                Text('Description', style: AppTextStyles.label),
-                const Spacer(),
-                // Voice input button
-                Material(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Voice input coming soon')),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.mic_rounded,
-                              color: AppColors.primary, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Voice',
-                            style: AppTextStyles.small.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            Text('Description', style: AppTextStyles.label),
             const SizedBox(height: 12),
             TextFormField(
               controller: _descriptionController,
               maxLines: 4,
               decoration: InputDecoration(
-                hintText:
-                    'Describe the emergency situation...',
+                hintText: 'Describe the emergency situation...',
                 filled: true,
                 fillColor: AppColors.surfaceGrey,
                 border: OutlineInputBorder(
@@ -385,8 +492,10 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -402,8 +511,11 @@ class _EmergencyAlertScreenState extends State<EmergencyAlertScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline_rounded,
-                      color: AppColors.info, size: 20),
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.info,
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(

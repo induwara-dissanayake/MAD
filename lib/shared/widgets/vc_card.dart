@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
-/// Generic card widget for consistent styling across the app
 class VcCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets padding;
-  final EdgeInsets margin;
-  final Color? backgroundColor;
-  final VoidCallback? onTap;
-
   const VcCard({
     super.key,
     required this.child,
@@ -19,42 +13,53 @@ class VcCard extends StatelessWidget {
     this.onTap,
   });
 
+  final Widget child;
+  final EdgeInsets padding;
+  final EdgeInsets margin;
+  final Color? backgroundColor;
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    final card = Container(
+    final radius = BorderRadius.circular(8);
+    final content = Container(
       margin: margin,
       padding: padding,
       decoration: BoxDecoration(
         color: backgroundColor ?? AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+        borderRadius: radius,
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowLight.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppColors.shadowLight,
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: child,
     );
 
-    if (onTap != null) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: card,
-        ),
-      );
-    }
+    if (onTap == null) return content;
 
-    return card;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(onTap: onTap, borderRadius: radius, child: content),
+    );
   }
 }
 
 class VcDashboardCard extends StatelessWidget {
+  const VcDashboardCard({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.icon,
+    this.backgroundColor = AppColors.secondaryLight,
+    this.iconColor = AppColors.primary,
+    this.onTap,
+  });
+
   final String title;
   final String? subtitle;
   final IconData icon;
@@ -62,93 +67,49 @@ class VcDashboardCard extends StatelessWidget {
   final Color iconColor;
   final VoidCallback? onTap;
 
-  const VcDashboardCard({
-    super.key,
-    required this.title,
-    this.subtitle,
-    required this.icon,
-    this.backgroundColor = AppColors.accentBlue,
-    this.iconColor = AppColors.primary,
-    this.onTap,
-  });
-
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: iconColor.withOpacity(0.15),
-              width: 1,
+    return VcCard(
+      onTap: onTap,
+      backgroundColor: backgroundColor,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.bodySemiBold),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle!,
+                    style: AppTextStyles.caption,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
             ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: iconColor.withOpacity(0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(icon, color: iconColor, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.bodySemiBold),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle!,
-                        style: AppTextStyles.caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: iconColor.withOpacity(0.5),
-                size: 18,
-              ),
-            ],
-          ),
-        ),
+          Icon(Icons.chevron_right_rounded, color: iconColor, size: 22),
+        ],
       ),
     );
   }
 }
 
 class VcInfoCard extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final String? trailing;
-  final Widget? trailingWidget;
-  final IconData? leadingIcon;
-  final Color? leadingIconColor;
-  final Color? leadingIconBg;
-  final VoidCallback? onTap;
-  final EdgeInsets? padding;
-
   const VcInfoCard({
     super.key,
     required this.title,
@@ -162,71 +123,70 @@ class VcInfoCard extends StatelessWidget {
     this.padding,
   });
 
+  final String title;
+  final String? subtitle;
+  final String? trailing;
+  final Widget? trailingWidget;
+  final IconData? leadingIcon;
+  final Color? leadingIconColor;
+  final Color? leadingIconBg;
+  final VoidCallback? onTap;
+  final EdgeInsets? padding;
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: padding ?? const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              if (leadingIcon != null) ...[
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: leadingIconBg ?? AppColors.secondarySurface,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    leadingIcon,
-                    color: leadingIconColor ?? AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.bodyMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle!,
-                        style: AppTextStyles.caption,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
+    return VcCard(
+      onTap: onTap,
+      padding: padding ?? const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          if (leadingIcon != null) ...[
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: leadingIconBg ?? AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(8),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 8),
-                Text(trailing!, style: AppTextStyles.captionMedium),
+              child: Icon(
+                leadingIcon,
+                color: leadingIconColor ?? AppColors.primary,
+                size: 21,
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodySemiBold,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: AppTextStyles.caption,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
-              if (trailingWidget != null) ...[
-                const SizedBox(width: 8),
-                trailingWidget!,
-              ],
-            ],
+            ),
           ),
-        ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            Text(trailing!, style: AppTextStyles.captionMedium),
+          ],
+          if (trailingWidget != null) ...[
+            const SizedBox(width: 8),
+            trailingWidget!,
+          ],
+        ],
       ),
     );
   }

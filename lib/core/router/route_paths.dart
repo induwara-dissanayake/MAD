@@ -3,6 +3,7 @@ class RoutePaths {
   static const String splash = '/splash';
   static const String login = '/auth/login';
   static const String language = '/auth/language';
+  static const String firstLoginSetup = '/auth/first-login';
   static const String createResident = '/auth/create-resident';
   static const String addMember = '/auth/add-member';
 
@@ -29,8 +30,8 @@ class RoutePaths {
   // Profile
   static const String profile = '/profile';
   static const String changePassword = '/profile/change-password';
-  static const String editPersonalInformation = '/profile/edit-personal-information';
-
+  static const String editPersonalInformation =
+      '/profile/edit-personal-information';
 
   // Committee
   static const String committeeTasks = '/committee/tasks';
@@ -39,9 +40,14 @@ class RoutePaths {
 
   // Admin
   static const String adminDashboard = '/admin/dashboard';
+  static const String adminAuditLogs = '/admin/audit-logs';
+  static const String adminAnalytics = '/admin/analytics';
 
   // GN Officer
   static const String officialDashboard = '/official/dashboard';
+  static const String officialCitizens = '/official/citizens';
+  static const String officialAnnouncements = '/official/announcements';
   static const String officialPendingRequests = '/official/requests/pending';
-  static const String officialRequestReview = '/official/requests/:requestId/review';
+  static const String officialRequestReview =
+      '/official/requests/:requestId/review';
 }

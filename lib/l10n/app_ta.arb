@@ -89,5 +89,15 @@
   "reportIncidentDesc": "உங்கள் பகுதியில் உள்ள பிரச்சினைகளை கிராம நிர்வாக அலுவலகத்திற்கு தெரிவிக்கவும்",
   "inReview": "மதிப்பாய்வில்",
   "total": "மொத்தம்",
-  "citizen": "குடிமகன்"
+  "citizen": "குடிமகன்",
+
+  "homeAlertsAndUpdates": "Alerts & updates",
+  "homeNotificationsSubtitle": "Appointments, community, and more",
+  "homeNotificationsSubtitleUnread": "{count} unread",
+  "@homeNotificationsSubtitleUnread": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "notificationsEmptyBody": "Certificate updates, community messages, and complaint status changes will appear here."
 }

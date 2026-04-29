@@ -1,44 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/models/community_post_model.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../shared/widgets/vc_components.dart';
+import '../repositories/community_post_repository.dart';
 
-enum PostType { lostItem, foundItem, jobOpportunity }
+enum PostType { general, lostItem, foundItem, jobOpportunity, communityIssue }
 
-class AddCommunityPostScreen extends StatefulWidget {
+class AddCommunityPostScreen extends ConsumerStatefulWidget {
   const AddCommunityPostScreen({super.key});
 
   @override
-  State<AddCommunityPostScreen> createState() => _AddCommunityPostScreenState();
+  ConsumerState<AddCommunityPostScreen> createState() =>
+      _AddCommunityPostScreenState();
 }
 
-class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
+class _AddCommunityPostScreenState
+    extends ConsumerState<AddCommunityPostScreen> {
   PostType _selectedType = PostType.lostItem;
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   final _contactController = TextEditingController();
+  bool _isSubmitting = false;
 
   String _postTypeLabel(PostType type) {
     switch (type) {
+      case PostType.general:
+        return 'General';
       case PostType.lostItem:
         return 'Lost Item';
       case PostType.foundItem:
         return 'Found Item';
       case PostType.jobOpportunity:
         return 'Job Opportunity';
+      case PostType.communityIssue:
+        return 'Community Issue';
     }
   }
 
   IconData _postTypeIcon(PostType type) {
     switch (type) {
+      case PostType.general:
+        return Icons.forum_outlined;
       case PostType.lostItem:
         return Icons.search_rounded;
       case PostType.foundItem:
         return Icons.inventory_2_outlined;
       case PostType.jobOpportunity:
         return Icons.work_outline_rounded;
+      case PostType.communityIssue:
+        return Icons.report_problem_outlined;
     }
   }
 
@@ -51,16 +68,70 @@ class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
     super.dispose();
   }
 
-  void _submitPost() {
-    if (_formKey.currentState?.validate() ?? false) {
+  String _postTypeKey(PostType type) {
+    switch (type) {
+      case PostType.general:
+        return 'general';
+      case PostType.lostItem:
+        return 'lost_item';
+      case PostType.foundItem:
+        return 'found_item';
+      case PostType.jobOpportunity:
+        return 'job_opportunity';
+      case PostType.communityIssue:
+        return 'community_issue';
+    }
+  }
+
+  Future<void> _submitPost() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final authService = ref.read(authServiceProvider);
+    final user = authService.currentUser;
+    if (user == null) {
+      context.go('/auth/login');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final profile = await ref
+          .read(userServiceProvider)
+          .getUserProfileOnce(user.uid);
+      final post = CommunityPostModel(
+        id: '',
+        userId: user.uid,
+        authorName: profile?.fullName ?? user.displayName ?? 'Citizen',
+        type: _postTypeKey(_selectedType),
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        location: _locationController.text.trim(),
+        contact: _contactController.text.trim(),
+        status: 'pending_moderation',
+        createdAt: DateTime.now(),
+      );
+
+      await ref.read(communityPostRepositoryProvider).createPost(post);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Post created successfully!'),
+          content: Text('Post submitted for moderation.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.success,
         ),
       );
       context.pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit post: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -69,18 +140,12 @@ class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
-        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
           tooltip: 'Back',
         ),
-        title: const Text(
-          'Create Post',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
-        ),
+        title: const Text('Create Post'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -89,70 +154,72 @@ class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const VcPageHeader(
+                title: 'Submit for moderation',
+                subtitle:
+                    'General updates, lost items, jobs, and issues become public after GN or committee approval.',
+                leadingIcon: Icons.fact_check_outlined,
+              ),
+              const SizedBox(height: 20),
               // Post type selector
               Text('Post Type', style: AppTextStyles.label),
               const SizedBox(height: 10),
-              Row(
+              Wrap(
                 children: PostType.values.map((type) {
                   final isSelected = _selectedType == type;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        right: type != PostType.jobOpportunity ? 8 : 0,
-                      ),
-                      child: SizedBox(
-                        height: 48,
-                        child: Material(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.card,
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8, bottom: 8),
+                    child: SizedBox(
+                      width: 150,
+                      height: 46,
+                      child: Material(
+                        color: isSelected ? AppColors.primary : AppColors.card,
+                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedType = type;
+                            });
+                          },
                           borderRadius: BorderRadius.circular(10),
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                _selectedType = type;
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                                width: 1.5,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _postTypeIcon(type),
+                                  size: 16,
                                   color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.border,
-                                  width: 1.5,
+                                      ? AppColors.textOnPrimary
+                                      : AppColors.textSecondary,
                                 ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _postTypeIcon(type),
-                                    size: 16,
-                                    color: isSelected
-                                        ? AppColors.textOnPrimary
-                                        : AppColors.textSecondary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      _postTypeLabel(type),
-                                      style: AppTextStyles.small.copyWith(
-                                        color: isSelected
-                                            ? AppColors.textOnPrimary
-                                            : AppColors.textSecondary,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    _postTypeLabel(type),
+                                    style: AppTextStyles.small.copyWith(
+                                      color: isSelected
+                                          ? AppColors.textOnPrimary
+                                          : AppColors.textSecondary,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -206,63 +273,6 @@ class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
                   }
                   return null;
                 },
-              ),
-              const SizedBox(height: 20),
-
-              // Photo upload area
-              Text('Photo', style: AppTextStyles.label),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Photo picker would open here'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  height: 120,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.border,
-                      width: 1.5,
-                      strokeAlign: BorderSide.strokeAlignInside,
-                    ),
-                  ),
-                  child: CustomPaint(
-                    painter: _DashedBorderPainter(
-                      color: AppColors.textMuted.withOpacity(0.4),
-                      strokeWidth: 1.5,
-                      dashLength: 8,
-                      gapLength: 5,
-                      borderRadius: 12,
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.camera_alt_outlined,
-                            size: 36,
-                            color: AppColors.textMuted.withOpacity(0.6),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tap to add a photo',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ),
               const SizedBox(height: 20),
 
@@ -324,7 +334,7 @@ class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _submitPost,
+                  onPressed: _isSubmitting ? null : _submitPost,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.textOnPrimary,
@@ -333,7 +343,16 @@ class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text('Post', style: AppTextStyles.button),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text('Submit for Review', style: AppTextStyles.button),
                 ),
               ),
               const SizedBox(height: 24),
@@ -342,65 +361,5 @@ class _AddCommunityPostScreenState extends State<AddCommunityPostScreen> {
         ),
       ),
     );
-  }
-}
-
-class _DashedBorderPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double dashLength;
-  final double gapLength;
-  final double borderRadius;
-
-  _DashedBorderPainter({
-    required this.color,
-    required this.strokeWidth,
-    required this.dashLength,
-    required this.gapLength,
-    required this.borderRadius,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Radius.circular(borderRadius),
-        ),
-      );
-
-    final dashPath = Path();
-    for (final metric in path.computeMetrics()) {
-      double distance = 0;
-      bool draw = true;
-      while (distance < metric.length) {
-        final length = draw ? dashLength : gapLength;
-        if (draw) {
-          dashPath.addPath(
-            metric.extractPath(distance, distance + length),
-            Offset.zero,
-          );
-        }
-        distance += length;
-        draw = !draw;
-      }
-    }
-
-    canvas.drawPath(dashPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.strokeWidth != strokeWidth ||
-        oldDelegate.dashLength != dashLength ||
-        oldDelegate.gapLength != gapLength ||
-        oldDelegate.borderRadius != borderRadius;
   }
 }

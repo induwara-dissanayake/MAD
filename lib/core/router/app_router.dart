@@ -6,12 +6,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/language_selector_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/first_login_setup_screen.dart';
 import '../../features/auth/screens/create_resident_screen.dart';
 import '../../features/auth/screens/add_member_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chatbot/screens/chatbot_screen.dart';
 import '../../features/community/screens/add_community_post_screen.dart';
+import '../../features/community/screens/chat_list_screen.dart';
+import '../../features/community/screens/chat_screen.dart';
 import '../../features/community/screens/community_Home_screen.dart';
+import '../../features/community/screens/community_moderation_screen.dart';
 import '../../features/documents/screens/document_request_screen.dart';
 import '../../features/documents/screens/applications_hub_screen.dart';
 import '../../features/documents/screens/request_detail_screen.dart';
@@ -19,7 +23,9 @@ import '../../features/documents/screens/request_tracking_screen.dart';
 import '../../features/help/screens/help_screen.dart';
 import '../../features/home/screens/app_shell.dart';
 import '../../features/home/screens/citizen_home_screen.dart';
+import '../../features/emergency/screens/emergency_alert_screen.dart';
 import '../../features/notices/screens/notice_board_screen.dart';
+import '../../features/notices/screens/notice_detail_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/incidents/screens/incident_dashboard_screen.dart';
 import '../../features/incidents/screens/incident_detail_screen.dart';
@@ -31,18 +37,30 @@ import '../../features/committee/screens/committee_task_screen.dart';
 import '../../features/committee/screens/meeting_scheduler_screen.dart';
 import '../../features/committee/screens/polling_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/audit_logs_screen.dart';
 import '../../features/admin/screens/user_management_screen.dart';
 import '../../features/admin/screens/official_registration_screen.dart';
 import '../../features/admin/screens/certificate_management_screen.dart';
+import '../../features/admin/screens/system_analytics_screen.dart';
+import '../../features/official/screens/announcement_screen.dart';
+import '../../features/official/screens/citizen_records_screen.dart';
 import '../../features/official/screens/official_dashboard_screen.dart';
 import '../../features/official/screens/pending_requests_screen.dart';
 import '../../features/official/screens/request_review_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+String _normalizeRole(String? role) {
+  return role == 'super_admin' ? 'admin' : role ?? 'citizen';
+}
+
 /// Returns the correct dashboard path for a given Firestore role string.
-String _dashboardForRole(String role) {
-  switch (role) {
+String _dashboardForRole(
+  String role, {
+  Map<String, dynamic> capabilities = const {},
+}) {
+  final normalizedRole = _normalizeRole(role);
+  switch (normalizedRole) {
     case 'committee':
       return '/committee/tasks';
     case 'admin':
@@ -50,6 +68,9 @@ String _dashboardForRole(String role) {
     case 'gn_officer':
       return '/official/dashboard';
     default:
+      if (capabilities['canAccessAdminDashboard'] == true) {
+        return '/admin/dashboard';
+      }
       return '/home';
   }
 }
@@ -64,11 +85,52 @@ Future<String> _fetchCurrentUserRole() async {
         .collection('users')
         .doc(uid)
         .get();
-    final role = doc.data()?['role'] as String? ?? 'citizen';
-    return role == 'super_admin' ? 'admin' : role;
+    return _normalizeRole(doc.data()?['role'] as String?);
   } catch (_) {
     return 'citizen';
   }
+}
+
+Future<Map<String, dynamic>> _fetchCurrentUserData() async {
+  try {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return {};
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    return doc.data() ?? {};
+  } catch (_) {
+    return {};
+  }
+}
+
+Map<String, dynamic> _capabilitiesFrom(Map<String, dynamic> userData) {
+  final value = userData['capabilities'];
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) {
+    return value.map((key, value) => MapEntry(key.toString(), value));
+  }
+  return {};
+}
+
+bool _canModerateCommunity(Map<String, dynamic> userData) {
+  final role = _normalizeRole(userData['role'] as String?);
+  final capabilities = _capabilitiesFrom(userData);
+  return role == 'admin' ||
+      role == 'gn_officer' ||
+      role == 'committee' ||
+      capabilities['canModerateCommunity'] == true;
+}
+
+bool _canManageIncidents(Map<String, dynamic> userData) {
+  final role = _normalizeRole(userData['role'] as String?);
+  final capabilities = _capabilitiesFrom(userData);
+  return role == 'admin' ||
+      role == 'gn_officer' ||
+      role == 'committee' ||
+      capabilities['canManageIncidents'] == true ||
+      capabilities['isCommitteeMember'] == true;
 }
 
 final appRouter = GoRouter(
@@ -81,6 +143,28 @@ final appRouter = GoRouter(
     final isLoggedIn = FirebaseAuth.instance.currentUser != null;
     final path = state.uri.path;
 
+    if (isLoggedIn) {
+      final userData = await _fetchCurrentUserData();
+      final accountStatus = (userData['accountStatus'] as String? ?? 'active')
+          .toLowerCase();
+      final role = _normalizeRole(userData['role'] as String?);
+      final capabilities = _capabilitiesFrom(userData);
+
+      if (accountStatus == 'pending_first_login' &&
+          path != '/auth/first-login') {
+        return '/auth/first-login';
+      }
+      if ((accountStatus == 'inactive' || accountStatus == 'suspended') &&
+          path != '/auth/login') {
+        await FirebaseAuth.instance.signOut();
+        return '/auth/login';
+      }
+      if (path == '/auth/first-login' &&
+          accountStatus != 'pending_first_login') {
+        return _dashboardForRole(role, capabilities: capabilities);
+      }
+    }
+
     // ── Pre-login screens ────────────────────────────────────────────────
     // Always allow splash and auth screens through.
     // Exception: create-resident and add-member are role-gated actions
@@ -91,7 +175,9 @@ final appRouter = GoRouter(
 
         final role = await _fetchCurrentUserRole();
         if (path == '/auth/create-resident') {
-          if (role != 'admin_resident' && role != 'gn_officer') {
+          if (role != 'admin_resident' &&
+              role != 'gn_officer' &&
+              role != 'admin') {
             return _dashboardForRole(role);
           }
         } else {
@@ -103,10 +189,17 @@ final appRouter = GoRouter(
         }
         return null;
       }
+      if (path == '/auth/first-login') {
+        return isLoggedIn ? null : '/auth/login';
+      }
       if (isLoggedIn) {
         // User is already authenticated — send them to the right dashboard.
-        final role = await _fetchCurrentUserRole();
-        return _dashboardForRole(role);
+        final userData = await _fetchCurrentUserData();
+        final role = _normalizeRole(userData['role'] as String?);
+        return _dashboardForRole(
+          role,
+          capabilities: _capabilitiesFrom(userData),
+        );
       }
       return null;
     }
@@ -119,18 +212,26 @@ final appRouter = GoRouter(
     // ── Role-gate specific dashboards ─────────────────────────────────────
     // Prevent unauthorized users from accessing restricted routes.
     if (path == '/incidents') {
-      final role = await _fetchCurrentUserRole();
-      if (role != 'admin' && role != 'gn_officer') {
-        return _dashboardForRole(role);
+      final userData = await _fetchCurrentUserData();
+      if (!_canManageIncidents(userData)) {
+        final role = _normalizeRole(userData['role'] as String?);
+        return _dashboardForRole(
+          role,
+          capabilities: _capabilitiesFrom(userData),
+        );
       }
     }
 
     if (path == '/committee/tasks' ||
         path == '/committee/meetings' ||
         path == '/committee/polls') {
-      final role = await _fetchCurrentUserRole();
-      if (role != 'committee' && role != 'admin') {
-        return _dashboardForRole(role);
+      final userData = await _fetchCurrentUserData();
+      final role = _normalizeRole(userData['role'] as String?);
+      final capabilities = _capabilitiesFrom(userData);
+      if (role != 'committee' &&
+          role != 'admin' &&
+          capabilities['isCommitteeMember'] != true) {
+        return _dashboardForRole(role, capabilities: capabilities);
       }
     }
 
@@ -138,10 +239,25 @@ final appRouter = GoRouter(
         path == '/admin/users' ||
         path == '/admin/create-user' ||
         path == '/admin/certificates' ||
-        path == '/admin/register-official') {
-      final role = await _fetchCurrentUserRole();
-      if (role != 'admin') {
-        return _dashboardForRole(role);
+        path == '/admin/register-official' ||
+        path == '/admin/audit-logs' ||
+        path == '/admin/analytics') {
+      final userData = await _fetchCurrentUserData();
+      final role = _normalizeRole(userData['role'] as String?);
+      final capabilities = _capabilitiesFrom(userData);
+      if (role != 'admin' && capabilities['canAccessAdminDashboard'] != true) {
+        return _dashboardForRole(role, capabilities: capabilities);
+      }
+    }
+
+    if (path == '/community/moderation') {
+      final userData = await _fetchCurrentUserData();
+      if (!_canModerateCommunity(userData)) {
+        final role = _normalizeRole(userData['role'] as String?);
+        return _dashboardForRole(
+          role,
+          capabilities: _capabilitiesFrom(userData),
+        );
       }
     }
 
@@ -176,6 +292,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/auth/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/auth/first-login',
+      builder: (context, state) => const FirstLoginSetupScreen(),
     ),
     GoRoute(
       path: '/auth/create-resident',
@@ -263,9 +383,28 @@ final appRouter = GoRouter(
       builder: (context, state) => const NotificationsScreen(),
     ),
     GoRoute(
+      path: '/notice-detail',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extras = state.extra as Map?;
+        final notice = <String, String>{};
+        if (extras != null) {
+          for (final entry in extras.entries) {
+            notice[entry.key.toString()] = entry.value?.toString() ?? '';
+          }
+        }
+        return NoticeDetailScreen(notice: notice);
+      },
+    ),
+    GoRoute(
       path: '/help',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const HelpScreen(),
+    ),
+    GoRoute(
+      path: '/emergency/alert',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const EmergencyAlertScreen(),
     ),
     GoRoute(
       path: '/documents/detail',
@@ -283,6 +422,25 @@ final appRouter = GoRouter(
       path: '/community/add',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddCommunityPostScreen(),
+    ),
+    GoRoute(
+      path: '/community/moderation',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CommunityModerationScreen(),
+    ),
+    GoRoute(
+      path: '/community/chats',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ChatListScreen(),
+    ),
+    GoRoute(
+      path: '/community/chat',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>? ?? {};
+        final name = extras['name'] as String? ?? 'Community Chat';
+        return ChatScreen(name: name);
+      },
     ),
 
     // ── Profile ──────────────────────────────────────────────────────────
@@ -360,6 +518,16 @@ final appRouter = GoRouter(
       builder: (context, state) => const CertificateManagementScreen(),
     ),
     GoRoute(
+      path: '/admin/audit-logs',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AuditLogsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/analytics',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const SystemAnalyticsScreen(),
+    ),
+    GoRoute(
       path: '/admin/register-official',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const OfficialRegistrationScreen(),
@@ -375,6 +543,16 @@ final appRouter = GoRouter(
       path: '/official/requests/pending',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const PendingRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/official/citizens',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CitizenRecordsScreen(),
+    ),
+    GoRoute(
+      path: '/official/announcements',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AnnouncementScreen(),
     ),
     GoRoute(
       path: '/official/requests/:requestId/review',

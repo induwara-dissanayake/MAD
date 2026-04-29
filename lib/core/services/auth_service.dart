@@ -119,6 +119,21 @@ class AuthService {
     await user.updatePassword(newPassword);
   }
 
+  /// Update the password for the currently signed-in user after a recent login.
+  ///
+  /// Used by first-login activation, where Firebase has already authenticated
+  /// the temporary password immediately before the setup screen is shown.
+  Future<void> updateCurrentUserPassword(String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No authenticated user found.',
+      );
+    }
+    await user.updatePassword(newPassword);
+  }
+
   Future<void> signOut() async {
     await _auth.signOut();
   }

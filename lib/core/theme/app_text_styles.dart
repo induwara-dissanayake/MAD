@@ -1,205 +1,158 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'app_colors.dart';
 
-/// Village Connect — "Editorial Ruralism" Typography System.
-///
-/// Dual-font system:
-/// 1. **Public Sans** (Headlines/Display): Authoritative, geometric, and trustworthy.
-/// 2. **Inter** (Body/Labels): High legibility and modern clarity.
-///
-/// Features intentional letter-spacing for headlines and high line-height for body.
 class AppTextStyles {
   AppTextStyles._();
 
-  static String? get _displayFont => GoogleFonts.publicSans().fontFamily;
-  static String? get _bodyFont => GoogleFonts.inter().fontFamily;
+  static const String? appFontFamily = null;
+  static const List<String>? fontFallback = null;
 
-  static const List<String> _fontFallback = [
-    'NotoSansSinhala',
-    'NotoSansTamil',
-  ];
-
-  // ── Display ─────────────────────────────────────────────────────────────
-  static TextStyle displayLarge = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 32,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
-    height: 2.2, // Aggressive increase to fix overlapping
-    leadingDistribution: TextLeadingDistribution.even,
-    letterSpacing: 0,
+  static const TextHeightBehavior textHeightBehavior = TextHeightBehavior(
+    applyHeightToFirstAscent: true,
+    applyHeightToLastDescent: true,
+    leadingDistribution: TextLeadingDistribution.proportional,
   );
 
-  static TextStyle displaySmall = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
-    height: 2.1,
-    leadingDistribution: TextLeadingDistribution.even,
-    letterSpacing: 0,
+  static StrutStyle strutStyle(double fontSize, {double height = 1.45}) {
+    return StrutStyle(
+      fontFamily: appFontFamily,
+      fontFamilyFallback: fontFallback,
+      fontSize: fontSize,
+      height: height,
+      leading: 0.25,
+      forceStrutHeight: true,
+    );
+  }
+
+  static TextStyle _style({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required Color color,
+    required double height,
+  }) {
+    return TextStyle(
+      fontFamily: appFontFamily,
+      fontFamilyFallback: fontFallback,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      leadingDistribution: TextLeadingDistribution.proportional,
+    );
+  }
+
+  static TextStyle displayLarge = _style(
+    fontSize: 28,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkBlack,
+    height: 1.55,
   );
 
-  // ── Headings ────────────────────────────────────────────────────────────
-  static TextStyle h1 = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 26,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
-    height: 2.0,
-    leadingDistribution: TextLeadingDistribution.even,
-    letterSpacing: 0,
-  );
-
-  static TextStyle h2 = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fontFallback,
+  static TextStyle displaySmall = _style(
     fontSize: 22,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textPrimary,
-    height: 1.9,
-    leadingDistribution: TextLeadingDistribution.even,
-    letterSpacing: 0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkBlack,
+    height: 1.55,
   );
 
-  static TextStyle h3 = TextStyle(
-    fontFamily: _displayFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 18,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
-    height: 1.8,
-    leadingDistribution: TextLeadingDistribution.even,
-    letterSpacing: 0,
+  static TextStyle h1 = displayLarge;
+
+  static TextStyle h2 = _style(
+    fontSize: 22,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkBlack,
+    height: 1.55,
   );
 
-  // ── Body ────────────────────────────────────────────────────────────────
-  static TextStyle bodyLarge = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
+  static TextStyle h3 = _style(
     fontSize: 18,
     fontWeight: FontWeight.w400,
-    color: AppColors.textPrimary,
-    height: 1.8,
-    leadingDistribution: TextLeadingDistribution.even,
+    color: AppColors.inkBlack,
+    height: 1.55,
   );
 
-  static TextStyle body = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
+  static TextStyle bodyLarge = _style(
     fontSize: 16,
     fontWeight: FontWeight.w400,
-    color: AppColors.textPrimary,
-    height: 1.7, // Increased from 1.6
-  );
-
-  static TextStyle bodyMedium = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textPrimary,
+    color: AppColors.inkBlack,
     height: 1.6,
   );
 
-  static TextStyle bodySemiBold = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
-    height: 1.6,
-  );
-
-  // ── Caption / Label ─────────────────────────────────────────────────────
-  static TextStyle caption = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
+  static TextStyle body = _style(
     fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: AppColors.textSecondary,
+    color: AppColors.inkBlack,
+    height: 1.58,
+  );
+
+  static TextStyle bodyMedium = _style(
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkBlack,
+    height: 1.58,
+  );
+
+  static TextStyle bodySemiBold = bodyMedium;
+
+  static TextStyle caption = _style(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkMid,
     height: 1.5,
   );
 
-  static TextStyle captionMedium = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textSecondary,
-    height: 1.5,
-  );
-
-  static TextStyle label = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
-    height: 1.5,
-  );
-
-  // ── Small / Overline ────────────────────────────────────────────────────
-  static TextStyle small = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
+  static TextStyle captionMedium = caption.copyWith(
     fontSize: 12,
     fontWeight: FontWeight.w400,
-    color: AppColors.textMuted,
-    height: 1.4,
   );
 
-  static TextStyle overline = TextStyle(
-    fontFamily: _displayFont, // Using Display font for authority
-    fontFamilyFallback: _fontFallback,
+  static TextStyle label = _style(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkBlack,
+    height: 1.55,
+  );
+
+  static TextStyle small = _style(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkLight,
+    height: 1.55,
+  );
+
+  static TextStyle overline = _style(
     fontSize: 11,
-    fontWeight: FontWeight.w700,
-    color: AppColors.textMuted,
-    height: 1.4,
-    letterSpacing: 1.2,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkLight,
+    height: 1.55,
   );
 
-  // ── Buttons ─────────────────────────────────────────────────────────────
-  static TextStyle button = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
+  static TextStyle button = _style(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
     color: AppColors.textOnPrimary,
-    height: 1.2,
-    letterSpacing: 0.2,
+    height: 1.55,
   );
 
-  static TextStyle buttonSmall = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textOnPrimary,
-    height: 1.2,
-    letterSpacing: 0.2,
+  static TextStyle buttonSmall = button.copyWith(fontSize: 13);
+
+  static TextStyle tab = _style(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    color: AppColors.brandGreen,
+    height: 1.55,
   );
 
-  // ── Tab ─────────────────────────────────────────────────────────────────
-  static TextStyle tab = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: AppColors.textPrimary,
-    height: 1.4,
+  static TextStyle tabInactive = tab.copyWith(
+    color: AppColors.inkLight,
+    fontWeight: FontWeight.w400,
   );
 
-  static TextStyle tabInactive = TextStyle(
-    fontFamily: _bodyFont,
-    fontFamilyFallback: _fontFallback,
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textMuted,
-    height: 1.4,
+  static TextStyle monoMedium = _style(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.inkMid,
+    height: 1.5,
   );
 }

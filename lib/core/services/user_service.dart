@@ -14,9 +14,63 @@ class UserService {
   CollectionReference<Map<String, dynamic>> get _usersCollection =>
       _firestore.collection('users');
 
+  CollectionReference<Map<String, dynamic>> _householdMembersCollection(
+    String ownerUid,
+  ) {
+    return _usersCollection.doc(ownerUid).collection('householdMembers');
+  }
+
   /// Create user profile document keyed by Firebase Auth UID.
   Future<void> createUserProfile(UserModel user) async {
     await _usersCollection.doc(user.uid).set(user.toMap());
+  }
+
+  /// Create a member profile and save it under the owner's household.
+  Future<void> createHouseholdMemberProfile({
+    required String ownerUid,
+    required UserModel member,
+  }) async {
+    final data = member.toMap();
+    final batch = _firestore.batch();
+
+    batch.set(_usersCollection.doc(member.uid), data);
+    batch.set(_householdMembersCollection(ownerUid).doc(member.uid), data);
+
+    await batch.commit();
+  }
+
+  /// Update a household member in both the user profile and household list.
+  Future<void> updateHouseholdMemberProfile({
+    required String ownerUid,
+    required String memberUid,
+    required Map<String, dynamic> data,
+  }) async {
+    final updateData = {
+      ...data,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    final batch = _firestore.batch();
+
+    batch.update(_usersCollection.doc(memberUid), updateData);
+    batch.update(
+      _householdMembersCollection(ownerUid).doc(memberUid),
+      updateData,
+    );
+
+    await batch.commit();
+  }
+
+  /// Remove a household member from both storage locations.
+  Future<void> deleteHouseholdMemberProfile({
+    required String ownerUid,
+    required String memberUid,
+  }) async {
+    final batch = _firestore.batch();
+
+    batch.delete(_usersCollection.doc(memberUid));
+    batch.delete(_householdMembersCollection(ownerUid).doc(memberUid));
+
+    await batch.commit();
   }
 
   /// Stream a single user profile.
@@ -35,8 +89,27 @@ class UserService {
   }) async {
     await _firestore.collection('users').doc(uid).update({
       'fullName': fullName,
+      'fullNameLower': fullName.toLowerCase(),
       'email': email,
       'phone': phone,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> completeFirstLoginProfile({
+    required String uid,
+    required String fullName,
+    required String phone,
+    required String address,
+  }) async {
+    await _usersCollection.doc(uid).update({
+      'fullName': fullName.trim(),
+      'fullNameLower': fullName.trim().toLowerCase(),
+      'phone': phone.trim(),
+      'address': address.trim(),
+      'accountStatus': 'active',
+      'updatedAt': FieldValue.serverTimestamp(),
+      'activatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -52,8 +125,13 @@ class UserService {
     try {
       final doc = await _usersCollection.doc(uid).get();
       if (!doc.exists) return false;
-      final role = doc.data()?['role'] as String? ?? 'citizen';
-      return role == 'admin_resident' || role == 'gn_officer';
+      final data = doc.data()!;
+      final role = data['role'] as String? ?? 'citizen';
+      final caps = data['capabilities'] as Map?;
+      return role == 'admin_resident' ||
+          role == 'gn_officer' ||
+          role == 'admin' ||
+          caps?['canAccessAdminDashboard'] == true;
     } catch (_) {
       return false;
     }
@@ -61,13 +139,28 @@ class UserService {
 
   /// Stream all family members / rental users created by [creatorUid].
   Stream<List<UserModel>> streamHouseholdMembers(String creatorUid) {
-    return _usersCollection
-        .where('createdByUid', isEqualTo: creatorUid)
+    return _householdMembersCollection(creatorUid)
         .snapshots()
         .map(
           (snap) =>
               snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList(),
         );
+  }
+
+  /// Stream household members visible from a profile.
+  ///
+  /// Household owners see members they created. A family/rental member sees
+  /// other member profiles that share the same household owner.
+  Stream<List<UserModel>> streamVisibleHouseholdMembers(UserModel profile) {
+    final ownerUid = (profile.createdByUid != null &&
+            profile.createdByUid!.trim().isNotEmpty &&
+            profile.memberType != MemberType.newResident)
+        ? profile.createdByUid!.trim()
+        : profile.uid;
+
+    return streamHouseholdMembers(ownerUid).map(
+      (members) => members.where((member) => member.uid != profile.uid).toList(),
+    );
   }
 
   /// Check if a NIC is already registered.
@@ -97,5 +190,32 @@ class UserService {
           (snap) =>
               snap.docs.map((d) => UserModel.fromMap(d.data(), d.id)).toList(),
         );
+  }
+
+  /// All user document IDs in a village (for notification fan-out).
+  Future<List<String>> getUserUidsInVillage(String village) async {
+    if (village.isEmpty) return [];
+    final q = await _usersCollection.where('village', isEqualTo: village).get();
+    return q.docs.map((d) => d.id).toList();
+  }
+
+  /// GN officer, app admin, or super_admin — matches [firestore.rules] `isOfficialOrAdmin` intent.
+  Future<bool> isOfficialOrAdminUser(String uid) async {
+    final m = await getUserProfileOnce(uid);
+    if (m == null) return false;
+    final r = m.role;
+    if (r == 'super_admin') return true;
+    return r == 'gn_officer' ||
+        r == 'admin' ||
+        m.capabilities['canAccessAdminDashboard'] == true;
+  }
+
+  Future<bool> canModerateCommunity(String uid) async {
+    final m = await getUserProfileOnce(uid);
+    if (m == null) return false;
+    return m.role == 'gn_officer' ||
+        m.role == 'admin' ||
+        m.role == 'committee' ||
+        m.capabilities['canModerateCommunity'] == true;
   }
 }

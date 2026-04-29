@@ -31,7 +31,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   MemberType _selectedType = MemberType.familyMember;
   String? _relationship;
 
-  bool _createSystemAccess = true;
+  bool _createSystemAccess = false;
   bool _useSameAddress = true;
 
   bool _isLoading = false;
@@ -243,7 +243,23 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
         createdAt: DateTime.now(),
       );
 
-      await userService.createUserProfile(userModel);
+      await userService.createHouseholdMemberProfile(
+        ownerUid: currentUserUid,
+        member: userModel,
+      );
+
+      if (!_createSystemAccess) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Member saved to your household.')),
+        );
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/profile');
+        }
+        return;
+      }
 
       _safeSetState(() {
         _isLoading = false;
@@ -909,7 +925,13 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: () => context.go('/home'),
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/profile');
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.textOnPrimary,
@@ -917,7 +939,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: Text('Back to Home', style: AppTextStyles.button),
+              child: Text('Back to Profile', style: AppTextStyles.button),
             ),
           ),
           const SizedBox(height: 32),

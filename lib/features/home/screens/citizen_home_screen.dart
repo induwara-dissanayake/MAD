@@ -1,99 +1,94 @@
-import 'dart:ui';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../core/localization/localization_extensions.dart';
+
+import '../../../core/localization/vc_copy.dart';
 import '../../../core/models/request_model.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../documents/repositories/document_repository.dart';
 
-class CitizenHomeScreen extends ConsumerStatefulWidget {
+class CitizenHomeScreen extends ConsumerWidget {
   const CitizenHomeScreen({super.key});
 
-  @override
-  ConsumerState<CitizenHomeScreen> createState() => _CitizenHomeScreenState();
-}
-
-class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
   bool _isOffline(List<ConnectivityResult>? results) {
     if (results == null || results.isEmpty) return false;
-    return results.every((r) => r == ConnectivityResult.none);
+    return results.every((result) => result == ConnectivityResult.none);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = FirebaseAuth.instance.currentUser;
     final userService = ref.read(userServiceProvider);
+    final copy = VcCopy.of(context);
 
     return FutureBuilder<UserModel?>(
-      future: user == null
+      future: authUser == null
           ? Future.value(null)
-          : userService.getUserProfileOnce(user.uid),
+          : userService.getUserProfileOnce(authUser.uid),
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         return StreamBuilder<List<ConnectivityResult>>(
           stream: Connectivity().onConnectivityChanged,
           builder: (context, connectivitySnap) {
             final isOffline = _isOffline(connectivitySnap.data);
-            final l = context.l10n;
+            final requests = ref.watch(userRequestsProvider);
+            final unreadCount = ref.watch(unreadNotificationCountProvider);
+
             return Scaffold(
-              backgroundColor: AppColors.background,
+              backgroundColor: AppColors.surfaceParchment,
+              appBar: AppBar(
+                title: Text(_greeting(copy)),
+                actions: [
+                  IconButton(
+                    onPressed: () => context.push('/notifications'),
+                    tooltip: copy.t('notices'),
+                    icon: Badge.count(
+                      count: unreadCount,
+                      isLabelVisible: unreadCount > 0,
+                      child: const Icon(Icons.notifications_outlined),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => context.push('/profile'),
+                    tooltip: copy.t('profile'),
+                    icon: const Icon(Icons.person_outline),
+                  ),
+                ],
+              ),
               body: Column(
                 children: [
-                  if (isOffline)
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).padding.top + 4,
-                        bottom: 8,
-                        left: 16,
-                        right: 16,
-                      ),
-                      color: AppColors.warning,
-                      child: SafeArea(
-                        bottom: false,
-                        top: false,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.wifi_off_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l.offlineBanner,
-                              style: AppTextStyles.small.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  if (isOffline) const _OfflineBanner(),
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    child: RefreshIndicator(
+                      onRefresh: () async =>
+                          ref.invalidate(userRequestsProvider),
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                         children: [
-                          _buildHeroGreeting(context, user, profile, isOffline),
+                          _HeroCard(
+                            name:
+                                profile?.fullName ??
+                                authUser?.displayName ??
+                                copy.t('home'),
+                            village: profile?.village ?? 'Welivita South',
+                            requests: requests,
+                            copy: copy,
+                          ),
                           const SizedBox(height: 24),
-                          _buildEmergencyButton(context),
+                          _SectionTitle(title: copy.t('quickServices')),
+                          const SizedBox(height: 12),
+                          _QuickGrid(copy: copy),
                           const SizedBox(height: 24),
-                          _buildHouseholdSection(context, user, l),
-                          const SizedBox(height: 32),
-                          _buildSecondaryActions(context, l),
-                          const SizedBox(height: 32),
-                          _buildRecentActivity(context, const AsyncData([]), l),
-                          const SizedBox(height: 48),
+                          _EmergencyButton(copy: copy),
+                          const SizedBox(height: 24),
+                          _LatestRequestCard(requests: requests, copy: copy),
                         ],
                       ),
                     ),
@@ -107,243 +102,87 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
     );
   }
 
-  // ── Hero Greeting ─────────────────────────────────────────────────────
-  Widget _buildHeroGreeting(
-    BuildContext context,
-    User? user,
-    UserModel? profile,
-    bool isOffline,
-  ) {
-    final l = context.l10n;
-    final topPadding = isOffline ? 0.0 : MediaQuery.of(context).padding.top;
-    final displayName = profile?.fullName ?? user?.displayName ?? l.citizen;
-    final village = profile?.village ?? 'Welivita South';
+  String _greeting(VcCopy copy) {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return copy.t('goodMorning');
+    if (hour < 17) return copy.t('goodAfternoon');
+    return copy.t('goodEvening');
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.name,
+    required this.village,
+    required this.requests,
+    required this.copy,
+  });
+
+  final String name;
+  final String village;
+  final AsyncValue<List<RequestModel>> requests;
+  final VcCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeCount = requests.maybeWhen(
+      data: (items) => items
+          .where(
+            (request) =>
+                request.status != 'Approved' && request.status != 'Rejected',
+          )
+          .length,
+      orElse: () => 0,
+    );
 
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, topPadding + 20, 24, 32),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.primary,
-        image: const DecorationImage(
-          image: AssetImage('assets/images/hero_bg.jpg'),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black38, BlendMode.darken),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.4),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppColors.shadowMedium,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            name,
+            style: AppTextStyles.displayLarge.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Good Morning,',
-                      style: AppTextStyles.caption.copyWith(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 16,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      displayName,
-                      style: AppTextStyles.displayLarge.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
+              const Icon(
+                Icons.location_on_outlined,
+                color: Colors.white,
+                size: 18,
               ),
-              GestureDetector(
-                onTap: () => context.push('/profile'),
-                child: Hero(
-                  tag: 'profile_avatar',
-                  child: Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.8),
-                        width: 2,
-                      ),
-                      image: DecorationImage(
-                        image: user?.photoURL != null
-                            ? NetworkImage(user!.photoURL!) as ImageProvider
-                            : const AssetImage(
-                                'assets/images/default_avatar.jpg',
-                              ),
-                        fit: BoxFit.cover,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '$village · ${copy.t('gnDivision')}',
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.location_on_rounded,
-                      size: 16,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$village • GN 521',
-                      style: AppTextStyles.small.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Emergency Button ──────────────────────────────────────────────────
-  Widget _buildEmergencyButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton.icon(
-          onPressed: () => context.push('/emergency/alert'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.error,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            shadowColor: AppColors.error.withOpacity(0.4),
-          ),
-          icon: const Icon(Icons.sos_rounded, size: 28),
-          label: const Text(
-            'SOS / EMERGENCY REPORT',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              letterSpacing: 1,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Secondary Actions ─────────────────────────────────────────────────
-  Widget _buildSecondaryActions(BuildContext context, dynamic l) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.services,
-            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 22),
           Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border.withOpacity(0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowLight.withOpacity(0.04),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
-            child: Column(
+            child: Row(
               children: [
-                _buildSecondaryItem(
-                  icon: Icons.description_rounded,
-                  title: 'Request Certificate',
-                  subtitle: 'Fill and submit certificate forms',
-                  color: AppColors.success,
-                  onTap: () => context.push('/applications'),
-                  isFirst: true,
-                ),
-                const Divider(height: 1, indent: 72, color: AppColors.divider),
-                _buildSecondaryItem(
-                  icon: Icons.track_changes_rounded,
-                  title: l.trackApplication,
-                  subtitle: l.viewStatusOfRequests,
-                  color: AppColors.info,
-                  onTap: () => context.push('/documents/tracking'),
-                ),
-                const Divider(height: 1, indent: 72, color: AppColors.divider),
-                _buildSecondaryItem(
-                  icon: Icons.people_alt_rounded,
-                  title: l.communityFeed,
-                  subtitle: 'Lost & Found, Local Jobs',
-                  color: AppColors.accentPurple,
-                  onTap: () => context.push('/community'),
-                ),
-                const Divider(height: 1, indent: 72, color: AppColors.divider),
-                _buildSecondaryItem(
-                  icon: Icons.notifications_active_rounded,
-                  title: l.noticeBoard,
-                  subtitle: l.officialAnnouncements,
-                  color: AppColors.primary,
-                  onTap: () => context.push('/notices'),
-                ),
-                const Divider(height: 1, indent: 72, color: AppColors.divider),
-                _buildSecondaryItem(
-                  icon: Icons.support_agent_rounded,
-                  title: 'Help & Support',
-                  subtitle: 'FAQs and contact info',
-                  color: AppColors.success,
-                  onTap: () => context.push('/help'),
-                  isLast: true,
+                const Icon(Icons.description_outlined, color: Colors.white),
+                const SizedBox(width: 10),
+                Text(
+                  '$activeCount ${copy.t('activeRequests')}',
+                  style: AppTextStyles.label.copyWith(color: Colors.white),
                 ),
               ],
             ),
@@ -352,130 +191,88 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
       ),
     );
   }
+}
 
-  // ── Household / Member Management ─────────────────────────────────────
-  Widget _buildHouseholdSection(BuildContext context, User? user, dynamic l) {
-    if (user == null) return const SizedBox.shrink();
-    final userService = ref.read(userServiceProvider);
+class _QuickGrid extends StatelessWidget {
+  const _QuickGrid({required this.copy});
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.householdManagement,
-            style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border.withOpacity(0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowLight.withOpacity(0.04),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: FutureBuilder<bool>(
-              future: userService.isAdmin(user.uid),
-              builder: (ctx, snap) {
-                final isAdmin = snap.data == true;
-                return Column(
-                  children: [
-                    _buildSecondaryItem(
-                      icon: Icons.group_add_rounded,
-                      title: 'Add Family Member / Rental',
-                      subtitle: l.registerFamilyMember,
-                      color: AppColors.primary,
-                      onTap: () => context.push('/auth/add-member'),
-                      isFirst: true,
-                      isLast: !isAdmin,
-                    ),
-                    if (isAdmin) ...[
-                      const Divider(
-                        height: 1,
-                        indent: 72,
-                        color: AppColors.divider,
-                      ),
-                      _buildSecondaryItem(
-                        icon: Icons.person_add_alt_1_rounded,
-                        title: l.registerNewResident,
-                        subtitle: l.createAccountNewResident,
-                        color: AppColors.error,
-                        onTap: () => context.push('/auth/create-resident'),
-                        isLast: true,
-                      ),
-                    ],
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
+  final VcCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _QuickAction(copy.t('noticeBoard'), Icons.campaign_outlined, () {
+        context.push('/notices');
+      }),
+      _QuickAction(copy.t('lostFound'), Icons.search_outlined, () {
+        context.push('/community');
+      }),
+      _QuickAction(
+        copy.t('requestCertificate'),
+        Icons.description_outlined,
+        () {
+          context.push('/applications');
+        },
       ),
+      _QuickAction(copy.t('jobs'), Icons.work_outline, () {
+        context.push('/community');
+      }),
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.18,
+      ),
+      itemBuilder: (context, index) => _QuickTile(action: items[index]),
     );
   }
+}
 
-  Widget _buildSecondaryItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-    bool isFirst = false,
-    bool isLast = false,
-  }) {
+class _QuickTile extends StatelessWidget {
+  const _QuickTile({required this.action});
+
+  final _QuickAction action;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.vertical(
-          top: isFirst ? const Radius.circular(24) : Radius.zero,
-          bottom: isLast ? const Radius.circular(24) : Radius.zero,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
+        onTap: action.onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceIvory,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.surfaceWarmSand),
+            boxShadow: AppColors.shadowLow,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(14),
+                decoration: const BoxDecoration(
+                  color: AppColors.brandGreenSurface,
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 24),
+                child: Icon(action.icon, color: AppColors.brandGreen, size: 28),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.small.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textMuted,
-                size: 24,
+              const SizedBox(height: 12),
+              Text(
+                action.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.label.copyWith(height: 1.25),
               ),
             ],
           ),
@@ -483,218 +280,177 @@ class _CitizenHomeScreenState extends ConsumerState<CitizenHomeScreen> {
       ),
     );
   }
+}
 
-  // ── Recent Activity ───────────────────────────────────────────────────
-  Widget _buildRecentActivity(
-    BuildContext context,
-    AsyncValue<List<RequestModel>> requestsValue,
-    dynamic l,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l.recentActivity,
-                style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
-              ),
-              GestureDetector(
-                onTap: () => context.push('/documents/tracking'),
-                child: Text(
-                  l.viewAll,
-                  style: AppTextStyles.small.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+class _EmergencyButton extends StatelessWidget {
+  const _EmergencyButton({required this.copy});
+
+  final VcCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: () => context.push('/emergency/alert'),
+        style: FilledButton.styleFrom(backgroundColor: AppColors.errorRed),
+        icon: const Icon(Icons.warning_amber_outlined),
+        label: Text(copy.t('emergency')),
+      ),
+    );
+  }
+}
+
+class _LatestRequestCard extends StatelessWidget {
+  const _LatestRequestCard({required this.requests, required this.copy});
+
+  final AsyncValue<List<RequestModel>> requests;
+  final VcCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    return requests.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (items) {
+        final latest = items.isEmpty ? null : items.first;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionTitle(title: copy.t('latestRequest')),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceIvory,
+                border: Border.fromBorderSide(
+                  BorderSide(color: AppColors.surfaceWarmSand),
                 ),
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+                boxShadow: AppColors.shadowLow,
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border.withOpacity(0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowLight.withOpacity(0.04),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: requestsValue.when(
-              data: (requests) {
-                if (requests.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Center(
-                      child: Text(
-                        l.noRecentActivity,
-                        style: AppTextStyles.body.copyWith(
-                          color: AppColors.textSecondary,
+              child: latest == null
+                  ? Row(
+                      children: [
+                        const Icon(
+                          Icons.description_outlined,
+                          color: AppColors.brandGreen,
                         ),
-                      ),
-                    ),
-                  );
-                }
-                final recentRequests = requests.take(3).toList();
-                return Column(
-                  children: [
-                    for (int i = 0; i < recentRequests.length; i++)
-                      Column(
-                        children: [
-                          _buildActivityItem(
-                            title: recentRequests[i].documentType,
-                            status: _localizedStatus(
-                              recentRequests[i].status,
-                              l,
-                            ),
-                            statusColor: _getStatusColor(
-                              recentRequests[i].status,
-                            ),
-                            date: DateFormat.yMMMd().format(
-                              recentRequests[i].submittedAt,
-                            ),
-                            icon: _getStatusIcon(recentRequests[i].status),
-                            isFirst: i == 0,
-                            isLast: i == recentRequests.length - 1,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                copy.t('noRequests'),
+                                style: AppTextStyles.label,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                copy.t('submitFirst'),
+                                style: AppTextStyles.caption,
+                              ),
+                            ],
                           ),
-                          if (i < recentRequests.length - 1)
-                            const Divider(
-                              height: 1,
-                              indent: 64,
-                              color: AppColors.divider,
-                            ),
-                        ],
-                      ),
-                  ],
-                );
-              },
-              loading: () => const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (err, stack) => const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: Text('Error loading activity')),
-              ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                latest.documentType,
+                                style: AppTextStyles.label,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat.yMMMd().format(latest.submittedAt),
+                                style: AppTextStyles.caption,
+                              ),
+                            ],
+                          ),
+                        ),
+                        _StatusBadge(status: latest.status),
+                      ],
+                    ),
             ),
-          ),
-        ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = status.toLowerCase();
+    final color = normalized.contains('approved')
+        ? AppColors.statusApproved
+        : normalized.contains('reject')
+        ? AppColors.statusRejected
+        : normalized.contains('review')
+        ? AppColors.statusReview
+        : AppColors.statusPending;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        status,
+        style: AppTextStyles.captionMedium.copyWith(color: color),
       ),
     );
   }
+}
 
-  String _localizedStatus(String status, dynamic l) {
-    switch (status) {
-      case 'Approved':
-        return l.approved;
-      case 'Pending':
-        return l.pending;
-      case 'In Review':
-        return l.inReview;
-      case 'Rejected':
-        return l.rejected;
-      default:
-        return status;
-    }
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title.toUpperCase(),
+      style: AppTextStyles.overline.copyWith(color: AppColors.inkLight),
+    );
   }
+}
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Approved':
-        return AppColors.success;
-      case 'Pending':
-        return AppColors.warning;
-      case 'In Review':
-        return AppColors.info;
-      case 'Rejected':
-        return AppColors.error;
-      default:
-        return AppColors.textSecondary;
-    }
-  }
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
 
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'Approved':
-        return Icons.check_circle_rounded;
-      case 'Pending':
-        return Icons.access_time_filled_rounded;
-      case 'In Review':
-        return Icons.rate_review_rounded;
-      case 'Rejected':
-        return Icons.cancel_rounded;
-      default:
-        return Icons.help_rounded;
-    }
-  }
-
-  Widget _buildActivityItem({
-    required String title,
-    required String status,
-    required Color statusColor,
-    required String date,
-    required IconData icon,
-    bool isFirst = false,
-    bool isLast = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: statusColor, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  date,
-                  style: AppTextStyles.small.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              status,
-              style: AppTextStyles.small.copyWith(
-                color: statusColor,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.warningLight,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Text(
+        'Offline mode',
+        textAlign: TextAlign.center,
+        style: AppTextStyles.captionMedium.copyWith(color: AppColors.warning),
       ),
     );
   }
+}
+
+class _QuickAction {
+  const _QuickAction(this.label, this.icon, this.onTap);
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
@@ -166,14 +167,18 @@ class _PollingScreenState extends State<PollingScreen>
                               Expanded(
                                 child: TextFormField(
                                   controller: optionControllers[i],
-                                  decoration:
-                                      _inputDecoration('Option ${i + 1}'),
+                                  decoration: _inputDecoration(
+                                    'Option ${i + 1}',
+                                  ),
                                 ),
                               ),
                               if (optionControllers.length > 2)
                                 IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline,
-                                      color: AppColors.error, size: 22),
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline,
+                                    color: AppColors.error,
+                                    size: 22,
+                                  ),
                                   onPressed: () {
                                     setSheetState(() {
                                       optionControllers.removeAt(i);
@@ -208,8 +213,12 @@ class _PollingScreenState extends State<PollingScreen>
                             isExpanded: true,
                             value: '7 Days',
                             items: ['3 Days', '7 Days', '14 Days', '30 Days']
-                                .map((e) => DropdownMenuItem(
-                                    value: e, child: Text(e)))
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (_) {},
                           ),
@@ -224,8 +233,8 @@ class _PollingScreenState extends State<PollingScreen>
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content:
-                                      Text('Poll published successfully!')),
+                                content: Text('Poll published successfully!'),
+                              ),
                             );
                           },
                           icon: const Icon(Icons.poll_rounded),
@@ -283,6 +292,7 @@ class _PollingScreenState extends State<PollingScreen>
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
+      bottomNavigationBar: const _CommitteeBottomBar(activeIndex: 2),
       body: TabBarView(
         controller: _tabController,
         children: List.generate(3, (tabIndex) {
@@ -292,12 +302,18 @@ class _PollingScreenState extends State<PollingScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.poll_rounded,
-                      size: 64, color: AppColors.primary.withOpacity(0.3)),
+                  Icon(
+                    Icons.poll_rounded,
+                    size: 64,
+                    color: AppColors.primary.withOpacity(0.3),
+                  ),
                   const SizedBox(height: 16),
-                  Text('No polls found',
-                      style: AppTextStyles.body
-                          .copyWith(color: AppColors.textMuted)),
+                  Text(
+                    'No polls found',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -312,9 +328,7 @@ class _PollingScreenState extends State<PollingScreen>
                   duration: const Duration(milliseconds: 375),
                   child: SlideAnimation(
                     verticalOffset: 40,
-                    child: FadeInAnimation(
-                      child: _buildPollCard(items[index]),
-                    ),
+                    child: FadeInAnimation(child: _buildPollCard(items[index])),
                   ),
                 );
               },
@@ -349,8 +363,10 @@ class _PollingScreenState extends State<PollingScreen>
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: isActive
                       ? AppColors.successLight
@@ -367,23 +383,28 @@ class _PollingScreenState extends State<PollingScreen>
                 ),
               ),
               const Spacer(),
-              Icon(Icons.people_rounded,
-                  size: 14, color: AppColors.textMuted),
+              Icon(Icons.people_rounded, size: 14, color: AppColors.textMuted),
               const SizedBox(width: 4),
-              Text('${poll.totalVotes} votes',
-                  style: AppTextStyles.small.copyWith(fontSize: 11)),
+              Text(
+                '${poll.totalVotes} votes',
+                style: AppTextStyles.small.copyWith(fontSize: 11),
+              ),
             ],
           ),
           const SizedBox(height: 12),
 
           // Question
-          Text(poll.question,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontWeight: FontWeight.w600,
-              )),
+          Text(
+            poll.question,
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('by ${poll.createdBy}',
-              style: AppTextStyles.small.copyWith(fontSize: 11)),
+          Text(
+            'by ${poll.createdBy}',
+            style: AppTextStyles.small.copyWith(fontSize: 11),
+          ),
           const SizedBox(height: 16),
 
           // Options with bars
@@ -404,8 +425,8 @@ class _PollingScreenState extends State<PollingScreen>
                           onChanged: (_) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content: Text(
-                                      'Vote cast for "${option.text}"')),
+                                content: Text('Vote cast for "${option.text}"'),
+                              ),
                             );
                           },
                           materialTapTargetSize:
@@ -415,15 +436,19 @@ class _PollingScreenState extends State<PollingScreen>
                       if (isVoted)
                         const Padding(
                           padding: EdgeInsets.only(right: 8),
-                          child: Icon(Icons.check_circle_rounded,
-                              color: AppColors.primary, size: 18),
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
                         ),
                       Expanded(
                         child: Text(
                           option.text,
                           style: AppTextStyles.caption.copyWith(
-                            fontWeight:
-                                isVoted ? FontWeight.w600 : FontWeight.w400,
+                            fontWeight: isVoted
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                             color: isVoted
                                 ? AppColors.primary
                                 : AppColors.textPrimary,
@@ -465,8 +490,11 @@ class _PollingScreenState extends State<PollingScreen>
           // Footer
           Row(
             children: [
-              Icon(Icons.schedule_rounded,
-                  size: 14, color: AppColors.textMuted),
+              Icon(
+                Icons.schedule_rounded,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 4),
               Text(
                 isActive ? 'Ends ${poll.deadline}' : 'Ended ${poll.deadline}',
@@ -488,6 +516,102 @@ class _PollOption {
   final int votes;
   final double percentage;
   const _PollOption(this.text, this.votes, this.percentage);
+}
+
+class _CommitteeBottomBar extends StatelessWidget {
+  const _CommitteeBottomBar({required this.activeIndex});
+
+  final int activeIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.surfaceWarmSand)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 72,
+          child: Row(
+            children: [
+              _CommitteeNavItem(
+                icon: Icons.task_alt_outlined,
+                label: 'Tasks',
+                active: activeIndex == 0,
+                onTap: () => context.go('/committee/tasks'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.event_outlined,
+                label: 'Meetings',
+                active: activeIndex == 1,
+                onTap: () => context.go('/committee/meetings'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.how_to_vote_outlined,
+                label: 'Polls',
+                active: activeIndex == 2,
+                onTap: () => context.go('/committee/polls'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.verified_user_outlined,
+                label: 'Moderate',
+                active: activeIndex == 3,
+                onTap: () => context.go('/community/moderation'),
+              ),
+              _CommitteeNavItem(
+                icon: Icons.person_outline,
+                label: 'Profile',
+                active: activeIndex == 4,
+                onTap: () => context.push('/profile'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommitteeNavItem extends StatelessWidget {
+  const _CommitteeNavItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: active ? AppColors.brandGreen : AppColors.inkLight,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: (active ? AppTextStyles.tab : AppTextStyles.tabInactive)
+                  .copyWith(fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Poll {

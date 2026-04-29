@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.7.0](https://github.com/induwara-dissanayake/MAD/compare/v1.6.0...v1.7.0) (2026-04-28)
+
+
+### Features
+
+* add citizen records and announcements screens with search functionality ([3777245](https://github.com/induwara-dissanayake/MAD/commit/3777245fc5c81327310abfa5c5dcfa612eb54617))
+* enhance community features with new post types and improved notifications ([4bc339a](https://github.com/induwara-dissanayake/MAD/commit/4bc339a0cc851476492ef98d44409ad3cf2a660f))
+* update incident status from 'Acknowledged' to 'Reported' and add audit logging ([cbc0035](https://github.com/induwara-dissanayake/MAD/commit/cbc0035488714f921d290371b4b126f99d32f225))
+
+## [1.6.0](https://github.com/induwara-dissanayake/MAD/compare/v1.5.0...v1.6.0) (2026-04-28)
+
+
+### Features
+
+* add location permissions and enhance emergency alert functionality ([2845d5a](https://github.com/induwara-dissanayake/MAD/commit/2845d5a8fde52b4a7679ca85fab777bec0c3d8f1))
+* enhance admin functionalities with audit logs and analytics screens ([54f1b4d](https://github.com/induwara-dissanayake/MAD/commit/54f1b4d123f52bf7fc129acd4c6b6e24243c6e8c))
+* enhance admin functionalities with incident management and analytics features ([92a4333](https://github.com/induwara-dissanayake/MAD/commit/92a4333076b080b25125cd7f328265817b574c4c))
+* remove committee access card and admin dashboard access chip from screens ([44630aa](https://github.com/induwara-dissanayake/MAD/commit/44630aa88001963996a3ad3d24a8f14cbdc7944e))
+* update household member management and profile editing ([f6d558a](https://github.com/induwara-dissanayake/MAD/commit/f6d558a884c87cac741472b5fdcfa5d7ebf54367))
+
+## [1.5.0](https://github.com/induwara-dissanayake/MAD/compare/v1.4.1...v1.5.0) (2026-04-28)
+
+
+### Features
+
+* add chat list screen and routing; ([cda113c](https://github.com/induwara-dissanayake/MAD/commit/cda113c04add8281aae29a0a862d7d8976986019))
+* add chat list screen and routing; ([f94e898](https://github.com/induwara-dissanayake/MAD/commit/f94e898eba278649126f3158dbfe9d31d58a06ce))
+
+## [1.4.1](https://github.com/induwara-dissanayake/MAD/compare/v1.4.0...v1.4.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* card widgets for improved styling and consistency; add VcPageHeader and VcStatusPill components; update VcStepIndicator and VcSectionHeader; enhance VcEmptyState and VcMetricTile; ([665c10b](https://github.com/induwara-dissanayake/MAD/commit/665c10b944975011f66e9734320e90517e0a7bb2))
+
 ## [1.4.0](https://github.com/induwara-dissanayake/MAD/compare/v1.3.0...v1.4.0) (2026-04-14)
 
 

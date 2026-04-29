@@ -2,15 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 /// Account status for admin user management.
-enum AccountStatus {
-  active,
-  inactive,
-  suspended,
-}
+enum AccountStatus { pendingFirstLogin, active, inactive, suspended }
 
 extension AccountStatusX on AccountStatus {
   String get value {
     switch (this) {
+      case AccountStatus.pendingFirstLogin:
+        return 'Pending First Login';
       case AccountStatus.active:
         return 'Active';
       case AccountStatus.inactive:
@@ -22,6 +20,8 @@ extension AccountStatusX on AccountStatus {
 
   static AccountStatus fromString(String? value) {
     switch (value?.toLowerCase()) {
+      case 'pending_first_login':
+        return AccountStatus.pendingFirstLogin;
       case 'inactive':
         return AccountStatus.inactive;
       case 'suspended':
@@ -33,6 +33,8 @@ extension AccountStatusX on AccountStatus {
 
   Color get statusColor {
     switch (this) {
+      case AccountStatus.pendingFirstLogin:
+        return const Color(0xFF2196F3);
       case AccountStatus.active:
         return const Color(0xFF4CAF50);
       case AccountStatus.inactive:
@@ -55,6 +57,7 @@ class AdminUserModel {
   final String village;
   final String role; // citizen | gn_officer | committee | admin
   final AccountStatus accountStatus;
+  final Map<String, bool> capabilities;
   final DateTime createdAt;
   final DateTime? lastLogin;
 
@@ -68,16 +71,42 @@ class AdminUserModel {
     required this.village,
     this.role = 'citizen',
     this.accountStatus = AccountStatus.active,
+    Map<String, bool>? capabilities,
     required this.createdAt,
     this.lastLogin,
-  });
+  }) : capabilities =
+           capabilities ??
+           const {
+             'isCommitteeMember': false,
+             'canModerateCommunity': false,
+             'canManageIncidents': false,
+             'canPublishNotices': false,
+             'canAccessAdminDashboard': false,
+           };
 
   Map<String, dynamic> toMap() {
     return {
       'role': role,
       'accountStatus': accountStatus.value.toLowerCase(),
+      'capabilities': capabilities,
       'lastLogin': lastLogin != null ? Timestamp.fromDate(lastLogin!) : null,
     };
+  }
+
+  static Map<String, bool> _parseCapabilities(dynamic value, String role) {
+    final defaults = <String, bool>{
+      'isCommitteeMember': role == 'committee',
+      'canModerateCommunity': role == 'committee' || role == 'gn_officer',
+      'canManageIncidents': role == 'committee' || role == 'gn_officer',
+      'canPublishNotices': role == 'gn_officer',
+      'canAccessAdminDashboard': role == 'admin' || role == 'super_admin',
+    };
+    if (value is Map) {
+      for (final entry in value.entries) {
+        defaults[entry.key.toString()] = entry.value == true;
+      }
+    }
+    return defaults;
   }
 
   factory AdminUserModel.fromMap(Map<String, dynamic> map, String uid) {
@@ -97,8 +126,11 @@ class AdminUserModel {
       address: map['address'] as String? ?? '',
       village: map['village'] as String? ?? '',
       role: map['role'] as String? ?? 'citizen',
-      accountStatus:
-          AccountStatusX.fromString(map['accountStatus'] as String?),
+      accountStatus: AccountStatusX.fromString(map['accountStatus'] as String?),
+      capabilities: _parseCapabilities(
+        map['capabilities'],
+        map['role'] as String? ?? 'citizen',
+      ),
       createdAt: map['createdAt'] is Timestamp
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -116,6 +148,7 @@ class AdminUserModel {
     String? village,
     String? role,
     AccountStatus? accountStatus,
+    Map<String, bool>? capabilities,
     DateTime? createdAt,
     DateTime? lastLogin,
   }) {
@@ -129,6 +162,7 @@ class AdminUserModel {
       village: village ?? this.village,
       role: role ?? this.role,
       accountStatus: accountStatus ?? this.accountStatus,
+      capabilities: capabilities ?? this.capabilities,
       createdAt: createdAt ?? this.createdAt,
       lastLogin: lastLogin ?? this.lastLogin,
     );
