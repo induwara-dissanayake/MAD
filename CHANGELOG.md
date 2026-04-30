@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/induwara-dissanayake/MAD/compare/v1.7.0...v1.8.0) (2026-04-30)
+
+
+### Features
+
+* add NotoSansSinhalaUI and NotoSansTamilUI font assets to pubspec.yaml ([4773b84](https://github.com/induwara-dissanayake/MAD/commit/4773b84f94b71965e3ad017b77f2bd5701b0f093))
+* refactor text styles and integrate into theme and UI components ([6b07b38](https://github.com/induwara-dissanayake/MAD/commit/6b07b38f2958a8dcb6885fc5da70fab1704d1fde))
+
 ## [1.7.0](https://github.com/induwara-dissanayake/MAD/compare/v1.6.0...v1.7.0) (2026-04-28)
 
 
