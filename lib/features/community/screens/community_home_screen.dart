@@ -70,7 +70,25 @@ class _CommunityHomeScreenState extends ConsumerState<CommunityHomeScreen> {
                 padding: EdgeInsets.symmetric(vertical: 48),
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (error, _) => _FeedError(message: '$error'),
+              error: (error, _) {
+                final isPermissionDenied = '$error'.contains(
+                  'permission-denied',
+                );
+                if (isPermissionDenied) {
+                  return VcEmptyState(
+                    icon: Icons.forum_outlined,
+                    title: copy.t('noPosts'),
+                    subtitle: copy.t('noPostsBody'),
+                    action: FilledButton.icon(
+                      onPressed: () => context.push('/community/add'),
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(copy.t('addPost')),
+                    ),
+                  );
+                }
+
+                return const _FeedError();
+              },
               data: (posts) {
                 final filtered = posts.where((post) {
                   if (_tab == 'general') return post.type == 'general';
@@ -402,9 +420,7 @@ class _MetaChip extends StatelessWidget {
 }
 
 class _FeedError extends StatelessWidget {
-  const _FeedError({required this.message});
-
-  final String message;
+  const _FeedError();
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +431,7 @@ class _FeedError extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        'Unable to load community feed. $message',
+        'Unable to load community feed. Please try again.',
         style: AppTextStyles.caption.copyWith(color: AppColors.error),
       ),
     );
