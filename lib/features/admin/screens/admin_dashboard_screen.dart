@@ -13,7 +13,7 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(systemStatsProvider);
+    final statsAsync = ref.watch(adminDashboardStatsProvider);
     final today = DateFormat('EEE, MMM d').format(DateTime.now());
 
     Future<void> signOut() async {
@@ -45,7 +45,7 @@ class AdminDashboardScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(systemStatsProvider);
+          ref.invalidate(adminDashboardStatsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
@@ -95,8 +95,7 @@ class AdminDashboardScreen extends ConsumerWidget {
             _WorkflowTile(
               icon: Icons.analytics_outlined,
               title: 'Analytics Review',
-              subtitle:
-                  'View Spark-safe aggregate stats from system_stats/global.',
+              subtitle: 'View aggregate stats from system_stats/global.',
               onTap: () => context.go('/admin/analytics'),
             ),
             const SizedBox(height: 10),
@@ -197,26 +196,23 @@ class _MetricsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalUsers = statsAsync.maybeWhen(
-      data: (stats) => stats['totalUsers'] == 0
-          ? (stats['totalCitizens'] ?? 0) +
-                (stats['totalGnOfficers'] ?? 0) +
-                (stats['totalCommitteeMembers'] ?? 0)
-          : stats['totalUsers'] ?? 0,
-      orElse: () => 0,
-    );
-    final pendingRequests = statsAsync.maybeWhen(
-      data: (stats) => stats['pendingRequests'] ?? 0,
-      orElse: () => 0,
-    );
-    final totalRequests = statsAsync.maybeWhen(
-      data: (stats) => stats['totalRequests'] ?? 0,
-      orElse: () => 0,
-    );
-    final notices = statsAsync.maybeWhen(
-      data: (stats) => stats['publishedNotices'] ?? 0,
-      orElse: () => 0,
-    );
+    if (statsAsync.isLoading && !statsAsync.hasValue) {
+      return const _MetricsLoadingGrid();
+    }
+
+    if (statsAsync.hasError && !statsAsync.hasValue) {
+      return _MetricsError(error: statsAsync.error);
+    }
+
+    final stats = statsAsync.value ?? const <String, int>{};
+    final totalUsers = stats['totalUsers'] == 0
+        ? (stats['totalCitizens'] ?? 0) +
+              (stats['totalGnOfficers'] ?? 0) +
+              (stats['totalCommitteeMembers'] ?? 0)
+        : stats['totalUsers'] ?? 0;
+    final pendingRequests = stats['pendingRequests'] ?? 0;
+    final totalRequests = stats['totalRequests'] ?? 0;
+    final notices = stats['publishedNotices'] ?? 0;
 
     return GridView.count(
       crossAxisCount: 2,
@@ -251,6 +247,79 @@ class _MetricsGrid extends StatelessWidget {
           color: AppColors.statusApproved,
         ),
       ],
+    );
+  }
+}
+
+class _MetricsLoadingGrid extends StatelessWidget {
+  const _MetricsLoadingGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.35,
+      children: const [
+        _MetricCard(
+          title: 'Users',
+          value: '...',
+          icon: Icons.group_outlined,
+          color: AppColors.brandGreen,
+        ),
+        _MetricCard(
+          title: 'Pending',
+          value: '...',
+          icon: Icons.pending_actions_outlined,
+          color: AppColors.statusPending,
+        ),
+        _MetricCard(
+          title: 'Requests',
+          value: '...',
+          icon: Icons.description_outlined,
+          color: AppColors.statusReview,
+        ),
+        _MetricCard(
+          title: 'Notices',
+          value: '...',
+          icon: Icons.campaign_outlined,
+          color: AppColors.statusApproved,
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricsError extends StatelessWidget {
+  const _MetricsError({required this.error});
+
+  final Object? error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceIvory,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.errorRed),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline_rounded, color: AppColors.errorRed),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Unable to load dashboard data: $error',
+              style: AppTextStyles.caption.copyWith(color: AppColors.errorRed),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

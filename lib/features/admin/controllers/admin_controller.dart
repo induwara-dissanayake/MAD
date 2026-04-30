@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/admin_user_model.dart';
@@ -174,6 +176,150 @@ final systemStatsProvider = StreamProvider<Map<String, int>>((ref) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Request Metrics Providers
 // ═══════════════════════════════════════════════════════════════════════════
+
+/// Live dashboard counters for the admin landing page.
+///
+/// The analytics screen intentionally reads system_stats/global, but the
+/// dashboard should still show current data when that aggregate document has
+/// not been seeded or maintained yet.
+final adminDashboardStatsProvider = StreamProvider<Map<String, int>>((ref) {
+  final firestore = FirebaseFirestore.instance;
+  final controller = StreamController<Map<String, int>>();
+
+  QuerySnapshot<Map<String, dynamic>>? usersSnapshot;
+  QuerySnapshot<Map<String, dynamic>>? requestsSnapshot;
+  QuerySnapshot<Map<String, dynamic>>? noticesSnapshot;
+  QuerySnapshot<Map<String, dynamic>>? incidentsSnapshot;
+  QuerySnapshot<Map<String, dynamic>>? communityPostsSnapshot;
+  DocumentSnapshot<Map<String, dynamic>>? aggregateSnapshot;
+
+  void emitIfReady() {
+    if (controller.isClosed ||
+        usersSnapshot == null ||
+        requestsSnapshot == null ||
+        noticesSnapshot == null ||
+        incidentsSnapshot == null ||
+        communityPostsSnapshot == null ||
+        aggregateSnapshot == null) {
+      return;
+    }
+
+    final stats = _buildAdminDashboardStats(
+      users: usersSnapshot!.docs.map((doc) => doc.data()),
+      requests: requestsSnapshot!.docs.map((doc) => doc.data()),
+      notices: noticesSnapshot!.docs.map((doc) => doc.data()),
+      incidents: incidentsSnapshot!.docs.map((doc) => doc.data()),
+      communityPosts: communityPostsSnapshot!.docs.map((doc) => doc.data()),
+      aggregate: aggregateSnapshot!.data(),
+    );
+    controller.add(stats);
+  }
+
+  final subscriptions = <StreamSubscription>[
+    firestore.collection('users').snapshots().listen((snapshot) {
+      usersSnapshot = snapshot;
+      emitIfReady();
+    }, onError: controller.addError),
+    firestore.collection('requests').snapshots().listen((snapshot) {
+      requestsSnapshot = snapshot;
+      emitIfReady();
+    }, onError: controller.addError),
+    firestore.collection('notices').snapshots().listen((snapshot) {
+      noticesSnapshot = snapshot;
+      emitIfReady();
+    }, onError: controller.addError),
+    firestore.collection('incidents').snapshots().listen((snapshot) {
+      incidentsSnapshot = snapshot;
+      emitIfReady();
+    }, onError: controller.addError),
+    firestore.collection('community_posts').snapshots().listen((snapshot) {
+      communityPostsSnapshot = snapshot;
+      emitIfReady();
+    }, onError: controller.addError),
+    firestore.collection('system_stats').doc('global').snapshots().listen((
+      snapshot,
+    ) {
+      aggregateSnapshot = snapshot;
+      emitIfReady();
+    }, onError: controller.addError),
+  ];
+
+  ref.onDispose(() async {
+    for (final subscription in subscriptions) {
+      await subscription.cancel();
+    }
+    await controller.close();
+  });
+
+  return controller.stream;
+});
+
+Map<String, int> _buildAdminDashboardStats({
+  required Iterable<Map<String, dynamic>> users,
+  required Iterable<Map<String, dynamic>> requests,
+  required Iterable<Map<String, dynamic>> notices,
+  required Iterable<Map<String, dynamic>> incidents,
+  required Iterable<Map<String, dynamic>> communityPosts,
+  Map<String, dynamic>? aggregate,
+}) {
+  final userList = users.toList();
+  final requestList = requests.toList();
+  final noticeList = notices.toList();
+  final incidentList = incidents.toList();
+  final communityPostList = communityPosts.toList();
+
+  final totalCitizens = userList.where((user) {
+    final role = _normalizedString(user['role']);
+    return role == 'citizen' || role == 'admin_resident';
+  }).length;
+  final totalGnOfficers = userList
+      .where((user) => _normalizedString(user['role']) == 'gn_officer')
+      .length;
+  final totalCommitteeMembers = userList
+      .where((user) => _normalizedString(user['role']) == 'committee')
+      .length;
+  final pendingRequests = requestList.where((request) {
+    return _normalizedString(request['status']) == 'pending';
+  }).length;
+  final publishedNotices = noticeList.where((notice) {
+    final status = _normalizedString(notice['status']);
+    return status.isEmpty || status == 'published' || status == 'sent';
+  }).length;
+  final openIncidents = incidentList.where((incident) {
+    return _normalizedString(incident['status']) != 'resolved';
+  }).length;
+  final pendingCommunityPosts = communityPostList.where((post) {
+    return _normalizedString(post['status']) == 'pending_moderation';
+  }).length;
+
+  return {
+    'totalUsers': userList.length,
+    'totalCitizens': totalCitizens,
+    'totalGnOfficers': totalGnOfficers,
+    'totalCommitteeMembers': totalCommitteeMembers,
+    'pendingRequests': pendingRequests,
+    'totalRequests': requestList.length,
+    'publishedNotices': publishedNotices,
+    'openIncidents': openIncidents,
+    'pendingCommunityPosts': pendingCommunityPosts,
+    'aggregateOpenIncidents': _aggregateInt(aggregate, 'openIncidents'),
+    'aggregatePendingCommunityPosts': _aggregateInt(
+      aggregate,
+      'pendingCommunityPosts',
+    ),
+  };
+}
+
+String _normalizedString(dynamic value) {
+  return (value ?? '').toString().trim().toLowerCase();
+}
+
+int _aggregateInt(Map<String, dynamic>? data, String key) {
+  final value = data?[key];
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return 0;
+}
 
 /// Get all requests (real-time)
 final allRequestsProvider = StreamProvider<List<RequestModel>>((ref) {
