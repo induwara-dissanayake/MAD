@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 import '../../../core/models/dashboard_metrics.dart';
 import '../../../core/models/request_model.dart';
 import '../../../core/models/user_model.dart';
-import '../../../core/services/auth_service.dart';
 import '../../../core/services/user_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -53,16 +52,13 @@ class _OfficialDashboardScreenState
     final metricsAsync = ref.watch(dashboardMetricsProvider);
     final queueAsync = ref.watch(officialQueuePreviewProvider);
     final pendingPostsAsync = ref.watch(pendingCommunityPostsProvider);
-    final currentUser = ref.watch(authServiceProvider).currentUser;
-    final officerName = currentUser?.displayName?.trim().isNotEmpty == true
-        ? currentUser!.displayName!
-        : 'GN Officer';
-
     return Scaffold(
       backgroundColor: AppColors.surfaceParchment,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceDark,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.surfaceParchment,
+        foregroundColor: AppColors.inkDark,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: const Text('GN Officer Dashboard'),
         actions: [
           IconButton(
@@ -86,8 +82,6 @@ class _OfficialDashboardScreenState
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
-            _OfficerHero(officerName: officerName),
-            const SizedBox(height: 20),
             metricsAsync.when(
               data: (metrics) => _MetricsRow(metrics: metrics),
               loading: () => const _LoadingBlock(height: 96),
@@ -538,74 +532,6 @@ class _OfficialDashboardScreenState
     } finally {
       if (mounted) setState(() => _isPostingNotice = false);
     }
-  }
-}
-
-class _OfficerHero extends StatelessWidget {
-  const _OfficerHero({required this.officerName});
-
-  final String officerName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppColors.shadowMedium,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            officerName,
-            style: AppTextStyles.displayLarge.copyWith(color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Citizen registration, certificate review, notices, moderation, and incident response.',
-            style: AppTextStyles.body.copyWith(
-              color: Colors.white.withValues(alpha: 0.82),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _DarkChip(
-            icon: Icons.verified_user_outlined,
-            label: 'Workflow desk active',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DarkChip extends StatelessWidget {
-  const _DarkChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(color: Colors.white),
-          ),
-        ],
-      ),
-    );
   }
 }
 
